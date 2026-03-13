@@ -333,37 +333,6 @@ function exportExcel(exam, students) {
     XLSX.writeFile(wb, exam.title+'_тайлан.xlsx');
   });
 }
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
-      ['Нэр','Код',...Array.from({length:exam.sec1Count},(_,i)=>'D'+(i+1)),'Raw','ЭЕШ','Зэрэглэл'],
-      ...students.map(s=>[s.name,s.code,
-        ...s.sec1Results.map(r=>r.pts||0),
-        s.rawEarned+'/'+s.rawMax,s.scaled,s.grade?.l
-      ])
-    ]),'Хариулт 1-р хэсэг');
-    if(exam.useSec2){
-      const sec2Cols=[];
-      SEC2_SUBS.forEach(sub=>{if(exam.sec2Config?.[sub]?._enabled) SEC2_ROWS.forEach(row=>{const kv=exam.sec2Config[sub][row];if(kv!==undefined&&kv!==null&&(typeof kv==='object'?kv.ans:kv)!=='') sec2Cols.push({sub,row});});});
-      if(sec2Cols.length>0){
-        XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
-          ['Нэр','Код',...sec2Cols.map(c=>c.sub+c.row),'2-р хэсэг оноо'],
-          ...students.map(s=>[s.name,s.code,
-            ...sec2Cols.map(c=>s.sec2Results?.[c.sub]?.[c.row]?.pts||0),
-            sec2Cols.reduce((sum,c)=>sum+(s.sec2Results?.[c.sub]?.[c.row]?.pts||0),0)
-          ])
-        ]),'Хариулт 2-р хэсэг');
-      }
-    }
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
-      ['Дасгал','Зөв хариулт','Оноо','Сэдэв','Зөв','Буруу','Хоосон','Амжилт %'],
-      ...exam.sec1Key.map((key,i)=>{
-        const c=students.filter(s=>s.sec1Results[i]?.st==='ok').length;
-        const bl=students.filter(s=>s.sec1Results[i]?.st==='blank').length;
-        return['D'+(i+1),key,exam.sec1Scores?.[i]||1,exam.topics?.[i]||'—',c,n-c-bl,bl,n?(c/n*100).toFixed(1)+'%':'0%'];
-      })
-    ]),'Дасгал шинжилгээ');
-    XLSX.writeFile(wb, exam.title+'_тайлан.xlsx');
-  });
-}
 
 function exportAnalytics(exam, students) {
   import('xlsx').then(XLSX => {
