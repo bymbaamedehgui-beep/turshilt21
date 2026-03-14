@@ -1125,12 +1125,12 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
                       placeholder="0-9" style={{width:44,padding:'5px 6px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,outline:'none',textAlign:'center'}} />
                     <span style={{fontSize:11,color:'#94a3b8'}}>оноо:</span>
                     <div style={{display:'flex',alignItems:'center',gap:2}}>
-                      <button onClick={()=>setSec2Keys(k=>{const cur=typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''};const sc=Math.max(1,(cur.score||1)-1);return{...k,[sub]:{...k[sub],[row]:{...cur,score:sc}}};} )}
+                      <button onClick={()=>setSec2Keys(k=>{const cur=typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''};const sc=Math.max(0.5,Math.round(((cur.score||1)-0.5)*10)/10);return{...k,[sub]:{...k[sub],[row]:{...cur,score:sc}}};} )}
                         style={{width:20,height:20,border:'1px solid #e2e8f0',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#64748b'}}>−</button>
-                      <span style={{minWidth:22,textAlign:'center',fontSize:12,fontWeight:700}}>
+                      <span style={{minWidth:28,textAlign:'center',fontSize:12,fontWeight:700}}>
                         {(typeof sec2Keys[sub]?.[row]==='object'?sec2Keys[sub][row].score:null)||1}
                       </span>
-                      <button onClick={()=>setSec2Keys(k=>{const cur=typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''};const sc=Math.min(20,(cur.score||1)+1);return{...k,[sub]:{...k[sub],[row]:{...cur,score:sc}}};} )}
+                      <button onClick={()=>setSec2Keys(k=>{const cur=typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''};const sc=Math.min(20,Math.round(((cur.score||1)+0.5)*10)/10);return{...k,[sub]:{...k[sub],[row]:{...cur,score:sc}}};} )}
                         style={{width:20,height:20,border:'1px solid #e2e8f0',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#64748b'}}>+</button>
                     </div>
                   </div>
