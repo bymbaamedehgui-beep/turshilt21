@@ -1102,10 +1102,12 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
                 <button onClick={()=>setScores(s=>{const n=[...s];n[i]=Math.min(10,n[i]+1);return n;})}
                   style={{width:20,height:20,border:'1px solid #e2e8f0',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#64748b'}}>+</button>
               </div>
-              <button onClick={()=>setTopics(t=>{const n=[...t];const tl=getTopics(subject);n[i]=tl[(tl.indexOf(t[i])+1)%tl.length];return n;})}
-                style={{flex:1,padding:'4px 8px',border:'none',borderRadius:8,fontWeight:700,fontSize:11,cursor:'pointer',background:TOPIC_COLORS[getTopics(subject).indexOf(topics[i])%8]+'22',color:TOPIC_COLORS[getTopics(subject).indexOf(topics[i])%8],whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>
-                {topics[i]}
-              </button>
+              <select value={topics[i]} onChange={e=>setTopics(t=>{const n=[...t];n[i]=e.target.value;return n;})}
+                style={{flex:1,padding:'4px 8px',border:'none',borderRadius:8,fontWeight:700,fontSize:11,cursor:'pointer',background:TOPIC_COLORS[getTopics(subject).indexOf(topics[i])%8]+'22',color:TOPIC_COLORS[getTopics(subject).indexOf(topics[i])%8],outline:'none',minWidth:0}}>
+                {getTopics(subject).map(tp=>(
+                  <option key={tp} value={tp}>{tp}</option>
+                ))}
+              </select>
             </div>
           ))}
         </div>
