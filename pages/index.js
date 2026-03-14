@@ -704,7 +704,7 @@ function LoginPage({onLogin, onStudentLogin}) {
           </button>
         </div>
         <div style={{textAlign:'center',marginBottom:24}}>
-          
+          <div style={{fontSize:48,marginBottom:8}}>🎯</div>
           <div style={{fontSize:22,fontWeight:900,color:'#1e293b'}}>EYESH Checker</div>
           <div style={{fontSize:13,color:'#94a3b8',marginTop:4}}>{t.selectRole}</div>
         </div>
@@ -713,13 +713,13 @@ function LoginPage({onLogin, onStudentLogin}) {
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
             <button onClick={()=>{setRole('teacher');setErr('');setTab('login');}}
               style={{padding:'24px 16px',background:'#f8fafc',border:'2px solid #e2e8f0',borderRadius:14,cursor:'pointer',textAlign:'center'}}>
-              
+              <div style={{fontSize:32,marginBottom:8}}>👩‍🏫</div>
               <div style={{fontWeight:800,fontSize:15,color:'#1e293b'}}>Багш</div>
               <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>Нэвтрэх / Бүртгүүлэх</div>
             </button>
             <button onClick={()=>{setRole('student');setErr('');}}
               style={{padding:'24px 16px',background:'#f8fafc',border:'2px solid #e2e8f0',borderRadius:14,cursor:'pointer',textAlign:'center'}}>
-              
+              <div style={{fontSize:32,marginBottom:8}}>🎓</div>
               <div style={{fontWeight:800,fontSize:15,color:'#1e293b'}}>Сурагч</div>
               <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>Кодоор нэвтрэх</div>
             </button>
@@ -731,7 +731,7 @@ function LoginPage({onLogin, onStudentLogin}) {
             <button onClick={()=>{setRole(null);setErr('');setRegistered(false);}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:13,marginBottom:14,padding:0}}>← Буцах</button>
             {registered ? (
               <div style={{textAlign:'center',padding:'16px 0'}}>
-                
+                <div style={{fontSize:40,marginBottom:10}}>⏳</div>
                 <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:8}}>Хүсэлт илгээгдлээ!</div>
                 <div style={{fontSize:13,color:'#64748b',lineHeight:1.6,marginBottom:16}}>Admin таны хүсэлтийг зөвшөөрсний дараа нэвтэрч болно.</div>
                 <button onClick={()=>{setRegistered(false);setTab('login');}} style={{padding:'8px 20px',background:'#f1f5f9',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer'}}>Нэвтрэх хуудас руу</button>
