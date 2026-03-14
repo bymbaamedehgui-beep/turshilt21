@@ -5,7 +5,7 @@ import Head from 'next/head';
 const SEC1_CHOICES = ['A','B','C','D','E'];
 const SEC2_ROWS = ['a','b','c','d','e','f','g','h'];
 const SEC2_SUBS = ['2.1','2.2','2.3','2.4'];
-const SUBJECTS = ['Математик','Физик','Хими','Биологи','Монгол хэл','Түүх','Газарзүй','Англи хэл'];
+const SUBJECTS = ['Математик','Физик','Хими','Биологи','Монгол хэл','Түүх','Газарзүй','Англи хэл','Нийгмийн ухаан'];
 const TOPICS_BY_SUBJECT = {
   'Математик':  ['Алгебр','Геометр','Тригонометр','Статистик','Тооны онол','Анализ','Функц','Бусад'],
   'Физик':      ['Механик','Термодинамик','Цахилгаан','Соронзон','Оптик','Атомын физик','Долгион','Бусад'],
@@ -1960,15 +1960,17 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
       doc.rect(pw,30,W-pw*2,32,'F');
       doc.setDrawColor(220,226,234);
       doc.rect(pw,30,W-pw*2,32,'S');
-      // Student name/code — safe ASCII
-      const safeName = (student.name||student.code||'').replace(/[^\x00-\x7F]/g,'?');
+      // Use code as primary display (ASCII safe), show name if ASCII
+      const safeName = (student.code||'').replace(/[^\x00-\x7F]/g,'?');
+      const nameAscii = (student.name||'').replace(/[^\x00-\x7F]/g,'').trim();
       doc.setTextColor(30,41,59);
       doc.setFontSize(16); doc.setFont('helvetica','bold');
       doc.text(safeName, pw+5, 42);
       doc.setFontSize(9); doc.setFont('helvetica','normal');
       doc.setTextColor(100,116,139);
-      doc.text('Code: '+(student.code||''), pw+5, 50);
-      doc.text('Class: '+(student.class||'-'), pw+5, 57);
+      if (nameAscii) doc.text('Name: '+nameAscii, pw+5, 50);
+      doc.text('Code: '+(student.code||''), pw+5, nameAscii?57:50);
+      doc.text('Class: '+(student.class||'-'), pw+5, nameAscii?57+7:57);
 
       // ── Score circle ──
       doc.setFillColor(...hexToRgb(grade.c));
