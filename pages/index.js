@@ -15,6 +15,7 @@ const TOPICS_BY_SUBJECT = {
   'Түүх':       ['Эртний үе','Дундад зуун','Монголын түүх','Орчин үе','Дэлхийн түүх','Соёл иргэншил','Улс төр','Бусад'],
   'Газарзүй':   ['Физик газарзүй','Цаг уур','Хүн ам','Эдийн засаг','Байгаль','Тив далай','Монгол орон','Бусад'],
   'Англи хэл':  ['Grammar','Vocabulary','Reading','Writing','Listening','Speaking','Literature','Other'],
+  'Нийгмийн ухаан': ['Нийгэм судлал','Эдийн засаг','Улс төр судлал','Философи','Эрх зүй','Социологи','Ёс зүй','Бусад'],
 };
 function getTopics(subject) {
   return TOPICS_BY_SUBJECT[subject] || TOPICS_BY_SUBJECT['Математик'];
@@ -1938,186 +1939,148 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
   function exportStudentPDF(student) {
     import('jspdf').then(({jsPDF})=>{
       const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-      const W=210, pw=16;
+      const W=210, pw=20;
       const grade = eyeshGrade(student.scaled||0);
       const gradeLabel = {'Онц':'Excellent','Сайн':'Good','Дунд сайн':'Above Avg','Хангалттай':'Satisfactory','Хангалтгүй':'Poor','Тэнцээгүй':'Fail'}[grade.l]||grade.l;
 
-      // ── Header bar ──
-      doc.setFillColor(127,29,29);
-      doc.rect(0,0,W,26,'F');
-      doc.setTextColor(255,255,255);
-      doc.setFontSize(15); doc.setFont('helvetica','bold');
-      doc.text('EYESH Checker - Result Report', pw, 11);
-      doc.setFontSize(9); doc.setFont('helvetica','normal');
-      // Use only ASCII for exam title to avoid encoding issues
-      const safeTitle = (exam.title||'').replace(/[^\x00-\x7F]/g,'?');
-      const safeSubject = (exam.subject||'').replace(/[^\x00-\x7F]/g,'?');
-      doc.text(safeTitle+' | '+safeSubject, pw, 20);
-      doc.text(new Date().toLocaleDateString('en-CA'), W-pw, 20, {align:'right'});
+      const safeStr = s => (s||'').replace(/[^\x00-\x7F]/g, '?');
+      const safeCode = safeStr(student.code);
+      const safeClass = safeStr(student.class);
+      const safeTitle = safeStr(exam.title);
+      const safeSubject = safeStr(exam.subject);
 
-      // ── Student info box ──
-      doc.setFillColor(248,250,252);
-      doc.rect(pw,30,W-pw*2,32,'F');
-      doc.setDrawColor(220,226,234);
-      doc.rect(pw,30,W-pw*2,32,'S');
-      // Use code as primary display (ASCII safe), show name if ASCII
-      const safeName = (student.code||'').replace(/[^\x00-\x7F]/g,'?');
-      const nameAscii = (student.name||'').replace(/[^\x00-\x7F]/g,'').trim();
-      doc.setTextColor(30,41,59);
-      doc.setFontSize(16); doc.setFont('helvetica','bold');
-      doc.text(safeName, pw+5, 42);
-      doc.setFontSize(9); doc.setFont('helvetica','normal');
-      doc.setTextColor(100,116,139);
-      if (nameAscii) doc.text('Name: '+nameAscii, pw+5, 50);
-      doc.text('Code: '+(student.code||''), pw+5, nameAscii?57:50);
-      doc.text('Class: '+(student.class||'-'), pw+5, nameAscii?57+7:57);
+      // ── Scores ──
+      const sec1Res = student.sec1Results||[];
+      const sec1Earned = sec1Res.reduce((a,r)=>a+(r.pts||0),0);
+      const sec1Max    = sec1Res.reduce((a,r)=>a+(r.max||0),0);
+      const sec2Ent    = Object.entries(student.sec2Results||{});
+      const sec2Earned = sec2Ent.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.pts||0),0),0);
+      const sec2Max    = sec2Ent.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.max||0),0),0);
+      const totalMax   = student.rawMax||0;
+      const totalEarned= student.rawEarned||0;
 
-      // ── Score circle ──
-      doc.setFillColor(...hexToRgb(grade.c));
-      doc.circle(W-pw-18, 46, 14, 'F');
-      doc.setTextColor(255,255,255);
-      doc.setFontSize(16); doc.setFont('helvetica','bold');
-      doc.text((student.scaled||0)+'%', W-pw-18, 49, {align:'center'});
-      doc.setFontSize(7); doc.setFont('helvetica','normal');
-      doc.text(grade.g+' - '+gradeLabel, W-pw-18, 55, {align:'center'});
+      let y = 20;
+      const line = (label, value, bold=false) => {
+        doc.setFont('helvetica', bold?'bold':'normal');
+        doc.setFontSize(10);
+        doc.setTextColor(0,0,0);
+        doc.text(label, pw, y);
+        doc.text(String(value), pw+70, y);
+        y += 7;
+      };
+      const divider = () => {
+        doc.setDrawColor(180,180,180);
+        doc.line(pw, y, W-pw, y);
+        y += 5;
+      };
+      const sectionHeader = (title) => {
+        y += 2;
+        doc.setFont('helvetica','bold');
+        doc.setFontSize(11);
+        doc.setTextColor(0,0,0);
+        doc.text(title, pw, y);
+        y += 3;
+        divider();
+      };
 
-      // ── Stats row: Correct / Wrong / Blank / Sec1 / Sec2 / Total ──
-      const rawE = student.rawEarned||0;
-      const rawM = student.rawMax||0;
-      // Calculate sec1 and sec2 scores separately
-      const sec1Results = student.sec1Results||[];
-      const sec1Earned = sec1Results.reduce((a,r)=>a+(r.pts||0),0);
-      const sec1Max = sec1Results.reduce((a,r)=>a+(r.max||0),0);
-      const sec2Entries2 = Object.entries(student.sec2Results||{});
-      const sec2Earned = sec2Entries2.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.pts||0),0),0);
-      const sec2Max = sec2Entries2.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.max||0),0),0);
+      // ── Title ──
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(14);
+      doc.setTextColor(0,0,0);
+      doc.text('EYESH Checker - Student Result Report', pw, y);
+      y += 5;
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(9);
+      doc.setTextColor(100,100,100);
+      doc.text(safeTitle+' | '+safeSubject+'  |  '+new Date().toLocaleDateString('en-CA'), pw, y);
+      y += 6;
+      divider();
 
-      const statItems = [
-        ['Correct', student.correct, '#16a34a'],
-        ['Wrong',   student.wrong,   '#dc2626'],
-        ['Blank',   student.blank,   '#94a3b8'],
-        ['Sec1',    sec1Earned+'/'+sec1Max, '#0369a1'],
-        ...(sec2Max>0?[['Sec2', sec2Earned+'/'+sec2Max, '#7c3aed']]:[]),
-      ];
-      const bw = (W-pw*2)/statItems.length;
-      let cx = pw;
-      statItems.forEach(([l,v,c])=>{
-        doc.setFillColor(...hexToRgb(c+'22'));
-        doc.rect(cx,66,bw-3,20,'F');
-        doc.setTextColor(...hexToRgb(c));
-        doc.setFont('helvetica','bold'); doc.setFontSize(13);
-        doc.text(String(v), cx+bw/2-1.5, 76, {align:'center'});
-        doc.setTextColor(100,116,139); doc.setFont('helvetica','normal'); doc.setFontSize(7);
-        doc.text(l, cx+bw/2-1.5, 82, {align:'center'});
-        cx+=bw;
-      });
+      // ── Student Info ──
+      sectionHeader('Student Information');
+      line('Student Code:', safeCode);
+      line('Class:', safeClass||'-');
+      line('Exam:', safeTitle);
+      line('Subject:', safeSubject);
+      y += 2;
+      divider();
 
-      // ── Total score big display ──
-      doc.setFillColor(...hexToRgb('#7c3aed'+'18'));
-      doc.rect(pw,88,W-pw*2,16,'F');
-      doc.setDrawColor(...hexToRgb('#7c3aed'));
-      doc.rect(pw,88,W-pw*2,16,'S');
-      doc.setTextColor(...hexToRgb('#7c3aed'));
-      doc.setFont('helvetica','bold'); doc.setFontSize(14);
-      doc.text('Total Score:  '+rawE+' / '+rawM+'  pts    ('+( student.scaled||0)+'%)', W/2, 98, {align:'center'});
+      // ── Score Summary ──
+      sectionHeader('Score Summary');
+      line('Total Score (Max):', totalMax+' pts');
+      line('Total Score (Earned):', totalEarned+' pts');
+      line('Performance:', (student.scaled||0)+'%  ('+grade.g+' - '+gradeLabel+')');
+      if(sec1Max>0) line('Section 1 Score:', sec1Earned+' / '+sec1Max+' pts');
+      if(sec2Max>0) line('Section 2 Score:', sec2Earned+' / '+sec2Max+' pts');
+      line('Correct Answers:', student.correct);
+      line('Wrong Answers:', student.wrong);
+      line('Blank Answers:', student.blank);
+      y += 2;
+      divider();
 
-      // ── Section 1 header ──
-      let y = 112;
-      doc.setFillColor(30,41,59);
-      doc.rect(pw,y,W-pw*2,8,'F');
-      doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
-      doc.text('Section 1 — Question Numbers  (green=correct, red=wrong)', pw+3, y+5.5);
-      y+=12;
-
-      // ── Section 1 grid — big colored question numbers ──
-      const results = student.sec1Results||[];
-      const cols = 10;
-      const cellW = (W-pw*2)/cols;
-      const cellH = 11;
-      results.forEach((r,i)=>{
-        const col = i%cols;
-        const rowN = Math.floor(i/cols);
-        const x = pw + col*cellW;
-        const ry = y + rowN*(cellH+1);
-        if(ry+cellH > 276) return;
-        if(r.st==='ok'){
-          // Green background, white bold number
-          doc.setFillColor(21,128,61);
-          doc.rect(x, ry, cellW-1, cellH, 'F');
-          doc.setTextColor(255,255,255);
-          doc.setFont('helvetica','bold'); doc.setFontSize(9);
-          doc.text(String(i+1), x+cellW/2-0.5, ry+7.5, {align:'center'});
-        } else if(r.st==='ng') {
-          // Red background, white bold number
-          doc.setFillColor(220,38,38);
-          doc.rect(x, ry, cellW-1, cellH, 'F');
-          doc.setTextColor(255,255,255);
-          doc.setFont('helvetica','bold'); doc.setFontSize(9);
-          doc.text(String(i+1), x+cellW/2-0.5, ry+7.5, {align:'center'});
-        } else {
-          // Blank — light gray, gray number
-          doc.setFillColor(241,245,249);
-          doc.rect(x, ry, cellW-1, cellH, 'F');
-          doc.setTextColor(148,163,184);
-          doc.setFont('helvetica','normal'); doc.setFontSize(8);
-          doc.text(String(i+1), x+cellW/2-0.5, ry+7.5, {align:'center'});
+      // ── Correct question numbers ──
+      sectionHeader('Correct Questions');
+      const correct = sec1Res.map((r,i)=>r.st==='ok'?i+1:null).filter(Boolean);
+      if(correct.length===0){
+        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+        doc.text('None', pw, y); y+=7;
+      } else {
+        // Print in rows of 20
+        const perRow=20;
+        for(let i=0;i<correct.length;i+=perRow){
+          doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+          doc.text(correct.slice(i,i+perRow).join('  '), pw, y);
+          y+=7;
         }
-      });
+      }
+      y+=2; divider();
 
-      // ── Legend ──
-      const legendY = y + Math.ceil(results.length/cols)*(cellH+1) + 2;
-      doc.setFillColor(21,128,61); doc.rect(pw, legendY, 8, 5, 'F');
-      doc.setTextColor(30,41,59); doc.setFont('helvetica','normal'); doc.setFontSize(7);
-      doc.text('Correct ('+student.correct+')', pw+10, legendY+4);
-      doc.setFillColor(220,38,38); doc.rect(pw+40, legendY, 8, 5, 'F');
-      doc.text('Wrong ('+student.wrong+')', pw+50, legendY+4);
-      doc.setFillColor(241,245,249); doc.rect(pw+85, legendY, 8, 5, 'F');
-      doc.setDrawColor(200,200,200); doc.rect(pw+85, legendY, 8, 5, 'S');
-      doc.text('Blank ('+student.blank+')', pw+95, legendY+4);
+      // ── Wrong question numbers ──
+      sectionHeader('Wrong Questions');
+      const wrong = sec1Res.map((r,i)=>r.st==='ng'?i+1:null).filter(Boolean);
+      if(wrong.length===0){
+        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+        doc.text('None', pw, y); y+=7;
+      } else {
+        const perRow=20;
+        for(let i=0;i<wrong.length;i+=perRow){
+          doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+          doc.text(wrong.slice(i,i+perRow).join('  '), pw, y);
+          y+=7;
+        }
+      }
+      y+=2; divider();
 
-      // ── Section 2 ──
-      const sec2Entries = Object.entries(student.sec2Results||{}).filter(([,rows])=>Object.keys(rows).length>0);
-      if(sec2Entries.length>0){
-        y = legendY + 10;
-        doc.setFillColor(124,58,237);
-        doc.rect(pw,y,W-pw*2,8,'F');
-        doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
-        doc.text('Section 2 - Answers  (pts earned / max)', pw+3, y+5.5);
-        y+=12;
-        sec2Entries.forEach(([sub,rows])=>{
-          if(y>270) return;
-          doc.setTextColor(124,58,237); doc.setFont('helvetica','bold'); doc.setFontSize(8);
-          doc.text(sub, pw, y+4);
-          let sx = pw+14;
-          Object.entries(rows).forEach(([row,r])=>{
-            if(sx > W-pw-20){sx=pw+14; y+=10;}
-            const bg = r.st==='ok'?[220,252,231]:r.st==='blank'?[241,245,249]:[254,226,226];
-            doc.setFillColor(...bg);
-            doc.rect(sx,y,18,8,'F');
-            doc.setTextColor(100,116,139); doc.setFont('helvetica','normal'); doc.setFontSize(6);
-            doc.text(row, sx+1.5, y+3.5);
-            const earned2 = r.pts||0;
-            const max2    = r.max||1;
-            const sc2 = r.st==='ok'?[21,128,61]:r.st==='blank'?[148,163,184]:[220,38,38];
-            doc.setTextColor(...sc2); doc.setFont('helvetica','bold'); doc.setFontSize(7.5);
-            doc.text(earned2+'/'+max2, sx+9, y+6.5, {align:'center'});
-            sx+=20;
-          });
-          y+=12;
+      // ── Topics to review ──
+      sectionHeader('Topics to Review');
+      const wrongTopics = [...new Set(sec1Res.filter(r=>r.st==='ng').map((_,i)=>exam.topics?.[sec1Res.indexOf(_)]||'').filter(Boolean))];
+      if(wrongTopics.length===0){
+        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+        doc.text('None', pw, y); y+=7;
+      } else {
+        wrongTopics.forEach(t=>{
+          doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+          doc.text('- '+safeStr(t), pw, y); y+=7;
         });
       }
 
-      // ── Grade scale footer ──
-      doc.setFillColor(248,250,252);
-      doc.rect(0,283,W,14,'F');
-      doc.setDrawColor(220,226,234);
-      doc.line(0,283,W,283);
-      doc.setTextColor(148,163,184); doc.setFontSize(7); doc.setFont('helvetica','normal');
-      doc.text('EYESH Checker  |  AI Bubble Detection', pw, 289);
-      doc.text('A>=90 Excellent | B>=80 Good | C>=70 Above Avg | D>=60 Satisfactory | F<60 Fail', pw, 293);
+      // ── Section 2 if exists ──
+      if(sec2Max>0){
+        y+=2; divider();
+        sectionHeader('Section 2 Details');
+        sec2Ent.forEach(([sub,rows])=>{
+          doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+          const e2=Object.values(rows).reduce((a,r)=>a+(r.pts||0),0);
+          const m2=Object.values(rows).reduce((a,r)=>a+(r.max||0),0);
+          doc.text(sub+':  '+e2+' / '+m2+' pts', pw, y); y+=7;
+        });
+      }
 
-      const safeName2 = (student.name||student.code||'unknown').replace(/[^\x00-\x7F]/g,'_').replace(/\s+/g,'_');
-      doc.save(safeName2+'_'+exam.title.replace(/[^\x00-\x7F]/g,'_')+'_result.pdf');
+      // ── Footer ──
+      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,150,150);
+      doc.text('EYESH Checker  |  A>=90  B>=80  C>=70  D>=60  F<60', pw, 290);
+
+      doc.save(safeCode+'_result.pdf');
     });
   }
 
