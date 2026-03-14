@@ -8,6 +8,14 @@ export default requireAuth(async function handler(req, res) {
     return res.json(accounts);
   }
   if (req.method === 'POST') {
+    if (Array.isArray(req.body)) {
+      const results = [];
+      for (const acc of req.body) {
+        const r = await createStudentAccount(acc, req.teacherId);
+        results.push(r);
+      }
+      return res.json(results);
+    }
     const acc = await createStudentAccount(req.body, req.teacherId);
     return res.json(acc);
   }
