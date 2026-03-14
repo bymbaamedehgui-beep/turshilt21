@@ -2518,8 +2518,8 @@ function StudentPortal({student, onLogout}) {
   function stoken() { return typeof window!=='undefined'?localStorage.getItem('student_token'):''; }
 
   useEffect(()=>{
-    // Fetch exams (public - no auth needed for student to see exam list)
-    fetch('/api/exams',{headers:{Authorization:'Bearer '+stoken()}})
+    // Fetch all exams for student to choose from (use public endpoint)
+    fetch('/api/student/exams',{headers:{Authorization:'Bearer '+stoken()}})
       .then(r=>r.json()).then(d=>{ setExams(Array.isArray(d)?d:[]); }).catch(()=>{})
       .finally(()=>setLoading(false));
   },[]);
