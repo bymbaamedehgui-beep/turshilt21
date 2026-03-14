@@ -1727,7 +1727,17 @@ function RatingPage({exams, students, dark:d=false}) {
   // From image: classes look like full codes (202612100 etc.) grouped by prefix
   // Use student.class field if available, else derive from code prefix (first 6 chars)
   function getClass(s) { return s.class || (s.code||'').slice(0,6) || '—'; }
-  const allClasses = [...new Set(students.map(getClass).filter(c=>c&&c!=='—'))].sort();
+  // Natural sort: 10А, 10Б, 11А, 12А, 12Б etc
+  function naturalSort(a, b) {
+    const na = a.match(/^(\d+)(.*)/), nb = b.match(/^(\d+)(.*)/);
+    if (na && nb) {
+      const nd = parseInt(na[1]) - parseInt(nb[1]);
+      if (nd !== 0) return nd;
+      return na[2].localeCompare(nb[2], 'mn');
+    }
+    return a.localeCompare(b, 'mn');
+  }
+  const allClasses = [...new Set(students.map(getClass).filter(c=>c&&c!=='—'))].sort(naturalSort);
 
   // Build per-subject per-student average scores
   // Group exams by subject
@@ -1969,16 +1979,25 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
       doc.setFontSize(7); doc.setFont('helvetica','normal');
       doc.text(grade.g+' - '+gradeLabel, W-pw-18, 55, {align:'center'});
 
-      // ── Stats row: Correct / Wrong / Blank / Score ──
+      // ── Stats row: Correct / Wrong / Blank / Sec1 / Sec2 / Total ──
       const rawE = student.rawEarned||0;
       const rawM = student.rawMax||0;
+      // Calculate sec1 and sec2 scores separately
+      const sec1Results = student.sec1Results||[];
+      const sec1Earned = sec1Results.reduce((a,r)=>a+(r.pts||0),0);
+      const sec1Max = sec1Results.reduce((a,r)=>a+(r.max||0),0);
+      const sec2Entries2 = Object.entries(student.sec2Results||{});
+      const sec2Earned = sec2Entries2.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.pts||0),0),0);
+      const sec2Max = sec2Entries2.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.max||0),0),0);
+
       const statItems = [
         ['Correct', student.correct, '#16a34a'],
         ['Wrong',   student.wrong,   '#dc2626'],
         ['Blank',   student.blank,   '#94a3b8'],
-        ['Score',   rawE+'/'+rawM,   '#7c3aed'],
+        ['Sec1',    sec1Earned+'/'+sec1Max, '#0369a1'],
+        ...(sec2Max>0?[['Sec2', sec2Earned+'/'+sec2Max, '#7c3aed']]:[]),
       ];
-      const bw = (W-pw*2)/4;
+      const bw = (W-pw*2)/statItems.length;
       let cx = pw;
       statItems.forEach(([l,v,c])=>{
         doc.setFillColor(...hexToRgb(c+'22'));
