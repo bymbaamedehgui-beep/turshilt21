@@ -6,6 +6,12 @@ const SEC1_CHOICES = ['A','B','C','D','E'];
 const SEC2_ROWS = ['a','b','c','d','e','f','g','h'];
 const SEC2_SUBS = ['2.1','2.2','2.3','2.4'];
 const SUBJECTS = ['Математик','Физик','Хими','Биологи','Монгол хэл','Түүх','Газарзүй','Англи хэл','Нийгмийн ухаан'];
+
+const SUBJECT_EN = {
+  'Математик':'Mathematics','Физик':'Physics','Хими':'Chemistry',
+  'Биологи':'Biology','Монгол хэл':'Mongolian','Түүх':'History',
+  'Газарзүй':'Geography','Англи хэл':'English','Нийгмийн ухаан':'Social Studies'
+};
 const TOPICS_BY_SUBJECT = {
   'Математик':  ['Алгебр','Геометр','Тригонометр','Статистик','Тооны онол','Анализ','Функц','Бусад'],
   'Физик':      ['Механик','Термодинамик','Цахилгаан','Соронзон','Оптик','Атомын физик','Долгион','Бусад'],
@@ -45,7 +51,7 @@ const T = {
     timeUp:'Хугацаа дууссан! Хариулт автоматаар илгээгдлээ.',
     section1:'1-р хэсэг', section2:'2-р хэсэг',
     hello:'Сайн байна уу,',
-    nav:{home:'Нүүр',create:'Шалгалт үүсгэх',material:'Материал',upload:'Зураг оруулах',board:'Жагсаалт',analytics:'Анализ',rating:'Рейтинг',students:'Сурагчид',admin:'👑 Admin'},
+    nav:{home:'Нүүр',create:'Шалгалт үүсгэх',material:'Материал',upload:'Зураг оруулах',board:'Жагсаалт',analytics:'Анализ',rating:'Рейтинг',students:'Сурагчид',admin:'Admin'},
   },
   en: {
     appName:'EYESH Checker',
@@ -64,7 +70,7 @@ const T = {
     timeUp:'Time is up! Your answers have been submitted.',
     section1:'Section 1', section2:'Section 2',
     hello:'Hello,',
-    nav:{home:'Home',create:'Create Exam',material:'Material',upload:'Upload',board:'Results',analytics:'Analytics',rating:'Ranking',students:'Students',admin:'👑 Admin'},
+    nav:{home:'Home',create:'Create Exam',material:'Material',upload:'Upload',board:'Results',analytics:'Analytics',rating:'Ranking',students:'Students',admin:'Admin'},
   }
 };
 
@@ -698,7 +704,7 @@ function LoginPage({onLogin, onStudentLogin}) {
           </button>
         </div>
         <div style={{textAlign:'center',marginBottom:24}}>
-          <div style={{fontSize:48,marginBottom:8}}>🎯</div>
+          
           <div style={{fontSize:22,fontWeight:900,color:'#1e293b'}}>EYESH Checker</div>
           <div style={{fontSize:13,color:'#94a3b8',marginTop:4}}>{t.selectRole}</div>
         </div>
@@ -707,13 +713,13 @@ function LoginPage({onLogin, onStudentLogin}) {
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
             <button onClick={()=>{setRole('teacher');setErr('');setTab('login');}}
               style={{padding:'24px 16px',background:'#f8fafc',border:'2px solid #e2e8f0',borderRadius:14,cursor:'pointer',textAlign:'center'}}>
-              <div style={{fontSize:32,marginBottom:8}}>👩‍🏫</div>
+              
               <div style={{fontWeight:800,fontSize:15,color:'#1e293b'}}>Багш</div>
               <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>Нэвтрэх / Бүртгүүлэх</div>
             </button>
             <button onClick={()=>{setRole('student');setErr('');}}
               style={{padding:'24px 16px',background:'#f8fafc',border:'2px solid #e2e8f0',borderRadius:14,cursor:'pointer',textAlign:'center'}}>
-              <div style={{fontSize:32,marginBottom:8}}>🎓</div>
+              
               <div style={{fontWeight:800,fontSize:15,color:'#1e293b'}}>Сурагч</div>
               <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>Кодоор нэвтрэх</div>
             </button>
@@ -725,7 +731,7 @@ function LoginPage({onLogin, onStudentLogin}) {
             <button onClick={()=>{setRole(null);setErr('');setRegistered(false);}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:13,marginBottom:14,padding:0}}>← Буцах</button>
             {registered ? (
               <div style={{textAlign:'center',padding:'16px 0'}}>
-                <div style={{fontSize:40,marginBottom:10}}>⏳</div>
+                
                 <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:8}}>Хүсэлт илгээгдлээ!</div>
                 <div style={{fontSize:13,color:'#64748b',lineHeight:1.6,marginBottom:16}}>Admin таны хүсэлтийг зөвшөөрсний дараа нэвтэрч болно.</div>
                 <button onClick={()=>{setRegistered(false);setTab('login');}} style={{padding:'8px 20px',background:'#f1f5f9',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer'}}>Нэвтрэх хуудас руу</button>
@@ -850,7 +856,7 @@ function AdminPage({dark:d=false}) {
       {/* Header */}
       <div style={{background:'linear-gradient(135deg,#1e293b,#334155)',borderRadius:20,padding:'24px 28px',color:'white',marginBottom:20}}>
         <div style={{fontSize:11,letterSpacing:3,opacity:.7,marginBottom:4}}>EYESH CHECKER</div>
-        <div style={{fontSize:26,fontWeight:900}}>👑 Admin панель</div>
+        <div style={{fontSize:26,fontWeight:900}}>Admin панель</div>
         <div style={{opacity:.8,fontSize:13,marginTop:4}}>Багш нарын хандалтыг удирдах</div>
       </div>
 
@@ -866,8 +872,8 @@ function AdminPage({dark:d=false}) {
           </div>
           {pending.map(t=>(
             <TeacherRow key={t.id} t={t} actions={<>
-              <button style={btnStyle('#16a34a','white')} onClick={()=>updateStatus(t.id,'active')}>✅ Зөвшөөрөх</button>
-              <button style={btnStyle('#fee2e2','#dc2626')} onClick={()=>removeTeacher(t.id,t.email)}>❌ Татгалзах</button>
+              <button style={btnStyle('#16a34a','white')} onClick={()=>updateStatus(t.id,'active')}>Зөвшөөрөх</button>
+              <button style={btnStyle('#fee2e2','#dc2626')} onClick={()=>removeTeacher(t.id,t.email)}>Татгалзах</button>
             </>}/>
           ))}
         </div>
@@ -883,8 +889,8 @@ function AdminPage({dark:d=false}) {
           ? <div style={{padding:'24px',textAlign:'center',color:muted,fontSize:13}}>Одоохондоо байхгүй</div>
           : active.map(t=>(
             <TeacherRow key={t.id} t={t} actions={<>
-              <button style={btnStyle('#f1f5f9','#374151')} onClick={()=>updateStatus(t.id,'disabled')}>🚫 Хаах</button>
-              <button style={btnStyle('#fee2e2','#dc2626')} onClick={()=>removeTeacher(t.id,t.email)}>🗑</button>
+              <button style={btnStyle('#f1f5f9','#374151')} onClick={()=>updateStatus(t.id,'disabled')}>Хаах</button>
+              <button style={btnStyle('#fee2e2','#dc2626')} onClick={()=>removeTeacher(t.id,t.email)}>X</button>
             </>}/>
           ))
         }
@@ -899,8 +905,8 @@ function AdminPage({dark:d=false}) {
           </div>
           {disabled.map(t=>(
             <TeacherRow key={t.id} t={t} actions={<>
-              <button style={btnStyle('#dcfce7','#16a34a')} onClick={()=>updateStatus(t.id,'active')}>✅ Нээх</button>
-              <button style={btnStyle('#fee2e2','#dc2626')} onClick={()=>removeTeacher(t.id,t.email)}>🗑</button>
+              <button style={btnStyle('#dcfce7','#16a34a')} onClick={()=>updateStatus(t.id,'active')}>Нээх</button>
+              <button style={btnStyle('#fee2e2','#dc2626')} onClick={()=>removeTeacher(t.id,t.email)}>X</button>
             </>}/>
           ))}
         </div>
@@ -944,7 +950,7 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12,marginBottom:24}}>
         {currentExam && (
           <div style={{gridColumn:'1/-1',background:'linear-gradient(135deg,#7c3aed18,#a855f718)',border:'1px solid #a855f730',borderRadius:10,padding:'8px 16px',display:'flex',alignItems:'center',gap:8}}>
-            <span style={{fontSize:13,fontWeight:700,color:'#7c3aed'}}>📊 {currentExam.title}</span>
+            <span style={{fontSize:13,fontWeight:700,color:'#7c3aed'}}>{currentExam.title}</span>
             <span style={{fontSize:12,color:muted}}>{currentExam.subject}</span>
             <button onClick={()=>onSelectExam(null)} style={{marginLeft:'auto',background:'none',border:'none',color:muted,cursor:'pointer',fontSize:12}}>✕ Бүгдийг харах</button>
           </div>
@@ -1676,7 +1682,7 @@ function UploadPage({exam, students, onAddStudent}) {
               {scored&&(
                 <button onClick={()=>setShowOverlay(v=>!v)}
                   style={{width:'100%',marginBottom:8,padding:'10px',background:showOverlay?'#dcfce7':'#f1f5f9',border:`2px solid ${showOverlay?'#16a34a':'#e2e8f0'}`,borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer',color:showOverlay?'#16a34a':'#64748b'}}>
-                  {showOverlay?'✅ Overlay харуулж байна — нуух':'🔍 Зураг дээр overlay харах'}
+                  {showOverlay?'Overlay харуулж байна — нуух':'Зураг дээр overlay харах'}
                 </button>
               )}
               {!scored&&<div style={{display:'flex',gap:8}}>
@@ -1689,7 +1695,7 @@ function UploadPage({exam, students, onAddStudent}) {
               </div>}
               {scored&&<div style={{display:'flex',gap:8}}>
                 <button onClick={()=>{setImgData(null);setDet(null);setScored(null);setShowOverlay(false);}}
-                  style={{padding:'12px 20px',background:'#fee2e2',color:'#dc2626',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>🗑 Зураг устгах</button>
+                  style={{padding:'12px 20px',background:'#fee2e2',color:'#dc2626',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Зураг устгах</button>
               </div>}
             </div>
           )}
@@ -1803,7 +1809,7 @@ function RatingPage({exams, students, dark:d=false}) {
       {/* Header */}
       <div style={{background:'linear-gradient(135deg,#7c3aed,#a855f7)',borderRadius:20,padding:'24px 28px',color:'white',marginBottom:20}}>
         <div style={{fontSize:11,letterSpacing:3,opacity:.7,marginBottom:4}}>EYESH CHECKER</div>
-        <div style={{fontSize:26,fontWeight:900}}>🏆 Рейтинг</div>
+        <div style={{fontSize:26,fontWeight:900}}>Рейтинг</div>
         <div style={{opacity:.8,fontSize:13,marginTop:4}}>Судлагдахуунаар, кодоор эрэмбэлсэн</div>
       </div>
 
@@ -1947,7 +1953,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
       const safeCode = safeStr(student.code);
       const safeClass = safeStr(student.class);
       const safeTitle = safeStr(exam.title);
-      const safeSubject = safeStr(exam.subject);
+      const safeSubject = SUBJECT_EN[exam.subject] || safeStr(exam.subject);
 
       // ── Scores ──
       const sec1Res = student.sec1Results||[];
@@ -2007,9 +2013,21 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
 
       // ── Score Summary ──
       sectionHeader('Score Summary');
+      // Big performance display
+      doc.setFont('helvetica','bold');
+      doc.setFontSize(36);
+      doc.setTextColor(0,0,0);
+      doc.text((student.scaled||0)+'%', pw, y);
+      doc.setFont('helvetica','normal');
+      doc.setFontSize(12);
+      doc.setTextColor(80,80,80);
+      doc.text(grade.g+' - '+gradeLabel, pw+35, y);
+      y += 10;
+      doc.setDrawColor(200,200,200);
+      doc.line(pw, y, W-pw, y);
+      y += 6;
       line('Total Score (Max):', totalMax+' pts');
       line('Total Score (Earned):', totalEarned+' pts');
-      line('Performance:', (student.scaled||0)+'%  ('+grade.g+' - '+gradeLabel+')');
       if(sec1Max>0) line('Section 1 Score:', sec1Earned+' / '+sec1Max+' pts');
       if(sec2Max>0) line('Section 2 Score:', sec2Earned+' / '+sec2Max+' pts');
       line('Correct Answers:', student.correct);
@@ -2106,7 +2124,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
                     <td style={{padding:'10px 14px',fontSize:16,fontWeight:800,color:g.c}}>{s.scaled}%</td>
                     <td style={{padding:'10px 14px'}}>
                       <button onClick={()=>exportStudentPDF(s)}
-                        style={{padding:'3px 8px',background:'#fef3c7',border:'none',borderRadius:6,fontSize:11,color:'#92400e',cursor:'pointer',fontWeight:700}}>📄 PDF</button>
+                        style={{padding:'3px 8px',background:'#fef3c7',border:'none',borderRadius:6,fontSize:11,color:'#92400e',cursor:'pointer',fontWeight:700}}>PDF</button>
                     </td>
                     <td style={{padding:'10px 14px'}}>
                       <button onClick={()=>{const c=prompt(s.name+' устгахын тулд УСТГАХ гэж бичнэ үү:');if(c==='УСТГАХ')onDeleteStudent(s.id);}}
@@ -2841,14 +2859,14 @@ export default function App() {
           )}
           <button onClick={toggleDark}
             style={{padding:'6px 12px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,fontSize:14,color:d?'#fbbf24':'#374151',fontWeight:700,cursor:'pointer',flexShrink:0}}>
-            {d?'☀️':'🌙'}
+            {d?'Light':'Dark'}
           </button>
           <button onClick={toggleLang}
             style={{padding:'6px 12px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,fontSize:12,color:d?'#e2e8f0':'#374151',fontWeight:700,cursor:'pointer',flexShrink:0}}>
             {lang==='mn'?'EN':'МН'}
           </button>
           {teacher?.isAdmin&&(
-            <span style={{padding:'4px 10px',background:'#fef3c7',border:'1px solid #fde68a',borderRadius:8,fontSize:11,fontWeight:700,color:'#92400e',flexShrink:0}}>👑 Admin</span>
+            <span style={{padding:'4px 10px',background:'#fef3c7',border:'1px solid #fde68a',borderRadius:8,fontSize:11,fontWeight:700,color:'#92400e',flexShrink:0}}>Admin</span>
           )}
           <button onClick={()=>{localStorage.removeItem('eyesh_token');localStorage.removeItem('eyesh_teacher');setAuthed(false);setTeacher(null);}}
             style={{padding:'6px 12px',background:'#fee2e2',border:'none',borderRadius:8,fontSize:12,color:'#dc2626',fontWeight:700,cursor:'pointer',flexShrink:0}}>
