@@ -637,24 +637,6 @@ function LoginPage({onLogin, onStudentLogin}) {
   const [loading, setLoading] = useState(false);
 
   const [registered, setRegistered] = useState(false);
-  const [verifying, setVerifying] = useState(false); // email verification step
-  const [verifyEmail, setVerifyEmail] = useState('');
-  const [verifyCode, setVerifyCode] = useState('');
-  const [verifyErr, setVerifyErr] = useState('');
-  const [verifyLoading, setVerifyLoading] = useState(false);
-
-  async function handleVerify() {
-    if (!verifyCode.trim()) return;
-    setVerifyLoading(true); setVerifyErr('');
-    try {
-      const d = await fetch('/api/verify-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:verifyEmail,code:verifyCode.trim()})}).then(async r=>{
-        const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
-      });
-      setVerifying(false);
-      setRegistered(true);
-    } catch(e) { setVerifyErr(e.message); }
-    setVerifyLoading(false);
-  }
 
   async function handleTeacherLogin() {
     if (!email||!pass) return;
@@ -683,9 +665,6 @@ function LoginPage({onLogin, onStudentLogin}) {
         localStorage.setItem('eyesh_token', d2.token);
         localStorage.setItem('eyesh_teacher', JSON.stringify(d2.teacher));
         onLogin(d2.teacher);
-      } else if (d.needsVerification) {
-        setVerifyEmail(email);
-        setVerifying(true);
       } else {
         setRegistered(true);
       }
@@ -743,23 +722,7 @@ function LoginPage({onLogin, onStudentLogin}) {
         {role==='teacher'&&(
           <>
             <button onClick={()=>{setRole(null);setErr('');setRegistered(false);}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:13,marginBottom:14,padding:0}}>← Буцах</button>
-            {verifying ? (
-              <div style={{textAlign:'center',padding:'8px 0'}}>
-                <div style={{fontSize:36,marginBottom:8}}>📧</div>
-                <div style={{fontWeight:800,fontSize:15,color:'#1e293b',marginBottom:6}}>Email шалгана уу!</div>
-                <div style={{fontSize:12,color:'#64748b',marginBottom:16}}>{verifyEmail} руу 6 оронтой код илгээлээ</div>
-                {verifyErr && <div style={{color:'#dc2626',fontSize:12,background:'#fef2f2',padding:'6px 10px',borderRadius:6,marginBottom:10}}>{verifyErr}</div>}
-                <input value={verifyCode} onChange={e=>setVerifyCode(e.target.value.replace(/\D/g,'').slice(0,6))}
-                  onKeyDown={e=>e.key==='Enter'&&handleVerify()}
-                  placeholder="000000" maxLength={6}
-                  style={{...inp,fontSize:24,textAlign:'center',letterSpacing:8,fontWeight:900,marginBottom:12}} />
-                <button onClick={handleVerify} disabled={verifyLoading||verifyCode.length!==6}
-                  style={{width:'100%',padding:12,background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8}}>
-                  {verifyLoading&&<Spinner/>} ✅ Баталгаажуулах
-                </button>
-                <button onClick={()=>{setVerifying(false);setVerifyCode('');setVerifyErr('');}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Буцах</button>
-              </div>
-            ) : registered ? (
+            {registered ? (
               <div style={{textAlign:'center',padding:'16px 0'}}>
                 <div style={{fontSize:40,marginBottom:10}}>⏳</div>
                 <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:8}}>Хүсэлт илгээгдлээ!</div>
