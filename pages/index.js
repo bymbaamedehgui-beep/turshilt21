@@ -2051,19 +2051,6 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
       }
       y+=2; divider();
 
-      // ── Topics to review ──
-      sectionHeader('Topics to Review');
-      const wrongTopics = [...new Set(sec1Res.filter(r=>r.st==='ng').map((_,i)=>exam.topics?.[sec1Res.indexOf(_)]||'').filter(Boolean))];
-      if(wrongTopics.length===0){
-        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
-        doc.text('None', pw, y); y+=7;
-      } else {
-        wrongTopics.forEach(t=>{
-          doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
-          doc.text('- '+safeStr(t), pw, y); y+=7;
-        });
-      }
-
       // ── Section 2 if exists ──
       if(sec2Max>0){
         y+=2; divider();
