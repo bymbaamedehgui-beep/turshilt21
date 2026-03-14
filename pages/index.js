@@ -2414,12 +2414,11 @@ function StudentAccountsPage({dark:d=false}) {
 
   async function handleSingleAdd() {
     const existingCodes = new Set(accounts.map(a=>a.code));
-    const code = singleCode.trim() || genStudentCode(existingCodes);
-    if (existingCodes.has(code)) { setMsg('Алдаа: '+code+' код аль хэдийн бүртгэлтэй'); return; }
+    const code = genStudentCode(existingCodes);
     setAdding(true);
     try {
       await apiFetch('/api/student-accounts', {method:'POST', body:{id:uid(), code, name:singleName.trim(), class:singleClass.trim(), createdAt:new Date().toISOString()}});
-      setSingleCode(''); setSingleName(''); setSingleClass('');
+      setSingleName(''); setSingleClass('');
       loadAccounts();
     } catch(e) { setMsg('Алдаа: '+e.message); }
     setAdding(false);
@@ -2442,8 +2441,6 @@ function StudentAccountsPage({dark:d=false}) {
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
         <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
           <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>Нэг сурагч нэмэх</div>
-          <input value={singleCode} onChange={e=>setSingleCode(e.target.value)} placeholder="Код (хоосон бол автоматаар үүснэ)"
-            style={{width:'100%',padding:'9px 12px',border:'2px solid #e2e8f0',borderRadius:8,fontSize:14,outline:'none',marginBottom:8,boxSizing:'border-box'}} />
           <input value={singleName} onChange={e=>setSingleName(e.target.value)} placeholder="Нэр (заавал биш)"
             style={{width:'100%',padding:'9px 12px',border:'2px solid #e2e8f0',borderRadius:8,fontSize:14,outline:'none',marginBottom:8,boxSizing:'border-box'}} />
           <input value={singleClass} onChange={e=>setSingleClass(e.target.value)} placeholder="Анги (заавал биш)"
