@@ -730,11 +730,34 @@ function LoginPage({onLogin, onStudentLogin}) {
           <>
             <button onClick={()=>{setRole(null);setErr('');setRegistered(false);}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:13,marginBottom:14,padding:0}}>← Буцах</button>
             {registered ? (
-              <div style={{textAlign:'center',padding:'16px 0'}}>
-                <div style={{fontSize:40,marginBottom:10}}>⏳</div>
-                <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:8}}>Хүсэлт илгээгдлээ!</div>
-                <div style={{fontSize:13,color:'#64748b',lineHeight:1.6,marginBottom:16}}>Admin таны хүсэлтийг зөвшөөрсний дараа нэвтэрч болно.</div>
-                <button onClick={()=>{setRegistered(false);setTab('login');}} style={{padding:'8px 20px',background:'#f1f5f9',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer'}}>Нэвтрэх хуудас руу</button>
+              <div style={{padding:'8px 0'}}>
+                <div style={{textAlign:'center',marginBottom:16}}>
+                  <div style={{fontSize:40,marginBottom:8}}>⏳</div>
+                  <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:6}}>Хүсэлт илгээгдлээ!</div>
+                  <div style={{fontSize:12,color:'#64748b',lineHeight:1.6}}>Admin таны төлбөрийг баталгаажуулсны дараа нэвтэрч болно.</div>
+                </div>
+                {/* Payment info */}
+                <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:12,padding:'16px',marginBottom:14}}>
+                  <div style={{fontWeight:800,fontSize:13,color:'#1e293b',marginBottom:10,textAlign:'center'}}>💳 Төлбөрийн мэдээлэл</div>
+                  <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:'6px 12px',fontSize:12}}>
+                    <span style={{color:'#64748b',fontWeight:600}}>Банк:</span>
+                    <span style={{color:'#1e293b',fontWeight:700}}>Хаан банк</span>
+                    <span style={{color:'#64748b',fontWeight:600}}>Данс:</span>
+                    <span style={{color:'#1e293b',fontWeight:700,letterSpacing:1}}>5542136007</span>
+                    <span style={{color:'#64748b',fontWeight:600}}>IBAN:</span>
+                    <span style={{color:'#1e293b',fontWeight:700}}>34000500</span>
+                    <span style={{color:'#64748b',fontWeight:600}}>Эзэмшигч:</span>
+                    <span style={{color:'#1e293b',fontWeight:700}}>М.Бямбадорж</span>
+                    <span style={{color:'#64748b',fontWeight:600}}>Дүн:</span>
+                    <span style={{color:'#dc2626',fontWeight:900,fontSize:14}}>25,000 ₮ / сар</span>
+                    <span style={{color:'#64748b',fontWeight:600}}>Утга:</span>
+                    <span style={{color:'#1e293b',fontWeight:700}}>Бүртгүүлсэн нэр, утасны дугаар</span>
+                  </div>
+                </div>
+                <div style={{background:'#fef9c3',border:'1px solid #fde68a',borderRadius:8,padding:'8px 12px',fontSize:11,color:'#92400e',marginBottom:12,textAlign:'center'}}>
+                  Төлбөр хийсний дараа admin эрхийг нээнэ
+                </div>
+                <button onClick={()=>{setRegistered(false);setTab('login');}} style={{width:'100%',padding:'8px',background:'#f1f5f9',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer'}}>Нэвтрэх хуудас руу</button>
               </div>
             ) : (
               <>
@@ -2392,13 +2415,13 @@ function StudentAccountsPage({dark:d=false}) {
     const usedCodes = new Set();
     const items = lines.map(l=>{
       const parts = l.split(/[,\t]+/);
-      let code = parts[0]?.trim();
-      if (!code) {
-        const all = new Set([...existingCodes, ...usedCodes]);
-        code = genStudentCode(all);
-      }
+      // Format: нэр, анги (код хоосон бол автоматаар үүснэ)
+      const name = parts[0]?.trim()||'';
+      const cls  = parts[1]?.trim()||'';
+      const all  = new Set([...existingCodes, ...usedCodes]);
+      const code = genStudentCode(all);
       usedCodes.add(code);
-      return { id:uid(), code, name:parts[1]?.trim()||'', class:parts[2]?.trim()||'', createdAt:new Date().toISOString() };
+      return { id:uid(), code, name, class:cls, createdAt:new Date().toISOString() };
     });
     const newItems = items.filter(i => !existingCodes.has(i.code));
     const skipped = items.length - newItems.length;
@@ -2453,9 +2476,9 @@ function StudentAccountsPage({dark:d=false}) {
 
         <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
           <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Олноор нэмэх</div>
-          <div style={{fontSize:12,color:'#94a3b8',marginBottom:8}}>Нэг мөрт нэг сурагч: код, нэр, анги (таслалаар)</div>
+          <div style={{fontSize:12,color:'#94a3b8',marginBottom:8}}>Нэг мөрт нэг сурагч: нэр, анги (код хоосон бол автоматаар үүснэ)</div>
           <textarea value={bulkText} onChange={e=>setBulkText(e.target.value)}
-            placeholder={"S001, Болд, 12А\nS002, Номун, 12Б\nS003"}
+            placeholder={"Болд, 12А\nНомун, 12Б\nДорж, 12А"}
             style={{width:'100%',height:100,padding:'9px 12px',border:'2px solid #e2e8f0',borderRadius:8,fontSize:13,outline:'none',resize:'vertical',marginBottom:10,boxSizing:'border-box'}} />
           <button onClick={handleBulkAdd} disabled={adding}
             style={{width:'100%',padding:'10px',background:'#7c3aed',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
