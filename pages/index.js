@@ -2377,17 +2377,35 @@ function StudentAccountsPage({dark:d=false}) {
     setLoading(false);
   }
 
+  function genStudentCode(existing=new Set()) {
+    let code;
+    do { code = '202612' + String(Math.floor(1000 + Math.random() * 9000)); }
+    while (existing.has(code));
+    return code;
+  }
+
   async function handleBulkAdd() {
     const lines = bulkText.trim().split('\n').map(l=>l.trim()).filter(Boolean);
     if (!lines.length) return;
     setAdding(true); setMsg('');
+    const existingCodes = new Set(accounts.map(a=>a.code));
+    const usedCodes = new Set();
     const items = lines.map(l=>{
       const parts = l.split(/[,\t]+/);
-      return { id:uid(), code:parts[0]?.trim(), name:parts[1]?.trim()||'', class:parts[2]?.trim()||'', createdAt:new Date().toISOString() };
-    }).filter(i=>i.code);
+      let code = parts[0]?.trim();
+      if (!code) {
+        const all = new Set([...existingCodes, ...usedCodes]);
+        code = genStudentCode(all);
+      }
+      usedCodes.add(code);
+      return { id:uid(), code, name:parts[1]?.trim()||'', class:parts[2]?.trim()||'', createdAt:new Date().toISOString() };
+    });
+    const newItems = items.filter(i => !existingCodes.has(i.code));
+    const skipped = items.length - newItems.length;
+    if (!newItems.length) { setMsg('Бүгд давхардсан код байна'); setAdding(false); return; }
     try {
-      await apiFetch('/api/student-accounts', {method:'POST', body:items});
-      setMsg(items.length+' сурагч нэмэгдлээ');
+      await apiFetch('/api/student-accounts', {method:'POST', body:newItems});
+      setMsg(newItems.length+' сурагч нэмэгдлээ'+(skipped>0?' ('+skipped+' давхардсан алгасав)':''));
       setBulkText('');
       loadAccounts();
     } catch(e) { setMsg('Алдаа: '+e.message); }
@@ -2395,10 +2413,12 @@ function StudentAccountsPage({dark:d=false}) {
   }
 
   async function handleSingleAdd() {
-    if (!singleCode.trim()) return;
+    const existingCodes = new Set(accounts.map(a=>a.code));
+    const code = singleCode.trim() || genStudentCode(existingCodes);
+    if (existingCodes.has(code)) { setMsg('Алдаа: '+code+' код аль хэдийн бүртгэлтэй'); return; }
     setAdding(true);
     try {
-      await apiFetch('/api/student-accounts', {method:'POST', body:{id:uid(), code:singleCode.trim(), name:singleName.trim(), class:singleClass.trim(), createdAt:new Date().toISOString()}});
+      await apiFetch('/api/student-accounts', {method:'POST', body:{id:uid(), code, name:singleName.trim(), class:singleClass.trim(), createdAt:new Date().toISOString()}});
       setSingleCode(''); setSingleName(''); setSingleClass('');
       loadAccounts();
     } catch(e) { setMsg('Алдаа: '+e.message); }
@@ -2422,7 +2442,7 @@ function StudentAccountsPage({dark:d=false}) {
       <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
         <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
           <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>Нэг сурагч нэмэх</div>
-          <input value={singleCode} onChange={e=>setSingleCode(e.target.value)} placeholder="Код (заавал)"
+          <input value={singleCode} onChange={e=>setSingleCode(e.target.value)} placeholder="Код (хоосон бол автоматаар үүснэ)"
             style={{width:'100%',padding:'9px 12px',border:'2px solid #e2e8f0',borderRadius:8,fontSize:14,outline:'none',marginBottom:8,boxSizing:'border-box'}} />
           <input value={singleName} onChange={e=>setSingleName(e.target.value)} placeholder="Нэр (заавал биш)"
             style={{width:'100%',padding:'9px 12px',border:'2px solid #e2e8f0',borderRadius:8,fontSize:14,outline:'none',marginBottom:8,boxSizing:'border-box'}} />
@@ -2859,11 +2879,11 @@ export default function App() {
           )}
           <button onClick={toggleDark}
             style={{padding:'6px 12px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,fontSize:14,color:d?'#fbbf24':'#374151',fontWeight:700,cursor:'pointer',flexShrink:0}}>
-            {d?'Light':'Dark'}
+            {d?'☀️':'🌙'}
           </button>
           <button onClick={toggleLang}
             style={{padding:'6px 12px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,fontSize:12,color:d?'#e2e8f0':'#374151',fontWeight:700,cursor:'pointer',flexShrink:0}}>
-            {lang==='mn'?'EN':'МН'}
+            {lang==='mn'?'🇬🇧 EN':'🇲🇳 МН'}
           </button>
           {teacher?.isAdmin&&(
             <span style={{padding:'4px 10px',background:'#fef3c7',border:'1px solid #fde68a',borderRadius:8,fontSize:11,fontWeight:700,color:'#92400e',flexShrink:0}}>Admin</span>
