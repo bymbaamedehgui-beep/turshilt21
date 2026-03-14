@@ -731,6 +731,7 @@ function LoginPage({onLogin, onStudentLogin}) {
               </div>
             ) : (
               <>
+              <div style={{display:'flex',background:'#f1f5f9',borderRadius:10,padding:3,marginBottom:18}}>
               {['login','register'].map(tb=>(
                 <button key={tb} onClick={()=>{setTab(tb);setErr('');}}
                   style={{flex:1,padding:'8px',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer',
