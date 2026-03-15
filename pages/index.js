@@ -276,7 +276,7 @@ function exportExcel(exam, students) {
     const ss = students.map(s=>s.scaled);
     const avg = n?(ss.reduce((a,b)=>a+b,0)/n).toFixed(1):0;
     const pass = students.filter(s=>s.scaled>=60).length;
-    const rm = exam.sec1Scores?.reduce((a,b)=>a+b,0)||0;
+    const rm = (exam.sec1Scores||[]).reduce((a,b)=>a+(b||1),0) || exam.sec1Count||0;
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
       ['EYESH Шалгалтын Тайлан'],[],
       ['Шалгалтын нэр:',exam.title],['Хичээл:',exam.subject],
@@ -627,6 +627,120 @@ function CameraCapture({onCapture, onClose}) {
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+// ── Landing Page ──────────────────────────────────────────
+function LandingPage({onEnter}) {
+  const YOUTUBE_ID = 'aUggJeMlQ8E';
+
+  const features = [
+    { icon:'🎯', title:'AI Bubble Detection', desc:'Сурагчдын хариулт хуудсыг зураг авч, AI автоматаар уншина.' },
+    { icon:'📊', title:'Дэлгэрэнгүй анализ', desc:'Дасгал бүрийн амжилт, сурагч бүрийн гүйцэтгэл, ангийн рейтинг.' },
+    { icon:'📄', title:'PDF & Excel экспорт', desc:'Сурагч бүрийн PDF тайлан, ангийн Excel жагсаалт нэг товчлуураар.' },
+    { icon:'🏆', title:'ЭЕШ хэмжээст оноо', desc:'Raw оноог ЭЕШ-ийн 100 оноот системд автоматаар хөрвүүлнэ.' },
+    { icon:'👨‍🏫', title:'Олон багш', desc:'Багш бүр өөрийн шалгалт, сурагчдаа тусдаа удирдана.' },
+    { icon:'📱', title:'Сурагчийн портал', desc:'Сурагч кодоороо нэвтэрч өөрийн үр дүнг харна.' },
+  ];
+
+  const steps = [
+    { n:'1', title:'Шалгалт үүсгэх', desc:'Хичээл, дасгалын тоо, зөв хариулт, оноог тохируулна.' },
+    { n:'2', title:'Зураг оруулах', desc:'Сурагчдын хариулт хуудсыг зураглаж system-д оруулна.' },
+    { n:'3', title:'AI шалгана', desc:'Хиймэл оюун bubble-уудыг таньж оноо тооцоолно.' },
+    { n:'4', title:'Үр дүн харах', desc:'Тайлан, рейтинг, анализыг шууд харж экспортлоно.' },
+  ];
+
+  return (
+    <div style={{minHeight:'100vh',background:'#0f172a',color:'white',fontFamily:'system-ui,sans-serif'}}>
+      {/* Hero */}
+      <div style={{background:'linear-gradient(135deg,#7f1d1d,#dc2626)',padding:'60px 20px 80px',textAlign:'center'}}>
+        <div style={{fontSize:56,marginBottom:12}}>🎯</div>
+        <div style={{fontSize:42,fontWeight:900,marginBottom:12,lineHeight:1.1}}>EYESH Checker</div>
+        <div style={{fontSize:18,opacity:.85,maxWidth:560,margin:'0 auto 32px',lineHeight:1.6}}>
+          ЭЕШ-ийн хариулт хуудас шалгах, оноо тооцоолох, анализ хийх бүрэн системийн шийдэл
+        </div>
+        <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
+          <button onClick={onEnter}
+            style={{padding:'14px 36px',background:'white',color:'#dc2626',border:'none',borderRadius:12,fontSize:17,fontWeight:900,cursor:'pointer'}}>
+            Нэвтрэх / Бүртгүүлэх →
+          </button>
+        </div>
+      </div>
+
+      <div style={{maxWidth:900,margin:'0 auto',padding:'0 20px'}}>
+
+        {/* Video */}
+        <div style={{margin:'60px 0',textAlign:'center'}}>
+          <div style={{fontSize:22,fontWeight:800,marginBottom:6}}>Танилцуулга видео</div>
+          <div style={{fontSize:14,color:'#94a3b8',marginBottom:20}}>Системийг хэрхэн ашиглах тайлбар</div>
+          {YOUTUBE_ID ? (
+            <div style={{position:'relative',paddingBottom:'56.25%',borderRadius:16,overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,.5)'}}>
+              <iframe
+                src={`https://www.youtube.com/embed/${YOUTUBE_ID}`}
+                style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',border:'none'}}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+          ) : (
+            <div style={{background:'#1e293b',borderRadius:16,padding:'60px 20px',border:'2px dashed #334155',color:'#64748b'}}>
+              <div style={{fontSize:40,marginBottom:8}}>▶️</div>
+              <div style={{fontSize:14}}>Видео удахгүй нэмэгдэнэ</div>
+            </div>
+          )}
+        </div>
+
+        {/* Features */}
+        <div style={{margin:'60px 0'}}>
+          <div style={{fontSize:22,fontWeight:800,marginBottom:6,textAlign:'center'}}>Боломжууд</div>
+          <div style={{fontSize:14,color:'#94a3b8',marginBottom:28,textAlign:'center'}}>Системийн гол онцлогууд</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:16}}>
+            {features.map(f=>(
+              <div key={f.title} style={{background:'#1e293b',borderRadius:14,padding:'20px',border:'1px solid #334155'}}>
+                <div style={{fontSize:28,marginBottom:10}}>{f.icon}</div>
+                <div style={{fontWeight:800,fontSize:15,marginBottom:6}}>{f.title}</div>
+                <div style={{fontSize:13,color:'#94a3b8',lineHeight:1.6}}>{f.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* How it works */}
+        <div style={{margin:'60px 0'}}>
+          <div style={{fontSize:22,fontWeight:800,marginBottom:6,textAlign:'center'}}>Хэрхэн ашиглах вэ?</div>
+          <div style={{fontSize:14,color:'#94a3b8',marginBottom:28,textAlign:'center'}}>4 алхамд шалгалтаа шалгаарай</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:16}}>
+            {steps.map(s=>(
+              <div key={s.n} style={{background:'#1e293b',borderRadius:14,padding:'20px',border:'1px solid #334155',textAlign:'center'}}>
+                <div style={{width:40,height:40,borderRadius:'50%',background:'#dc2626',color:'white',fontWeight:900,fontSize:18,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px'}}>
+                  {s.n}
+                </div>
+                <div style={{fontWeight:800,fontSize:14,marginBottom:6}}>{s.title}</div>
+                <div style={{fontSize:12,color:'#94a3b8',lineHeight:1.6}}>{s.desc}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Pricing */}
+        <div style={{margin:'60px 0',textAlign:'center'}}>
+          <div style={{background:'linear-gradient(135deg,#7f1d1d,#dc2626)',borderRadius:20,padding:'40px 32px',display:'inline-block',minWidth:300}}>
+            <div style={{fontSize:14,opacity:.8,marginBottom:8,letterSpacing:2}}>ҮНЭ</div>
+            <div style={{fontSize:48,fontWeight:900,marginBottom:4}}>25,000₮</div>
+            <div style={{fontSize:15,opacity:.8,marginBottom:20}}>нэг сарын хязгааргүй ашиглалт</div>
+            <button onClick={onEnter}
+              style={{padding:'12px 32px',background:'white',color:'#dc2626',border:'none',borderRadius:10,fontSize:15,fontWeight:800,cursor:'pointer'}}>
+              Бүртгүүлэх →
+            </button>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div style={{textAlign:'center',padding:'32px 0',borderTop:'1px solid #1e293b',color:'#475569',fontSize:13,marginTop:20}}>
+          EYESH Checker © 2025 · eyeshcheck.com
+        </div>
+      </div>
     </div>
   );
 }
@@ -1985,7 +2099,10 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
       const sec2Ent    = Object.entries(student.sec2Results||{});
       const sec2Earned = sec2Ent.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.pts||0),0),0);
       const sec2Max    = sec2Ent.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.max||0),0),0);
-      const totalMax   = student.rawMax||0;
+      // Calculate totalMax from exam config (not stored value which may be wrong)
+      const sec1MaxCalc = (exam.sec1Scores||[]).reduce((a,b)=>a+(b||1), 0) || (exam.sec1Count||0);
+      const sec2MaxCalc = sec2Ent.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.max||0),0),0);
+      const totalMax   = sec1MaxCalc + sec2MaxCalc;
       const totalEarned= student.rawEarned||0;
 
       let y = 20;
@@ -2837,7 +2954,15 @@ export default function App() {
     setPage('create');
   }
 
+  const [showLanding, setShowLanding] = useState(()=>{
+    if (typeof window==='undefined') return true;
+    return !localStorage.getItem('eyesh_token') && !localStorage.getItem('student_token');
+  });
+
   if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh'}}><Spinner/></div>;
+  if (!authed && !studentMode && showLanding) return (
+    <LandingPage onEnter={()=>setShowLanding(false)} />
+  );
   if (!authed && !studentMode) return (
     <LoginPage
       onLogin={(t)=>{setAuthed(true);setTeacher(t);loadData();}}
