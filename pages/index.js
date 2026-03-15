@@ -3151,7 +3151,6 @@ export default function App() {
           .show-mobile { display: none !important; }
         }
       `}</style>
-      </header>
       <main style={{background:d?'#0f172a':'#f1f5f9',minHeight:'calc(100vh - 100px)'}}>
         {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={setPage} onEditExam={e=>{setEditingExam(e);setPage('edit');}} dark={d} />}
         {page==='create'&&<CreatePage onCreated={handleAddExam} prefill={prefill} dark={d} />}
