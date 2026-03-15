@@ -3111,6 +3111,8 @@ export default function App() {
     }, 1000);
     return ()=>clearInterval(interval);
   }, [teacher]);
+
+  const [showLanding, setShowLanding] = useState(()=>{
     if (typeof window==='undefined') return true;
     return !localStorage.getItem('eyesh_token') && !localStorage.getItem('student_token');
   });
