@@ -665,6 +665,10 @@ function LandingPage({onEnter}) {
             style={{padding:'14px 36px',background:'white',color:'#dc2626',border:'none',borderRadius:12,fontSize:17,fontWeight:900,cursor:'pointer'}}>
             Нэвтрэх / Бүртгүүлэх →
           </button>
+          <button onClick={()=>document.getElementById('demo-section').scrollIntoView({behavior:'smooth'})}
+            style={{padding:'14px 36px',background:'rgba(255,255,255,0.15)',color:'white',border:'2px solid rgba(255,255,255,0.4)',borderRadius:12,fontSize:17,fontWeight:700,cursor:'pointer'}}>
+            🔴 Live Demo үзэх
+          </button>
         </div>
       </div>
 
@@ -736,11 +740,90 @@ function LandingPage({onEnter}) {
           </div>
         </div>
 
+        {/* Live Demo */}
+        <div id="demo-section" style={{margin:'60px 0'}}>
+          <div style={{fontSize:22,fontWeight:800,marginBottom:6,textAlign:'center'}}>🔴 Live Demo</div>
+          <div style={{fontSize:14,color:'#94a3b8',marginBottom:24,textAlign:'center'}}>Нэвтрэлтгүйгээр системийг туршиж үзэх</div>
+          <div style={{background:'#1e293b',borderRadius:16,padding:'32px',border:'1px solid #334155',textAlign:'center'}}>
+            <div style={{fontSize:16,color:'#e2e8f0',marginBottom:20,lineHeight:1.7}}>
+              Demo хэрэглэгчээр нэвтэрч системийг туршиж үзнэ үү.<br/>
+              <span style={{color:'#94a3b8',fontSize:13}}>Email: demo@eyeshcheck.com · Нууц үг: demo1234</span>
+            </div>
+            <button onClick={onEnter}
+              style={{padding:'12px 32px',background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:15,fontWeight:800,cursor:'pointer'}}>
+              Demo-оор нэвтрэх →
+            </button>
+          </div>
+        </div>
+
+        {/* FAQ */}
+        <div style={{margin:'60px 0'}}>
+          <div style={{fontSize:22,fontWeight:800,marginBottom:6,textAlign:'center'}}>❓ Түгээмэл асуулт</div>
+          <div style={{fontSize:14,color:'#94a3b8',marginBottom:28,textAlign:'center'}}>Хамгийн их асуудаг асуултууд</div>
+          {[
+            {q:'Ямар төхөөрөмжид ажилладаг вэ?', a:'Интернет холбоотой ямар ч төхөөрөмж дээр browser-ээр ажиллана. Суулгах шаардлагагүй.'},
+            {q:'Нэг сард хэдэн шалгалт шалгаж болох вэ?', a:'25,000₮-ийн тарифт хязгааргүй шалгалт шалгах боломжтой.'},
+            {q:'AI bubble detection хэр нарийвчлалтай вэ?', a:'Anthropic-ийн Claude AI ашиглан 90%+ нарийвчлалтайгаар таньдаг. Тодорхойгүй тохиолдолд гараар засах боломжтой.'},
+            {q:'Өгөгдөл хаана хадгалагддаг вэ?', a:'Бүх өгөгдөл Neon cloud database-д найдвартай хадгалагдана. Өгөгдлийг гуравдагч этгээдэд дамжуулахгүй.'},
+            {q:'Олон багш нэг платформ ашиглаж болох уу?', a:'Тийм. Багш бүр өөрийн бүртгэлтэй бөгөөд зөвхөн өөрийн шалгалт, сурагчдаа харна.'},
+            {q:'Төлбөрийг хэрхэн төлөх вэ?', a:'Хаан банкны 5542136007 дансруу "Нэр, утасны дугаар" гүйлгээний утгатай шилжүүлнэ. Admin 24 цагийн дотор эрхийг нээнэ.'},
+          ].map((item,i)=>(
+            <FAQItem key={i} q={item.q} a={item.a} />
+          ))}
+        </div>
+
+        {/* Contact */}
+        <div style={{margin:'60px 0',textAlign:'center'}}>
+          <div style={{fontSize:22,fontWeight:800,marginBottom:6}}>📞 Холбоо барих</div>
+          <div style={{fontSize:14,color:'#94a3b8',marginBottom:28}}>Асуулт байвал холбогдоорой</div>
+          <div style={{display:'flex',gap:16,justifyContent:'center',flexWrap:'wrap'}}>
+            <a href="tel:+97699999999" style={{textDecoration:'none'}}>
+              <div style={{background:'#1e293b',borderRadius:14,padding:'20px 28px',border:'1px solid #334155',textAlign:'center',minWidth:160}}>
+                <div style={{fontSize:28,marginBottom:8}}>📱</div>
+                <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Утас</div>
+                <div style={{fontSize:13,color:'#94a3b8'}}>bymbaamedehgui@gmail.com</div>
+              </div>
+            </a>
+            <a href="mailto:bymbaamedehgui@gmail.com" style={{textDecoration:'none'}}>
+              <div style={{background:'#1e293b',borderRadius:14,padding:'20px 28px',border:'1px solid #334155',textAlign:'center',minWidth:160}}>
+                <div style={{fontSize:28,marginBottom:8}}>✉️</div>
+                <div style={{fontWeight:700,fontSize:14,color:'white',marginBottom:4}}>Email</div>
+                <div style={{fontSize:13,color:'#94a3b8'}}>bymbaamedehgui@gmail.com</div>
+              </div>
+            </a>
+            <a href="https://facebook.com" target="_blank" rel="noreferrer" style={{textDecoration:'none'}}>
+              <div style={{background:'#1e293b',borderRadius:14,padding:'20px 28px',border:'1px solid #334155',textAlign:'center',minWidth:160}}>
+                <div style={{fontSize:28,marginBottom:8}}>📘</div>
+                <div style={{fontWeight:700,fontSize:14,color:'white',marginBottom:4}}>Facebook</div>
+                <div style={{fontSize:13,color:'#94a3b8'}}>EYESH Checker</div>
+              </div>
+            </a>
+          </div>
+        </div>
+
         {/* Footer */}
         <div style={{textAlign:'center',padding:'32px 0',borderTop:'1px solid #1e293b',color:'#475569',fontSize:13,marginTop:20}}>
           EYESH Checker © 2025 · eyeshcheck.com
         </div>
       </div>
+    </div>
+  );
+}
+
+function FAQItem({q, a}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{background:'#1e293b',borderRadius:12,marginBottom:8,border:'1px solid #334155',overflow:'hidden'}}>
+      <button onClick={()=>setOpen(o=>!o)}
+        style={{width:'100%',padding:'16px 20px',background:'none',border:'none',color:'white',textAlign:'left',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:14,fontWeight:600}}>
+        {q}
+        <span style={{flexShrink:0,marginLeft:12,fontSize:18,color:'#94a3b8'}}>{open?'−':'+'}</span>
+      </button>
+      {open&&(
+        <div style={{padding:'0 20px 16px',fontSize:13,color:'#94a3b8',lineHeight:1.7,borderTop:'1px solid #334155',paddingTop:12}}>
+          {a}
+        </div>
+      )}
     </div>
   );
 }
@@ -3001,43 +3084,73 @@ export default function App() {
       {/* Apply dark class to body */}
       {typeof document!=='undefined'&&(dark?document.body.classList.add('dark'):document.body.classList.remove('dark'))}
       <header style={{background:d?'#1e293b':'white',borderBottom:'1px solid '+(d?'#334155':'#e2e8f0'),position:'sticky',top:0,zIndex:100,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
-        <div style={{maxWidth:1200,margin:'0 auto',padding:'0 20px',display:'flex',alignItems:'center',gap:12,height:60}}>
+        <div style={{maxWidth:1200,margin:'0 auto',padding:'0 16px',display:'flex',alignItems:'center',gap:10,height:60}}>
           <div style={{display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
-            <div style={{width:38,height:38,borderRadius:10,background:'linear-gradient(135deg,#7f1d1d,#dc2626)',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontWeight:900,fontSize:16}}>E</div>
-            <div>
-              <div style={{fontSize:14,fontWeight:900,color:d?'#f1f5f9':'#1e293b',lineHeight:1}}>EYESH Checker</div>
-              <div style={{fontSize:10,color:'#94a3b8'}}>EYESH Шалгагч</div>
+            <div style={{width:36,height:36,borderRadius:10,background:'linear-gradient(135deg,#7f1d1d,#dc2626)',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontWeight:900,fontSize:15}}>E</div>
+            <div style={{display:'none'}} className="desktop-logo">
+              <div style={{fontSize:13,fontWeight:900,color:d?'#f1f5f9':'#1e293b',lineHeight:1}}>EYESH Checker</div>
             </div>
           </div>
-          <nav style={{display:'flex',gap:2,flex:1,overflowX:'auto'}}>
+          {/* Desktop nav */}
+          <nav style={{display:'flex',gap:1,flex:1,overflowX:'auto',scrollbarWidth:'none'}} className="desktop-nav">
             {PAGE_IDS.filter(id => id!=='admin' || teacher?.isAdmin).map(id=>(
               <button key={id} onClick={()=>setPage(id)}
-                style={{padding:'8px 14px',border:'none',borderRadius:8,fontWeight:600,fontSize:13,cursor:'pointer',whiteSpace:'nowrap',background:page===id?'#fee2e2':'transparent',color:page===id?'#dc2626':d?'#94a3b8':'#64748b'}}>
+                style={{padding:'6px 10px',border:'none',borderRadius:8,fontWeight:600,fontSize:12,cursor:'pointer',whiteSpace:'nowrap',background:page===id?'#fee2e2':'transparent',color:page===id?'#dc2626':d?'#94a3b8':'#64748b',flexShrink:0}}>
                 {t.nav[id]||id}
               </button>
             ))}
           </nav>
-          {currentExam&&(
-            <div style={{fontSize:12,color:'#dc2626',background:'#fff1f2',padding:'6px 12px',borderRadius:8,flexShrink:0,border:'1px solid #fecaca',fontWeight:600}}>
-              {currentExam.title} ({examStudents.length})
-            </div>
-          )}
-          <button onClick={toggleDark}
-            style={{padding:'6px 12px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,fontSize:14,color:d?'#fbbf24':'#374151',fontWeight:700,cursor:'pointer',flexShrink:0}}>
-            {d?'☀️':'🌙'}
-          </button>
-          <button onClick={toggleLang}
-            style={{padding:'6px 12px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,fontSize:12,color:d?'#e2e8f0':'#374151',fontWeight:700,cursor:'pointer',flexShrink:0}}>
-            {lang==='mn'?'🇬🇧 EN':'🇲🇳 МН'}
-          </button>
-          {teacher?.isAdmin&&(
-            <span style={{padding:'4px 10px',background:'#fef3c7',border:'1px solid #fde68a',borderRadius:8,fontSize:11,fontWeight:700,color:'#92400e',flexShrink:0}}>Admin</span>
-          )}
-          <button onClick={()=>{localStorage.removeItem('eyesh_token');localStorage.removeItem('eyesh_teacher');setAuthed(false);setTeacher(null);}}
-            style={{padding:'6px 12px',background:'#fee2e2',border:'none',borderRadius:8,fontSize:12,color:'#dc2626',fontWeight:700,cursor:'pointer',flexShrink:0}}>
-            {t.logout}
-          </button>
+          <div style={{display:'flex',alignItems:'center',gap:6,marginLeft:'auto',flexShrink:0}}>
+            {currentExam&&(
+              <div style={{fontSize:11,color:'#dc2626',background:'#fff1f2',padding:'4px 8px',borderRadius:8,border:'1px solid #fecaca',fontWeight:600,maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} className="hide-mobile">
+                {currentExam.title}
+              </div>
+            )}
+            <button onClick={toggleDark}
+              style={{padding:'5px 10px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,fontSize:14,color:d?'#fbbf24':'#374151',cursor:'pointer'}}>
+              {d?'☀️':'🌙'}
+            </button>
+            <button onClick={toggleLang}
+              style={{padding:'5px 10px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,fontSize:11,color:d?'#e2e8f0':'#374151',fontWeight:700,cursor:'pointer'}} className="hide-mobile">
+              {lang==='mn'?'🇬🇧':'🇲🇳'}
+            </button>
+            <button onClick={()=>{localStorage.removeItem('eyesh_token');localStorage.removeItem('eyesh_teacher');setAuthed(false);setTeacher(null);}}
+              style={{padding:'5px 10px',background:'#fee2e2',border:'none',borderRadius:8,fontSize:11,color:'#dc2626',fontWeight:700,cursor:'pointer'}}>
+              {t.logout}
+            </button>
+            {/* Hamburger for mobile */}
+            <button onClick={()=>{const m=document.getElementById('mobile-menu');if(m)m.style.display=m.style.display==='flex'?'none':'flex';}}
+              style={{padding:'5px 8px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,cursor:'pointer',color:d?'#f1f5f9':'#374151',fontSize:18,lineHeight:1}} className="show-mobile">
+              ☰
+            </button>
+          </div>
         </div>
+        {/* Mobile dropdown menu */}
+        <div id="mobile-menu" style={{display:'none',flexDirection:'column',background:d?'#1e293b':'white',borderTop:'1px solid '+(d?'#334155':'#e2e8f0'),padding:'8px 16px 16px',gap:4}}>
+          {PAGE_IDS.filter(id => id!=='admin' || teacher?.isAdmin).map(id=>(
+            <button key={id} onClick={()=>{setPage(id);document.getElementById('mobile-menu').style.display='none';}}
+              style={{padding:'10px 14px',border:'none',borderRadius:8,fontWeight:600,fontSize:14,cursor:'pointer',textAlign:'left',background:page===id?'#fee2e2':'transparent',color:page===id?'#dc2626':d?'#94a3b8':'#374151'}}>
+              {t.nav[id]||id}
+            </button>
+          ))}
+          <div style={{display:'flex',gap:8,marginTop:8}}>
+            <button onClick={toggleLang}
+              style={{flex:1,padding:'8px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',color:d?'#e2e8f0':'#374151'}}>
+              {lang==='mn'?'🇬🇧 EN':'🇲🇳 МН'}
+            </button>
+          </div>
+        </div>
+      </header>
+      <style>{`
+        @media (max-width: 640px) {
+          .desktop-nav { display: none !important; }
+          .hide-mobile { display: none !important; }
+          .show-mobile { display: flex !important; }
+        }
+        @media (min-width: 641px) {
+          .show-mobile { display: none !important; }
+        }
+      `}</style>
       </header>
       <main style={{background:d?'#0f172a':'#f1f5f9',minHeight:'calc(100vh - 100px)'}}>
         {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={setPage} onEditExam={e=>{setEditingExam(e);setPage('edit');}} dark={d} />}
