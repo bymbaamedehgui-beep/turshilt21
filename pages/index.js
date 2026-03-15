@@ -5,6 +5,16 @@ import Head from 'next/head';
 const SEC1_CHOICES = ['A','B','C','D','E'];
 const SEC2_ROWS = ['a','b','c','d','e','f','g','h'];
 const SEC2_SUBS = ['2.1','2.2','2.3','2.4'];
+
+// ── Global SVG Icon ───────────────────────────────────────
+function Ico({d, size=20, color='currentColor', sw=1.5, fill='none'}) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round" style={{display:'block',flexShrink:0}}>
+      {Array.isArray(d)?d.map((p,i)=><path key={i} d={p}/>):<path d={d}/>}
+    </svg>
+  );
+}
+
 const SUBJECTS = ['Математик','Физик','Хими','Биологи','Монгол хэл','Түүх','Газарзүй','Англи хэл','Нийгмийн ухаан'];
 
 const SUBJECT_EN = {
@@ -935,7 +945,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
           </button>
         </div>
         <div style={{textAlign:'center',marginBottom:24}}>
-          <div style={{fontSize:48,marginBottom:8}}>🎯</div>
+          <div style={{display:'flex',justifyContent:'center',marginBottom:12}}><div style={{background:'rgba(220,38,38,0.12)',borderRadius:16,padding:14}}><Ico d={['M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z']} size={44} color='#dc2626'/></div></div>
           <div style={{fontSize:22,fontWeight:900,color:'#1e293b'}}>EYESH Checker</div>
           <div style={{fontSize:13,color:'#94a3b8',marginTop:4}}>{t.selectRole}</div>
         </div>
@@ -944,13 +954,13 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
             <button onClick={()=>{setRole('teacher');setErr('');setTab('login');}}
               style={{padding:'24px 16px',background:'#f8fafc',border:'2px solid #e2e8f0',borderRadius:14,cursor:'pointer',textAlign:'center'}}>
-              <div style={{fontSize:32,marginBottom:8}}>👩‍🏫</div>
+              <div style={{display:'flex',justifyContent:'center',marginBottom:8}}><div style={{background:'#fee2e2',borderRadius:12,padding:10}}><Ico d={['M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z']} size={32} color='#dc2626'/></div></div>
               <div style={{fontWeight:800,fontSize:15,color:'#1e293b'}}>Багш</div>
               <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>Нэвтрэх / Бүртгүүлэх</div>
             </button>
             <button onClick={()=>{setRole('student');setErr('');}}
               style={{padding:'24px 16px',background:'#f8fafc',border:'2px solid #e2e8f0',borderRadius:14,cursor:'pointer',textAlign:'center'}}>
-              <div style={{fontSize:32,marginBottom:8}}>🎓</div>
+              <div style={{display:'flex',justifyContent:'center',marginBottom:8}}><div style={{background:'#fee2e2',borderRadius:12,padding:10}}><Ico d='M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5' size={32} color='#dc2626'/></div></div>
               <div style={{fontWeight:800,fontSize:15,color:'#1e293b'}}>Сурагч</div>
               <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>Кодоор нэвтрэх</div>
             </button>
@@ -963,7 +973,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
             {registered ? (
               <div style={{padding:'8px 0'}}>
                 <div style={{textAlign:'center',marginBottom:16}}>
-                  <div style={{fontSize:40,marginBottom:8}}>⏳</div>
+                  <div style={{display:'flex',justifyContent:'center',marginBottom:10}}><div style={{background:'#fef3c7',borderRadius:14,padding:12}}><Ico d='M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z' size={40} color='#d97706'/></div></div>
                   <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:6}}>Хүсэлт илгээгдлээ!</div>
                   <div style={{fontSize:12,color:'#64748b',lineHeight:1.6}}>Admin таны төлбөрийг баталгаажуулсны дараа нэвтэрч болно.</div>
                 </div>
@@ -1126,8 +1136,8 @@ function AdminPage({dark:d=false}) {
           </div>
           {pending.map(t=>(
             <TeacherRow key={t.id} t={t} actions={<>
-              <button style={btnStyle('#16a34a','white')} onClick={()=>updateStatus(t.id,'active')}>Зөвшөөрөх</button>
-              <button style={btnStyle('#fee2e2','#dc2626')} onClick={()=>removeTeacher(t.id,t.email)}>Татгалзах</button>
+              <button style={btnStyle('#16a34a','white')} onClick={()=>updateStatus(t.id,'active')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z' size={14} color='white'/>Зөвшөөрөх</span></button>
+              <button style={btnStyle('#fee2e2','#dc2626')} onClick={()=>removeTeacher(t.id,t.email)}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z' size={14} color='#dc2626'/>Татгалзах</span></button>
             </>}/>
           ))}
         </div>
@@ -1143,8 +1153,8 @@ function AdminPage({dark:d=false}) {
           ? <div style={{padding:'24px',textAlign:'center',color:muted,fontSize:13}}>Одоохондоо байхгүй</div>
           : active.map(t=>(
             <TeacherRow key={t.id} t={t} actions={<>
-              <button style={btnStyle('#f1f5f9','#374151')} onClick={()=>updateStatus(t.id,'disabled')}>Хаах</button>
-              <button style={btnStyle('#fee2e2','#dc2626')} onClick={()=>removeTeacher(t.id,t.email)}>X</button>
+              <button style={btnStyle('#f1f5f9','#374151')} onClick={()=>updateStatus(t.id,'disabled')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636' size={14} color='#374151'/>Хаах</span></button>
+              <button style={btnStyle('#fee2e2','#dc2626')} onClick={()=>removeTeacher(t.id,t.email)}><Ico d='M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0' size={14} color='#dc2626'/>/button>
             </>}/>
           ))
         }
@@ -1159,8 +1169,8 @@ function AdminPage({dark:d=false}) {
           </div>
           {disabled.map(t=>(
             <TeacherRow key={t.id} t={t} actions={<>
-              <button style={btnStyle('#dcfce7','#16a34a')} onClick={()=>updateStatus(t.id,'active')}>Нээх</button>
-              <button style={btnStyle('#fee2e2','#dc2626')} onClick={()=>removeTeacher(t.id,t.email)}>X</button>
+              <button style={btnStyle('#dcfce7','#16a34a')} onClick={()=>updateStatus(t.id,'active')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z' size={14} color='#16a34a'/>Нээх</span></button>
+              <button style={btnStyle('#fee2e2','#dc2626')} onClick={()=>removeTeacher(t.id,t.email)}><Ico d='M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0' size={14} color='#dc2626'/>/button>
             </>}/>
           ))}
         </div>
@@ -1818,7 +1828,7 @@ function UploadPage({exam, students, onAddStudent}) {
               style={{padding:'22px 16px',background:mode==='ai'?'linear-gradient(135deg,#7c3aed,#a855f7)':'#f8fafc',
                 color:mode==='ai'?'white':'#374151',border:'2px solid '+(mode==='ai'?'#7c3aed':'#e2e8f0'),
                 borderRadius:14,fontWeight:700,fontSize:15,cursor:'pointer',textAlign:'center'}}>
-              <div style={{fontSize:28,marginBottom:6}}>🤖</div>
+              <div style={{display:'flex',justifyContent:'center',marginBottom:6}}><Ico d='M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z' size={28} color='#7c3aed'/></div>
               AI шинжлэх
               <div style={{fontSize:12,fontWeight:400,marginTop:4,opacity:.8}}>Бүтэн хуудас нэг зураг</div>
             </button>
@@ -1826,7 +1836,7 @@ function UploadPage({exam, students, onAddStudent}) {
               style={{padding:'22px 16px',background:mode==='scan'?'linear-gradient(135deg,#dc2626,#f97316)':'#f8fafc',
                 color:mode==='scan'?'white':'#374151',border:'2px solid '+(mode==='scan'?'#dc2626':'#e2e8f0'),
                 borderRadius:14,fontWeight:700,fontSize:15,cursor:'pointer',textAlign:'center'}}>
-              <div style={{fontSize:28,marginBottom:6}}>📸</div>
+              <div style={{display:'flex',justifyContent:'center',marginBottom:6}}><Ico d='M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.776 48.776 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z' size={28} color='#16a34a'/></div>
               Нэг нэгээр
               <div style={{fontSize:12,fontWeight:400,marginTop:4,opacity:.8}}>Дасгал бүрийг тусад нь скан</div>
             </button>
@@ -1834,7 +1844,7 @@ function UploadPage({exam, students, onAddStudent}) {
               style={{padding:'22px 16px',background:mode==='manual'?'linear-gradient(135deg,#0369a1,#0ea5e9)':'#f8fafc',
                 color:mode==='manual'?'white':'#374151',border:'2px solid '+(mode==='manual'?'#0369a1':'#e2e8f0'),
                 borderRadius:14,fontWeight:700,fontSize:15,cursor:'pointer',textAlign:'center'}}>
-              <div style={{fontSize:28,marginBottom:6}}>✏️</div>
+              <div style={{display:'flex',justifyContent:'center',marginBottom:6}}><Ico d='M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10' size={28} color='#f97316'/></div>
               Гараар оруулах
               <div style={{fontSize:12,fontWeight:400,marginTop:4,opacity:.8}}>Дасгал бүрийн хариулт сонгоно</div>
             </button>
@@ -2858,7 +2868,7 @@ function StudentPortal({student, onLogout}) {
   if (submitted && scored) return (
     <div style={{minHeight:'100vh',background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
       <div style={{background:'white',borderRadius:20,padding:'36px 28px',maxWidth:400,width:'100%',textAlign:'center',boxShadow:'0 4px 24px rgba(0,0,0,.1)'}}>
-        <div style={{fontSize:56,marginBottom:12}}>✅</div>
+        <div style={{display:'flex',justifyContent:'center',marginBottom:16}}><div style={{background:'#dcfce7',borderRadius:20,padding:16}}><Ico d='M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z' size={56} color='#16a34a' sw={1}/></div></div>
         <div style={{fontSize:20,fontWeight:900,color:'#15803d',marginBottom:16}}>{t.submitted}</div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:20}}>
           {[[t.performance,scored.scaled+'%',scored.grade?.c],[t.correct,scored.correct,'#16a34a'],[t.wrong,scored.wrong,'#dc2626']].map(([l,v,c])=>(
