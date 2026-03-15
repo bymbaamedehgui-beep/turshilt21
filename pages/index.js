@@ -635,27 +635,42 @@ function CameraCapture({onCapture, onClose}) {
 function LandingPage({onEnter}) {
   const YOUTUBE_ID = 'aUggJeMlQ8E';
 
+  // Clean SVG icon component
+  function Icon({d, size=24, color='currentColor', strokeWidth=1.5}) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
+        {Array.isArray(d) ? d.map((p,i)=><path key={i} d={p}/>) : <path d={d}/>}
+      </svg>
+    );
+  }
+
   const features = [
-    { icon:'🎯', title:'AI Bubble Detection', desc:'Сурагчдын хариулт хуудсыг зураг авч, AI автоматаар уншина.' },
-    { icon:'📊', title:'Дэлгэрэнгүй анализ', desc:'Дасгал бүрийн амжилт, сурагч бүрийн гүйцэтгэл, ангийн рейтинг.' },
-    { icon:'📄', title:'PDF & Excel экспорт', desc:'Сурагч бүрийн PDF тайлан, ангийн Excel жагсаалт нэг товчлуураар.' },
-    { icon:'🏆', title:'ЭЕШ хэмжээст оноо', desc:'Raw оноог ЭЕШ-ийн 100 оноот системд автоматаар хөрвүүлнэ.' },
-    { icon:'👨‍🏫', title:'Олон багш', desc:'Багш бүр өөрийн шалгалт, сурагчдаа тусдаа удирдана.' },
-    { icon:'📱', title:'Сурагчийн портал', desc:'Сурагч кодоороо нэвтэрч өөрийн үр дүнг харна.' },
+    { icon: ['M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.3 24.3 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1 1 .03 2.798-1.348 2.798H4.346c-1.378 0-2.348-1.798-1.348-2.798L4.45 15.3', 'M12 3v4'], title:'AI Bubble Detection', desc:'Сурагчдын хариулт хуудсыг зураг авч, AI автоматаар уншина.' },
+    { icon: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z', title:'Дэлгэрэнгүй анализ', desc:'Дасгал бүрийн амжилт, сурагч бүрийн гүйцэтгэл, ангийн рейтинг.' },
+    { icon: ['M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z'], title:'PDF & Excel экспорт', desc:'Сурагч бүрийн PDF тайлан, ангийн Excel жагсаалт нэг товчлуураар.' },
+    { icon: 'M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0', title:'ЭЕШ хэмжээст оноо', desc:'Raw оноог ЭЕШ-ийн 100 оноот системд автоматаар хөрвүүлнэ.' },
+    { icon: ['M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z'], title:'Олон багш', desc:'Багш бүр өөрийн шалгалт, сурагчдаа тусдаа удирдана.' },
+    { icon: ['M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 8.25h3m-3 3h3m-6 3h.008v.008H7.5V15.75zm0-3h.008v.008H7.5v-.008z'], title:'Сурагчийн портал', desc:'Сурагч кодоороо нэвтэрч өөрийн үр дүнг харна.' },
   ];
 
   const steps = [
-    { n:'1', title:'Шалгалт үүсгэх', desc:'Хичээл, дасгалын тоо, зөв хариулт, оноог тохируулна.' },
-    { n:'2', title:'Зураг оруулах', desc:'Сурагчдын хариулт хуудсыг зураглаж system-д оруулна.' },
-    { n:'3', title:'AI шалгана', desc:'Хиймэл оюун bubble-уудыг таньж оноо тооцоолно.' },
-    { n:'4', title:'Үр дүн харах', desc:'Тайлан, рейтинг, анализыг шууд харж экспортлоно.' },
+    { n:'1', icon:'M12 4.5v15m7.5-7.5h-15', title:'Шалгалт үүсгэх', desc:'Хичээл, дасгалын тоо, зөв хариулт, оноог тохируулна.' },
+    { n:'2', icon:'M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5', title:'Зураг оруулах', desc:'Сурагчдын хариулт хуудсыг зураглаж системд оруулна.' },
+    { n:'3', icon:'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z', title:'AI шалгана', desc:'Хиймэл оюун bubble-уудыг таньж оноо тооцоолно.' },
+    { n:'4', icon:'M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z M15 12a3 3 0 11-6 0 3 3 0 016 0z', title:'Үр дүн харах', desc:'Тайлан, рейтинг, анализыг шууд харж экспортлоно.' },
   ];
+
+  const IC = '#dc2626'; // icon accent color
 
   return (
     <div style={{minHeight:'100vh',background:'#0f172a',color:'white',fontFamily:'system-ui,sans-serif'}}>
       {/* Hero */}
       <div style={{background:'linear-gradient(135deg,#7f1d1d,#dc2626)',padding:'60px 20px 80px',textAlign:'center'}}>
-        <div style={{fontSize:56,marginBottom:12}}>🎯</div>
+        <div style={{display:'flex',justifyContent:'center',marginBottom:16}}>
+          <div style={{background:'rgba(255,255,255,0.15)',borderRadius:20,padding:16}}>
+            <Icon d={['M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z']} size={48} color="white" strokeWidth={1.5}/>
+          </div>
+        </div>
         <div style={{fontSize:42,fontWeight:900,marginBottom:12,lineHeight:1.1}}>EYESH Checker</div>
         <div style={{fontSize:18,opacity:.85,maxWidth:560,margin:'0 auto 32px',lineHeight:1.6}}>
           ЭЕШ-ийн хариулт хуудас шалгах, оноо тооцоолох, анализ хийх бүрэн системийн шийдэл
@@ -667,7 +682,7 @@ function LandingPage({onEnter}) {
           </button>
           <button onClick={()=>document.getElementById('demo-section').scrollIntoView({behavior:'smooth'})}
             style={{padding:'14px 36px',background:'rgba(255,255,255,0.15)',color:'white',border:'2px solid rgba(255,255,255,0.4)',borderRadius:12,fontSize:17,fontWeight:700,cursor:'pointer'}}>
-            🔴 Live Demo үзэх
+            Live Demo үзэх
           </button>
         </div>
       </div>
@@ -687,12 +702,7 @@ function LandingPage({onEnter}) {
                 allowFullScreen
               />
             </div>
-          ) : (
-            <div style={{background:'#1e293b',borderRadius:16,padding:'60px 20px',border:'2px dashed #334155',color:'#64748b'}}>
-              <div style={{fontSize:40,marginBottom:8}}>▶️</div>
-              <div style={{fontSize:14}}>Видео удахгүй нэмэгдэнэ</div>
-            </div>
-          )}
+          ) : null}
         </div>
 
         {/* Features */}
@@ -702,7 +712,9 @@ function LandingPage({onEnter}) {
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:16}}>
             {features.map(f=>(
               <div key={f.title} style={{background:'#1e293b',borderRadius:14,padding:'20px',border:'1px solid #334155'}}>
-                <div style={{fontSize:28,marginBottom:10}}>{f.icon}</div>
+                <div style={{width:44,height:44,borderRadius:10,background:'#7f1d1d22',border:'1px solid #7f1d1d44',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:12}}>
+                  <Icon d={f.icon} size={22} color="#ef4444" strokeWidth={1.5}/>
+                </div>
                 <div style={{fontWeight:800,fontSize:15,marginBottom:6}}>{f.title}</div>
                 <div style={{fontSize:13,color:'#94a3b8',lineHeight:1.6}}>{f.desc}</div>
               </div>
@@ -717,8 +729,8 @@ function LandingPage({onEnter}) {
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:16}}>
             {steps.map(s=>(
               <div key={s.n} style={{background:'#1e293b',borderRadius:14,padding:'20px',border:'1px solid #334155',textAlign:'center'}}>
-                <div style={{width:40,height:40,borderRadius:'50%',background:'#dc2626',color:'white',fontWeight:900,fontSize:18,display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px'}}>
-                  {s.n}
+                <div style={{width:44,height:44,borderRadius:'50%',background:'linear-gradient(135deg,#7f1d1d,#dc2626)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px'}}>
+                  <span style={{color:'white',fontWeight:900,fontSize:18}}>{s.n}</span>
                 </div>
                 <div style={{fontWeight:800,fontSize:14,marginBottom:6}}>{s.title}</div>
                 <div style={{fontSize:12,color:'#94a3b8',lineHeight:1.6}}>{s.desc}</div>
@@ -742,7 +754,7 @@ function LandingPage({onEnter}) {
 
         {/* Live Demo */}
         <div id="demo-section" style={{margin:'60px 0'}}>
-          <div style={{fontSize:22,fontWeight:800,marginBottom:6,textAlign:'center'}}>🔴 Live Demo</div>
+          <div style={{fontSize:22,fontWeight:800,marginBottom:6,textAlign:'center'}}>Live Demo</div>
           <div style={{fontSize:14,color:'#94a3b8',marginBottom:24,textAlign:'center'}}>Нэвтрэлтгүйгээр системийг туршиж үзэх</div>
           <div style={{background:'#1e293b',borderRadius:16,padding:'32px',border:'1px solid #334155',textAlign:'center'}}>
             <div style={{fontSize:16,color:'#e2e8f0',marginBottom:20,lineHeight:1.7}}>
@@ -758,7 +770,7 @@ function LandingPage({onEnter}) {
 
         {/* FAQ */}
         <div style={{margin:'60px 0'}}>
-          <div style={{fontSize:22,fontWeight:800,marginBottom:6,textAlign:'center'}}>❓ Түгээмэл асуулт</div>
+          <div style={{fontSize:22,fontWeight:800,marginBottom:6,textAlign:'center'}}>Түгээмэл асуулт</div>
           <div style={{fontSize:14,color:'#94a3b8',marginBottom:28,textAlign:'center'}}>Хамгийн их асуудаг асуултууд</div>
           {[
             {q:'Ямар төхөөрөмжид ажилладаг вэ?', a:'Интернет холбоотой ямар ч төхөөрөмж дээр browser-ээр ажиллана. Суулгах шаардлагагүй.'},
@@ -774,26 +786,32 @@ function LandingPage({onEnter}) {
 
         {/* Contact */}
         <div style={{margin:'60px 0',textAlign:'center'}}>
-          <div style={{fontSize:22,fontWeight:800,marginBottom:6}}>📞 Холбоо барих</div>
+          <div style={{fontSize:22,fontWeight:800,marginBottom:6}}>Холбоо барих</div>
           <div style={{fontSize:14,color:'#94a3b8',marginBottom:28}}>Асуулт байвал холбогдоорой</div>
           <div style={{display:'flex',gap:16,justifyContent:'center',flexWrap:'wrap'}}>
-            <a href="tel:+97699999999" style={{textDecoration:'none'}}>
+            <a href="tel:+97688449307" style={{textDecoration:'none'}}>
               <div style={{background:'#1e293b',borderRadius:14,padding:'20px 28px',border:'1px solid #334155',textAlign:'center',minWidth:160}}>
-                <div style={{fontSize:28,marginBottom:8}}>📱</div>
-                <div style={{fontWeight:700,fontSize:14,marginBottom:4}}>Утас</div>
-                <div style={{fontSize:13,color:'#94a3b8'}}>bymbaamedehgui@gmail.com</div>
+                <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
+                  <Icon d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" size={28} color="#ef4444"/>
+                </div>
+                <div style={{fontWeight:700,fontSize:14,color:'white',marginBottom:4}}>Утас</div>
+                <div style={{fontSize:13,color:'#94a3b8'}}>88449307</div>
               </div>
             </a>
             <a href="mailto:bymbaamedehgui@gmail.com" style={{textDecoration:'none'}}>
               <div style={{background:'#1e293b',borderRadius:14,padding:'20px 28px',border:'1px solid #334155',textAlign:'center',minWidth:160}}>
-                <div style={{fontSize:28,marginBottom:8}}>✉️</div>
+                <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
+                  <Icon d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" size={28} color="#ef4444"/>
+                </div>
                 <div style={{fontWeight:700,fontSize:14,color:'white',marginBottom:4}}>Email</div>
                 <div style={{fontSize:13,color:'#94a3b8'}}>bymbaamedehgui@gmail.com</div>
               </div>
             </a>
             <a href="https://facebook.com" target="_blank" rel="noreferrer" style={{textDecoration:'none'}}>
               <div style={{background:'#1e293b',borderRadius:14,padding:'20px 28px',border:'1px solid #334155',textAlign:'center',minWidth:160}}>
-                <div style={{fontSize:28,marginBottom:8}}>📘</div>
+                <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
+                  <svg width={28} height={28} viewBox="0 0 24 24" fill="#ef4444"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                </div>
                 <div style={{fontWeight:700,fontSize:14,color:'white',marginBottom:4}}>Facebook</div>
                 <div style={{fontSize:13,color:'#94a3b8'}}>EYESH Checker</div>
               </div>
@@ -829,7 +847,7 @@ function FAQItem({q, a}) {
 }
 
 // ── Login Page ────────────────────────────────────────────
-function LoginPage({onLogin, onStudentLogin}) {
+function LoginPage({onLogin, onStudentLogin, onBack}) {
   const [lang, toggleLang, t] = useLang();
   const [role, setRole] = useState(null); // null | 'teacher' | 'student'
   const [tab, setTab] = useState('login'); // 'login' | 'register'
@@ -849,6 +867,18 @@ function LoginPage({onLogin, onStudentLogin}) {
       const d = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})}).then(async r=>{
         const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
       });
+      // Demo device check
+      if (d.teacher?.email === 'demo@eyeshcheck.com') {
+        const deviceId = localStorage.getItem('demo_device_id');
+        const newId = navigator.userAgent + screen.width + screen.height;
+        const storedId = localStorage.getItem('demo_device_fingerprint');
+        if (storedId && storedId !== btoa(newId).slice(0,20)) {
+          setErr('Demo бүртгэл өөр төхөөрөмжөөс нэвтэрсэн байна.');
+          setLoading(false); return;
+        }
+        localStorage.setItem('demo_device_fingerprint', btoa(newId).slice(0,20));
+        localStorage.setItem('demo_login_time', Date.now().toString());
+      }
       localStorage.setItem('eyesh_token', d.token);
       localStorage.setItem('eyesh_teacher', JSON.stringify(d.teacher));
       onLogin(d.teacher);
@@ -895,7 +925,11 @@ function LoginPage({onLogin, onStudentLogin}) {
   return (
     <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#7f1d1d,#dc2626)',padding:20}}>
       <div style={{background:'white',borderRadius:20,padding:'36px 32px',width:'100%',maxWidth:420,boxShadow:'0 20px 60px rgba(0,0,0,.3)'}}>
-        <div style={{display:'flex',justifyContent:'flex-end',marginBottom:8}}>
+        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
+          {onBack
+            ? <button onClick={onBack} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:13,padding:0}}>← Буцах</button>
+            : <span/>
+          }
           <button onClick={toggleLang} style={{padding:'4px 12px',background:'#f1f5f9',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer',color:'#374151'}}>
             {lang==='mn'?'EN':'МН'}
           </button>
@@ -2980,6 +3014,32 @@ export default function App() {
     const sinfo = typeof window!=='undefined'&&localStorage.getItem('student_info');
     const savedTeacher = typeof window!=='undefined'&&localStorage.getItem('eyesh_teacher');
     if (token) {
+      // Check demo session expiry (10 min)
+      const teacherData = savedTeacher ? JSON.parse(savedTeacher) : null;
+      if (teacherData?.email === 'demo@eyeshcheck.com') {
+        const loginTime = parseInt(localStorage.getItem('demo_login_time')||'0');
+        const elapsed = Date.now() - loginTime;
+        if (loginTime && elapsed > 10 * 60 * 1000) {
+          // Demo expired
+          localStorage.removeItem('eyesh_token');
+          localStorage.removeItem('eyesh_teacher');
+          localStorage.removeItem('demo_login_time');
+          localStorage.removeItem('demo_device_id');
+          setLoading(false);
+          return;
+        }
+        // Set auto-logout timer for remaining time
+        const remaining = 10 * 60 * 1000 - elapsed;
+        const timer = setTimeout(()=>{
+          localStorage.removeItem('eyesh_token');
+          localStorage.removeItem('eyesh_teacher');
+          localStorage.removeItem('demo_login_time');
+          localStorage.removeItem('demo_device_id');
+          alert('Demo хугацаа (10 минут) дууслаа. Дахин нэвтрэнэ үү.');
+          window.location.reload();
+        }, remaining);
+        return ()=>clearTimeout(timer);
+      }
       setAuthed(true);
       if (savedTeacher) setTeacher(JSON.parse(savedTeacher));
       loadData();
@@ -3037,7 +3097,20 @@ export default function App() {
     setPage('create');
   }
 
-  const [showLanding, setShowLanding] = useState(()=>{
+  const [demoSecsLeft, setDemoSecsLeft] = useState(null);
+
+  useEffect(()=>{
+    if (!teacher || teacher.email !== 'demo@eyeshcheck.com') return;
+    const loginTime = parseInt(localStorage.getItem('demo_login_time')||'0');
+    if (!loginTime) return;
+    const interval = setInterval(()=>{
+      const elapsed = Date.now() - loginTime;
+      const left = Math.max(0, 600 - Math.floor(elapsed/1000));
+      setDemoSecsLeft(left);
+      if (left === 0) clearInterval(interval);
+    }, 1000);
+    return ()=>clearInterval(interval);
+  }, [teacher]);
     if (typeof window==='undefined') return true;
     return !localStorage.getItem('eyesh_token') && !localStorage.getItem('student_token');
   });
@@ -3050,6 +3123,7 @@ export default function App() {
     <LoginPage
       onLogin={(t)=>{setAuthed(true);setTeacher(t);loadData();}}
       onStudentLogin={s=>{setStudentMode(true);setStudentInfo(s);}}
+      onBack={()=>setShowLanding(true)}
     />
   );
   if (studentMode) return (
@@ -3118,6 +3192,11 @@ export default function App() {
               style={{padding:'5px 10px',background:'#fee2e2',border:'none',borderRadius:8,fontSize:11,color:'#dc2626',fontWeight:700,cursor:'pointer'}}>
               {t.logout}
             </button>
+            {demoSecsLeft!==null&&(
+              <span style={{padding:'4px 8px',background:'#fef3c7',border:'1px solid #fde68a',borderRadius:8,fontSize:11,fontWeight:700,color:'#92400e',flexShrink:0}}>
+                ⏱ {Math.floor(demoSecsLeft/60)}:{String(demoSecsLeft%60).padStart(2,'0')}
+              </span>
+            )}
             {/* Hamburger for mobile */}
             <button onClick={()=>{const m=document.getElementById('mobile-menu');if(m)m.style.display=m.style.display==='flex'?'none':'flex';}}
               style={{padding:'5px 8px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,cursor:'pointer',color:d?'#f1f5f9':'#374151',fontSize:18,lineHeight:1}} className="show-mobile">
