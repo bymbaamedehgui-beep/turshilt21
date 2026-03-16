@@ -2360,13 +2360,114 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
     });
   }
 
-  // Bulk PDF: export all students in a class
-  async function exportClassPDFs(classname) {
-    const cls = classname === '__all__' ? sorted : sorted.filter(s => (s.class||'') === classname);
-    for (const s of cls) {
-      await new Promise(res => setTimeout(res, 300));
-      exportStudentPDF(s);
-    }
+  // Bulk PDF: all students in one multi-page PDF
+  function exportClassPDFs(classname) {
+    const clsStudents = classname === '__all__' ? sorted : sorted.filter(s => (s.class||'') === classname);
+    if (!clsStudents.length) return;
+    const safeFilename = classname === '__all__' ? 'all' : classname.replace(/[^\x00-\x7F]/g,'_');
+
+    import('jspdf').then(({jsPDF})=>{
+      const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+      const W=210, pw=20;
+      const safeStr = s => (s||'').replace(/[^\x00-\x7F]/g, '?');
+      const safeTitle = safeStr(exam.title);
+      const safeSubject = SUBJECT_EN[exam.subject] || safeStr(exam.subject);
+      const sec1MaxCalc = (exam.sec1Scores||[]).reduce((a,b)=>a+(b||1), 0) || (exam.sec1Count||0);
+
+      clsStudents.forEach((student, idx) => {
+        if (idx > 0) doc.addPage();
+
+        const grade = eyeshGrade(student.scaled||0);
+        const gradeLabel = {'Онц':'Excellent','Сайн':'Good','Дунд сайн':'Above Avg','Хангалттай':'Satisfactory','Хангалтгүй':'Poor','Тэнцээгүй':'Fail'}[grade.l]||grade.l;
+        const safeCode = safeStr(student.code);
+        const safeClass = safeStr(student.class);
+
+        const sec1Res = student.sec1Results||[];
+        const sec1Earned = sec1Res.reduce((a,r)=>a+(r.pts||0),0);
+        const sec1Max    = sec1Res.reduce((a,r)=>a+(r.max||0),0);
+        const sec2Ent    = Object.entries(student.sec2Results||{});
+        const sec2Earned = sec2Ent.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.pts||0),0),0);
+        const sec2Max    = sec2Ent.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.max||0),0),0);
+        const totalMax   = sec1MaxCalc + sec2Max;
+        const totalEarned= student.rawEarned||0;
+
+        let y = 20;
+        const line = (label, value) => {
+          doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+          doc.text(label, pw, y); doc.text(String(value), pw+70, y); y+=7;
+        };
+        const divider = () => { doc.setDrawColor(180,180,180); doc.line(pw,y,W-pw,y); y+=5; };
+        const sectionHeader = (title) => {
+          y+=2; doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(0,0,0);
+          doc.text(title, pw, y); y+=3; divider();
+        };
+
+        // Page number
+        doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,150,150);
+        doc.text((idx+1)+' / '+clsStudents.length, W-pw, 10, {align:'right'});
+
+        // Title
+        doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(0,0,0);
+        doc.text('EYESH Checker - Student Result Report', pw, y); y+=5;
+        doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(100,100,100);
+        doc.text(safeTitle+' | '+safeSubject+'  |  '+new Date().toLocaleDateString('en-CA'), pw, y); y+=6;
+        divider();
+
+        // Student Info
+        sectionHeader('Student Information');
+        line('Student Code:', safeCode);
+        line('Class:', safeClass||'-');
+        line('Exam:', safeTitle);
+        line('Subject:', safeSubject);
+        y+=2; divider();
+
+        // Score Summary
+        sectionHeader('Score Summary');
+        doc.setFont('helvetica','bold'); doc.setFontSize(36); doc.setTextColor(0,0,0);
+        doc.text((student.scaled||0)+'%', pw, y);
+        doc.setFont('helvetica','normal'); doc.setFontSize(12); doc.setTextColor(80,80,80);
+        doc.text(grade.g+' - '+gradeLabel, pw+35, y); y+=10;
+        doc.setDrawColor(200,200,200); doc.line(pw,y,W-pw,y); y+=6;
+        line('Total Score (Max):', totalMax+' pts');
+        line('Total Score (Earned):', totalEarned+' pts');
+        if(sec1Max>0) line('Section 1 Score:', sec1Earned+' / '+sec1Max+' pts');
+        if(sec2Max>0) line('Section 2 Score:', sec2Earned+' / '+sec2Max+' pts');
+        line('Correct Answers:', student.correct);
+        line('Wrong Answers:', student.wrong);
+        line('Blank Answers:', student.blank);
+        y+=2; divider();
+
+        // Correct questions
+        sectionHeader('Correct Questions');
+        const correct = sec1Res.map((r,i)=>r.st==='ok'?i+1:null).filter(Boolean);
+        if(!correct.length){ doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0); doc.text('None',pw,y); y+=7; }
+        else { for(let i=0;i<correct.length;i+=20){ doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0); doc.text(correct.slice(i,i+20).join('  '),pw,y); y+=7; } }
+        y+=2; divider();
+
+        // Wrong questions
+        sectionHeader('Wrong Questions');
+        const wrong = sec1Res.map((r,i)=>r.st==='ng'?i+1:null).filter(Boolean);
+        if(!wrong.length){ doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0); doc.text('None',pw,y); y+=7; }
+        else { for(let i=0;i<wrong.length;i+=20){ doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0); doc.text(wrong.slice(i,i+20).join('  '),pw,y); y+=7; } }
+
+        // Section 2
+        if(sec2Max>0){
+          y+=2; divider(); sectionHeader('Section 2 Details');
+          sec2Ent.forEach(([sub,rows])=>{
+            const e2=Object.values(rows).reduce((a,r)=>a+(r.pts||0),0);
+            const m2=Object.values(rows).reduce((a,r)=>a+(r.max||0),0);
+            doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(0,0,0);
+            doc.text(sub+':  '+e2+' / '+m2+' pts', pw, y); y+=7;
+          });
+        }
+
+        // Footer
+        doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,150,150);
+        doc.text('EYESH Checker  |  A>=90  B>=80  C>=70  D>=60  F<60', pw, 290);
+      });
+
+      doc.save(safeStr(exam.title)+'_'+safeFilename+'_results.pdf');
+    });
   }
 
   const classes = [...new Set(sorted.map(s => s.class||'').filter(Boolean))].sort();
@@ -2396,7 +2497,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
                 {classes.map(cls=>(
                   <button key={cls} onClick={()=>{exportClassPDFs(cls);setPdfOpen(false);}}
                     style={{display:'block',width:'100%',padding:'10px 16px',background:'none',border:'none',textAlign:'left',cursor:'pointer',fontSize:13,color:d?'#e2e8f0':'#374151',borderBottom:'1px solid '+(d?'#334155':'#f1f5f9')}}>
-                    {cls} ({sorted.filter(s=>s.class===cls).length} сурагч)
+                    {cls} ({sorted.filter(s=>(s.class||'')===cls).length} сурагч)
                   </button>
                 ))}
                 <button onClick={()=>setPdfOpen(false)}
