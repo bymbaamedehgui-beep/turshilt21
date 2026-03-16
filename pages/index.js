@@ -877,9 +877,12 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
       const d = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})}).then(async r=>{
         const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
       });
-      // Demo device check
-      if (d.teacher?.email === 'demo@eyeshcheck.com') {
-        const deviceId = localStorage.getItem('demo_device_id');
+      // Clear any leftover demo session data for non-demo users
+      if (d.teacher?.email !== 'demo@eyeshcheck.com') {
+        localStorage.removeItem('demo_login_time');
+        localStorage.removeItem('demo_device_fingerprint');
+      } else {
+        // Demo device check
         const newId = navigator.userAgent + screen.width + screen.height;
         const storedId = localStorage.getItem('demo_device_fingerprint');
         if (storedId && storedId !== btoa(newId).slice(0,20)) {
@@ -2356,13 +2359,46 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
     });
   }
 
+  // Bulk PDF: export all students in a class
+  async function exportClassPDFs(classname) {
+    const cls = classname === '__all__' ? sorted : sorted.filter(s => (s.class||'') === classname);
+    for (const s of cls) {
+      await new Promise(res => setTimeout(res, 300));
+      exportStudentPDF(s);
+    }
+  }
+
+  const classes = [...new Set(sorted.map(s => s.class||'').filter(Boolean))].sort();
+
   return (
     <div style={{maxWidth:1200,margin:'0 auto',padding:'24px 20px'}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:20}}>
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
         <h1 style={{margin:0,fontSize:22,fontWeight:800,color:d?'#f1f5f9':'#1e293b'}}>{exam.title} — Жагсаалт</h1>
-        <button onClick={()=>onExportExcel(exam,students)} style={{padding:'10px 16px',background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
-          Excel татах
-        </button>
+        <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          <button onClick={()=>onExportExcel(exam,students)} style={{padding:'10px 16px',background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
+            Excel татах
+          </button>
+          {/* Bulk PDF buttons */}
+          <div style={{position:'relative',display:'inline-block'}} id="pdf-dropdown-wrap">
+            <button
+              onClick={()=>{const el=document.getElementById('pdf-dropdown');if(el)el.style.display=el.style.display==='block'?'none':'block';}}
+              style={{padding:'10px 16px',background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+              PDF бөөнөөр ↓
+            </button>
+            <div id="pdf-dropdown" style={{display:'none',position:'absolute',right:0,top:'100%',marginTop:4,background:d?'#1e293b':'white',border:'1px solid '+(d?'#334155':'#e2e8f0'),borderRadius:10,boxShadow:'0 4px 20px rgba(0,0,0,.12)',zIndex:50,minWidth:180,overflow:'hidden'}}>
+              <button onClick={()=>{exportClassPDFs('__all__');document.getElementById('pdf-dropdown').style.display='none';}}
+                style={{display:'block',width:'100%',padding:'10px 16px',background:'none',border:'none',textAlign:'left',cursor:'pointer',fontSize:13,fontWeight:700,color:d?'#f1f5f9':'#1e293b',borderBottom:'1px solid '+(d?'#334155':'#f1f5f9')}}>
+                Бүгд ({sorted.length} сурагч)
+              </button>
+              {classes.map(cls=>(
+                <button key={cls} onClick={()=>{exportClassPDFs(cls);document.getElementById('pdf-dropdown').style.display='none';}}
+                  style={{display:'block',width:'100%',padding:'10px 16px',background:'none',border:'none',textAlign:'left',cursor:'pointer',fontSize:13,color:d?'#e2e8f0':'#374151',borderBottom:'1px solid '+(d?'#334155':'#f1f5f9')}}>
+                  {cls} ({sorted.filter(s=>s.class===cls).length})
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
       {sorted.length===0?(
         <div style={{background:d?'#1e293b':'white',borderRadius:12,padding:'44px',textAlign:'center',color:'#94a3b8'}}>Одоохондоо сурагч байхгүй</div>
@@ -3110,7 +3146,7 @@ export default function App() {
   const [demoSecsLeft, setDemoSecsLeft] = useState(null);
 
   useEffect(()=>{
-    if (!teacher || teacher.email !== 'demo@eyeshcheck.com') return;
+    if (!teacher || teacher.email !== 'demo@eyeshcheck.com' || teacher.isAdmin) return;
     const loginTime = parseInt(localStorage.getItem('demo_login_time')||'0');
     if (!loginTime) return;
     const interval = setInterval(()=>{
