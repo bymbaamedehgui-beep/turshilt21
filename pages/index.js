@@ -2208,6 +2208,7 @@ function RatingPage({exams, students, dark:d=false}) {
 function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false}) {
   if (!exam) return <div style={{textAlign:'center',padding:80,color:'#94a3b8',fontWeight:600}}>Шалгалт сонгоно уу</div>;
   const sorted=[...students].sort((a,b)=>b.scaled-a.scaled);
+  const [pdfOpen, setPdfOpen] = useState(false);
 
   function exportStudentPDF(student) {
     import('jspdf').then(({jsPDF})=>{
@@ -2379,24 +2380,31 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
             Excel татах
           </button>
           {/* Bulk PDF buttons */}
-          <div style={{position:'relative',display:'inline-block'}} id="pdf-dropdown-wrap">
+          <div style={{position:'relative',display:'inline-block'}}>
             <button
-              onClick={()=>{const el=document.getElementById('pdf-dropdown');if(el)el.style.display=el.style.display==='block'?'none':'block';}}
+              onClick={()=>setPdfOpen(o=>!o)}
               style={{padding:'10px 16px',background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
-              PDF бөөнөөр ↓
+              PDF бөөнөөр {pdfOpen?'↑':'↓'}
             </button>
-            <div id="pdf-dropdown" style={{display:'none',position:'absolute',right:0,top:'100%',marginTop:4,background:d?'#1e293b':'white',border:'1px solid '+(d?'#334155':'#e2e8f0'),borderRadius:10,boxShadow:'0 4px 20px rgba(0,0,0,.12)',zIndex:50,minWidth:180,overflow:'hidden'}}>
-              <button onClick={()=>{exportClassPDFs('__all__');document.getElementById('pdf-dropdown').style.display='none';}}
-                style={{display:'block',width:'100%',padding:'10px 16px',background:'none',border:'none',textAlign:'left',cursor:'pointer',fontSize:13,fontWeight:700,color:d?'#f1f5f9':'#1e293b',borderBottom:'1px solid '+(d?'#334155':'#f1f5f9')}}>
-                Бүгд ({sorted.length} сурагч)
-              </button>
-              {classes.map(cls=>(
-                <button key={cls} onClick={()=>{exportClassPDFs(cls);document.getElementById('pdf-dropdown').style.display='none';}}
-                  style={{display:'block',width:'100%',padding:'10px 16px',background:'none',border:'none',textAlign:'left',cursor:'pointer',fontSize:13,color:d?'#e2e8f0':'#374151',borderBottom:'1px solid '+(d?'#334155':'#f1f5f9')}}>
-                  {cls} ({sorted.filter(s=>s.class===cls).length})
+            {pdfOpen&&(
+              <div style={{position:'absolute',right:0,top:'100%',marginTop:4,background:d?'#1e293b':'white',border:'1px solid '+(d?'#334155':'#e2e8f0'),borderRadius:10,boxShadow:'0 4px 20px rgba(0,0,0,.12)',zIndex:50,minWidth:200,overflow:'hidden'}}>
+                <div style={{padding:'8px 16px',fontSize:11,color:'#94a3b8',fontWeight:700,borderBottom:'1px solid '+(d?'#334155':'#f1f5f9'),letterSpacing:1}}>АНГИ СОНГОХ</div>
+                <button onClick={()=>{exportClassPDFs('__all__');setPdfOpen(false);}}
+                  style={{display:'block',width:'100%',padding:'10px 16px',background:'none',border:'none',textAlign:'left',cursor:'pointer',fontSize:13,fontWeight:700,color:d?'#f1f5f9':'#1e293b',borderBottom:'1px solid '+(d?'#334155':'#f1f5f9')}}>
+                  Бүгд ({sorted.length} сурагч)
                 </button>
-              ))}
-            </div>
+                {classes.map(cls=>(
+                  <button key={cls} onClick={()=>{exportClassPDFs(cls);setPdfOpen(false);}}
+                    style={{display:'block',width:'100%',padding:'10px 16px',background:'none',border:'none',textAlign:'left',cursor:'pointer',fontSize:13,color:d?'#e2e8f0':'#374151',borderBottom:'1px solid '+(d?'#334155':'#f1f5f9')}}>
+                    {cls} ({sorted.filter(s=>s.class===cls).length} сурагч)
+                  </button>
+                ))}
+                <button onClick={()=>setPdfOpen(false)}
+                  style={{display:'block',width:'100%',padding:'8px 16px',background:'none',border:'none',textAlign:'center',cursor:'pointer',fontSize:12,color:'#94a3b8'}}>
+                  Хаах
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -3240,7 +3248,7 @@ export default function App() {
               style={{padding:'5px 10px',background:'#fee2e2',border:'none',borderRadius:8,fontSize:11,color:'#dc2626',fontWeight:700,cursor:'pointer'}}>
               {t.logout}
             </button>
-            {demoSecsLeft!==null&&(
+            {demoSecsLeft!==null && teacher?.email==='demo@eyeshcheck.com' &&(
               <span style={{padding:'4px 8px',background:'#fef3c7',border:'1px solid #fde68a',borderRadius:8,fontSize:11,fontWeight:700,color:'#92400e',flexShrink:0}}>
                 ⏱ {Math.floor(demoSecsLeft/60)}:{String(demoSecsLeft%60).padStart(2,'0')}
               </span>
