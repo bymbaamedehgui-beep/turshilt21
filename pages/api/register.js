@@ -14,16 +14,6 @@ export default async function handler(req, res) {
   const passwordHash = await bcrypt.hash(password, 10);
   const teacher = await createTeacher({ id: genId(), email: email.toLowerCase(), passwordHash, name: name||'' });
 
-  // Notify admin via Telegram
-  try {
-    const msg = `🎯 EYESH Checker\n\n📋 Шинэ бүртгэлийн хүсэлт\n\n👤 Нэр: ${name||'—'}\n📧 Email: ${email.toLowerCase()}\n🕐 Огноо: ${new Date().toLocaleString('mn-MN')}`;
-    await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({chat_id: process.env.TELEGRAM_CHAT_ID, text: msg})
-    });
-  } catch(e) { console.error('Telegram notify failed:', e.message); }
-
   // Notify admin via email
   try {
     await fetch('https://api.resend.com/emails', {

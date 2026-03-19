@@ -2806,7 +2806,7 @@ function StudentAccountsPage({dark:d=false}) {
       const parts = l.split(/[,\t]+/);
       // Format: нэр, анги (код хоосон бол автоматаар үүснэ)
       const name = parts[0]?.trim()||'';
-      const cls  = (parts[1]?.trim()||'').toUpperCase();
+      const cls  = parts[1]?.trim()||'';
       const all  = new Set([...existingCodes, ...usedCodes]);
       const code = genStudentCode(all);
       usedCodes.add(code);
@@ -2829,7 +2829,7 @@ function StudentAccountsPage({dark:d=false}) {
     const code = genStudentCode(existingCodes);
     setAdding(true);
     try {
-      await apiFetch('/api/student-accounts', {method:'POST', body:{id:uid(), code, name:singleName.trim(), class:singleClass.trim().toUpperCase(), createdAt:new Date().toISOString()}});
+      await apiFetch('/api/student-accounts', {method:'POST', body:{id:uid(), code, name:singleName.trim(), class:singleClass.trim(), createdAt:new Date().toISOString()}});
       setSingleName(''); setSingleClass('');
       loadAccounts();
     } catch(e) { setMsg('Алдаа: '+e.message); }
