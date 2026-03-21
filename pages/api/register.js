@@ -1,49 +1,56 @@
 import bcrypt from 'bcryptjs';
-import { createTeacher, getTeacherByEmail, initDb } from '../../lib/db';
+import { getTeacherByEmail, initDb } from '../../lib/db';
+import { neon } from '@neondatabase/serverless';
 
-function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+function getDb() { return neon(process.env.POSTGRES_URL || process.env.DATABASE_URL); }
+function genCode() { return String(Math.floor(100000 + Math.random() * 900000)); }
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
-  const { email, password, name } = req.body || {};
+  const { email, password, name, phone } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email болон нууц үг шаардлагатай' });
   if (password.length < 6) return res.status(400).json({ error: 'Нууц үг хамгийн багадаа 6 тэмдэгт' });
+
   await initDb();
+  const sql = getDb();
+
+  await sql`CREATE TABLE IF NOT EXISTS email_verifications (
+    email VARCHAR(200) PRIMARY KEY,
+    code VARCHAR(10) NOT NULL,
+    name VARCHAR(200),
+    phone VARCHAR(50),
+    password_hash VARCHAR(200),
+    expires_at TIMESTAMPTZ NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )`;
+
   const existing = await getTeacherByEmail(email.toLowerCase());
   if (existing) return res.status(400).json({ error: 'Энэ email бүртгэлтэй байна' });
-  const passwordHash = await bcrypt.hash(password, 10);
-  const teacher = await createTeacher({ id: genId(), email: email.toLowerCase(), passwordHash, name: name||'' });
 
-  // Notify admin via email
+  const passwordHash = await bcrypt.hash(password, 10);
+  const code = genCode();
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+
+  await sql`INSERT INTO email_verifications (email, code, name, phone, password_hash, expires_at)
+    VALUES (${email.toLowerCase()}, ${code}, ${name||''}, ${phone||''}, ${passwordHash}, ${expiresAt.toISOString()})
+    ON CONFLICT (email) DO UPDATE SET code=${code}, name=${name||''}, phone=${phone||''}, password_hash=${passwordHash}, expires_at=${expiresAt.toISOString()}`;
+
   try {
-    await fetch('https://api.resend.com/emails', {
+    const emailRes = await fetch('https://api.resend.com/emails', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.RESEND_API_KEY}`
-      },
+      headers: {'Content-Type':'application/json','Authorization':'Bearer '+process.env.RESEND_API_KEY},
       body: JSON.stringify({
-        from: 'EYESH Checker <onboarding@resend.dev>',
-        to: 'bymbaamedehgui@gmail.com',
-        subject: 'EYESH Checker — Шинэ бүртгэлийн хүсэлт',
-        html: `
-          <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;background:#f8fafc;border-radius:12px">
-            <h2 style="color:#dc2626;margin-bottom:4px">🎯 EYESH Checker</h2>
-            <h3 style="color:#1e293b;margin-top:0">Шинэ бүртгэлийн хүсэлт</h3>
-            <div style="background:white;border-radius:8px;padding:16px;margin:16px 0">
-              <p style="margin:4px 0"><b>Нэр:</b> ${name||'—'}</p>
-              <p style="margin:4px 0"><b>Email:</b> ${email.toLowerCase()}</p>
-              <p style="margin:4px 0"><b>Огноо:</b> ${new Date().toLocaleString('mn-MN')}</p>
-            </div>
-            <p style="color:#64748b;font-size:13px">Admin панелд орж зөвшөөрөх эсвэл татгалзана уу.</p>
-          </div>
-        `
+        from: 'EYESH Checker <noreply@eyeshcheck.com>',
+        to: email.toLowerCase(),
+        subject: 'EYESH Checker — Email баталгаажуулах код',
+        html: '<div style="font-family:Arial,sans-serif;max-width:420px;margin:0 auto;padding:32px"><h2 style="color:#dc2626">EYESH Checker</h2><p>Таны баталгаажуулах код:</p><div style="font-size:40px;font-weight:900;letter-spacing:8px;color:#1e293b;background:#f1f5f9;padding:24px;border-radius:10px;text-align:center;margin:20px 0">'+code+'</div><p style="color:#64748b;font-size:13px">Код 10 минут хүчинтэй.</p></div>'
       })
     });
-  } catch(e) {
-    // Email fail should not block registration
-    console.error('Admin email failed:', e.message);
-  }
+    if (!emailRes.ok) {
+      const errText = await emailRes.text();
+      return res.status(500).json({ error: 'Email алдаа: ' + errText });
+    }
+  } catch(e) { return res.status(500).json({ error: 'Email илгээхэд алдаа: '+e.message }); }
 
-  res.json({ ok: true, status: teacher.status, isAdmin: teacher.is_admin });
+  res.json({ ok: true, needsVerification: true });
 }
