@@ -159,7 +159,7 @@ async function callAI(payload) {
     body: JSON.stringify(payload),
   });
   const rawBody = await r.text();
-  if (!r.ok) throw new Error('AI API '+r.status+': '+rawBody.slice(0,300));
+  if (!r.ok) { const errMsg = rawBody.includes("credit") || rawBody.includes("too low") ? "AI шинжилгээ түр хугацаанд ажиллахгүй байна. Та шалгалт үүсгэх цэс рүү орж өөрөө шалгалтаа үүсгээрэй." : "AI API "+r.status+": "+rawBody.slice(0,200); throw new Error(errMsg); }
   const d = JSON.parse(rawBody);
   if (d.error) throw new Error(d.error.message+' ('+d.error.type+')');
   if (d.stop_reason==='max_tokens') throw new Error('max_tokens хэтэрлээ');
