@@ -863,6 +863,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
   const [tab, setTab] = useState('login'); // 'login' | 'register'
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [pass, setPass] = useState('');
   const [code, setCode] = useState('');
   const [err, setErr] = useState('');
