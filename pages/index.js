@@ -262,7 +262,7 @@ function calcScore(det, exam) {
         const rowData=sec2Config?.[sub]?.[row];
       const kv=typeof rowData==='object'?rowData.ans:rowData;
         if(kv===undefined||kv===null||kv==='') return;
-        const pts=typeof rowData==='object'?(rowData.score||sec2Score||1):(sec2Score||1);
+        const pts=sec2Score||5;
         rawMax+=pts;
         const dv=det.section2?.[sub]?.[row]?.digit||'BLANK';
         const conf=det.section2?.[sub]?.[row]?.confidence||0;
@@ -863,7 +863,6 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
   const [tab, setTab] = useState('login'); // 'login' | 'register'
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
   const [pass, setPass] = useState('');
   const [code, setCode] = useState('');
   const [err, setErr] = useState('');
@@ -904,7 +903,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
     if (!email||!pass) return;
     setLoading(true); setErr('');
     try {
-      const d = await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass,name,phone})}).then(async r=>{
+      const d = await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass,name})}).then(async r=>{
         const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
       });
       if (d.isAdmin) {
@@ -1018,12 +1017,8 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
             </div>
             {err && <div style={{color:'#dc2626',fontSize:13,background:'#fef2f2',padding:'8px 12px',borderRadius:8,border:'1px solid #fecaca',marginBottom:12,textAlign:'center'}}>{err}</div>}
             {tab==='register'&&(
-              <>
               <input value={name} onChange={e=>setName(e.target.value)} placeholder="Таны нэр (заавал биш)"
                 style={inp} />
-              <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Утасны дугаар" type="tel"
-                style={inp} />
-              </>
             )}
             <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email хаяг" type="email"
               style={inp} />
@@ -1112,7 +1107,6 @@ function AdminPage({dark:d=false}) {
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontWeight:700,fontSize:14,color:text}}>{t.name||'—'}</div>
           <div style={{fontSize:12,color:muted}}>{t.email}</div>
-          {t.phone&&<div style={{fontSize:11,color:muted}}>📱 {t.phone}</div>}
           <div style={{fontSize:11,color:muted}}>{new Date(t.created_at).toLocaleDateString('mn-MN')}</div>
         </div>
         <div style={{display:'flex',gap:6,flexShrink:0}}>
@@ -1787,10 +1781,9 @@ function UploadPage({exam, students, onAddStudent}) {
       if(!sec2en[sub]) return;
       sec2Results[sub]={};
       SEC2_ROWS.forEach(row=>{
-        const rowData=exam.sec2Config?.[sub]?.[row];
+        const kv=exam.sec2Config?.[sub]?.[row];
         if(kv===undefined||kv===null||kv==='') return;
-        const rowPts=typeof rowData==='object'?(rowData.score||exam.sec2Score||1):(exam.sec2Score||1);
-        sec2Results[sub][row]={sel:'BLANK',key:kv,st:'blank',pts:0,max:rowPts};
+        sec2Results[sub][row]={sel:'BLANK',key:kv,st:'blank',pts:0,max:exam.sec2Score||5};
       });
     });
     const rawMax=(exam.sec1Scores||[]).reduce((s,v)=>s+v,0)+
@@ -2813,7 +2806,7 @@ function StudentAccountsPage({dark:d=false}) {
       const parts = l.split(/[,\t]+/);
       // Format: нэр, анги (код хоосон бол автоматаар үүснэ)
       const name = parts[0]?.trim()||'';
-      const cls  = (parts[1]?.trim()||'').toUpperCase();
+      const cls  = parts[1]?.trim()||'';
       const all  = new Set([...existingCodes, ...usedCodes]);
       const code = genStudentCode(all);
       usedCodes.add(code);
@@ -2836,7 +2829,7 @@ function StudentAccountsPage({dark:d=false}) {
     const code = genStudentCode(existingCodes);
     setAdding(true);
     try {
-      await apiFetch('/api/student-accounts', {method:'POST', body:{id:uid(), code, name:singleName.trim(), class:singleClass.trim().toUpperCase(), createdAt:new Date().toISOString()}});
+      await apiFetch('/api/student-accounts', {method:'POST', body:{id:uid(), code, name:singleName.trim(), class:singleClass.trim(), createdAt:new Date().toISOString()}});
       setSingleName(''); setSingleClass('');
       loadAccounts();
     } catch(e) { setMsg('Алдаа: '+e.message); }
