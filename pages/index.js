@@ -874,7 +874,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
   const [verifyCode, setVerifyCode] = useState('');
   const [verifyErr, setVerifyErr] = useState('');
   const [verifyLoading, setVerifyLoading] = useState(false);
-
+  
   async function handleTeacherLogin() {
     if (!email||!pass) return;
     setLoading(true); setErr('');
@@ -924,7 +924,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
     setVerifyLoading(false);
   }
 
-  async function handleRegister() {
+    async function handleRegister() {
     if (!email||!pass) return;
     setLoading(true); setErr('');
     try {
@@ -1065,6 +1065,8 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
             {err && <div style={{color:'#dc2626',fontSize:13,background:'#fef2f2',padding:'8px 12px',borderRadius:8,border:'1px solid #fecaca',marginBottom:12,textAlign:'center'}}>{err}</div>}
             {tab==='register'&&(
               <input value={name} onChange={e=>setName(e.target.value)} placeholder="Таны нэр (заавал биш)"
+                style={inp} />
+              <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Утасны дугаар" type="tel"
                 style={inp} />
             )}
             <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email хаяг" type="email"
