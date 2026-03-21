@@ -1064,10 +1064,12 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
             </div>
             {err && <div style={{color:'#dc2626',fontSize:13,background:'#fef2f2',padding:'8px 12px',borderRadius:8,border:'1px solid #fecaca',marginBottom:12,textAlign:'center'}}>{err}</div>}
             {tab==='register'&&(
+              <>
               <input value={name} onChange={e=>setName(e.target.value)} placeholder="Таны нэр (заавал биш)"
                 style={inp} />
               <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Утасны дугаар" type="tel"
                 style={inp} />
+              </>
             )}
             <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email хаяг" type="email"
               style={inp} />
