@@ -1009,7 +1009,8 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
                   </div>
                 </div>
                 <div style={{fontWeight:800,fontSize:15,color:'#1e293b',marginBottom:4}}>Email шалгана уу!</div>
-                <div style={{fontSize:12,color:'#64748b',marginBottom:16}}><b>{verifyEmail}</b> руу 6 оронтой код илгээлээ</div>
+                <div style={{fontSize:12,color:'#64748b',marginBottom:8}}><b>{verifyEmail}</b> руу 6 оронтой код илгээлээ</div>
+                <div style={{fontSize:11,color:'#64748b',marginBottom:16,background:'#fef9c3',padding:'6px 10px',borderRadius:6,border:'1px solid #fde68a'}}>Хэрэв ирэхгүй бол spam/junk фолдероо шалгана уу</div>
                 {verifyErr && <div style={{color:'#dc2626',fontSize:12,background:'#fef2f2',padding:'6px 10px',borderRadius:6,marginBottom:10,textAlign:'center'}}>{verifyErr}</div>}
                 <input value={verifyCode} onChange={e=>setVerifyCode(e.target.value.replace(/\D/g,'').slice(0,6))}
                   onKeyDown={e=>e.key==='Enter'&&handleVerify()}
