@@ -1911,9 +1911,12 @@ function UploadPage({exam, students, onAddStudent}) {
       if(!sec2en[sub]) return;
       sec2Results[sub]={};
       SEC2_ROWS.forEach(row=>{
-        const kv=exam.sec2Config?.[sub]?.[row];
+        const rowData=exam.sec2Config?.[sub]?.[row];
+        if(rowData===undefined||rowData===null||rowData==='') return;
+        const kv=typeof rowData==='object'?(rowData.ans!==undefined?String(rowData.ans):undefined):rowData;
         if(kv===undefined||kv===null||kv==='') return;
-        sec2Results[sub][row]={sel:'BLANK',key:kv,st:'blank',pts:0,max:exam.sec2Score||5};
+        const rowPts=typeof rowData==='object'?(parseFloat(rowData.score)||parseFloat(exam.sec2Score)||1):(parseFloat(exam.sec2Score)||1);
+        sec2Results[sub][row]={sel:'BLANK',key:kv,st:'blank',pts:0,max:rowPts};
       });
     });
     const rawMax=(exam.sec1Scores||[]).reduce((s,v)=>s+v,0)+
