@@ -1526,7 +1526,7 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
                 {SEC2_ROWS.map(row=>(
                   <div key={row} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 8px',background:'#f8fafc',borderRadius:8,border:'1px solid #e2e8f0'}}>
                     <span style={{fontSize:12,fontWeight:700,color:'#94a3b8',minWidth:14}}>{row}</span>
-                    <input type="text" maxLength={1} value={sec2Keys[sub]?.[row]?.ans||sec2Keys[sub]?.[row]||''} 
+                    <input type="text" maxLength={1} value={typeof sec2Keys[sub]?.[row]==='object'?(sec2Keys[sub][row].ans||''):(sec2Keys[sub]?.[row]||'')} 
                       onChange={e=>{const v=e.target.value.replace(/[^0-9]/g,'');setSec2Keys(k=>({...k,[sub]:{...k[sub],[row]:{...(typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''}),ans:v}}}));}}
                       placeholder="0-9" style={{width:44,padding:'5px 6px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,outline:'none',textAlign:'center'}} />
                     <span style={{fontSize:11,color:'#94a3b8'}}>оноо:</span>
