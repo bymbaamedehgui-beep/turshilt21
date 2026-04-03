@@ -961,7 +961,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
     if (!email||!pass) return;
     setLoading(true); setErr('');
     try {
-      const d = await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass,name})}).then(async r=>{
+      const d = await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass,name,phone})}).then(async r=>{
         const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
       });
       if (d.isAdmin) {
