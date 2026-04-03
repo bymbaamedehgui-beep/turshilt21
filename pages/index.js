@@ -260,9 +260,9 @@ function calcScore(det, exam) {
       sec2Results[sub]={};
       SEC2_ROWS.forEach(row=>{
         const rowData=sec2Config?.[sub]?.[row];
-      const kv=typeof rowData==='object'?rowData.ans:rowData;
+      const kv=typeof rowData==='object'?(rowData.ans!==undefined?String(rowData.ans):undefined):rowData;
         if(kv===undefined||kv===null||kv==='') return;
-        const pts=sec2Score||5;
+        const pts=typeof rowData==='object'?(parseFloat(rowData.score)||parseFloat(sec2Score)||1):(parseFloat(sec2Score)||1);
         rawMax+=pts;
         const dv=det.section2?.[sub]?.[row]?.digit||'BLANK';
         const conf=det.section2?.[sub]?.[row]?.confidence||0;
@@ -871,11 +871,43 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
 
   const [registered, setRegistered] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotCode, setForgotCode] = useState('');
+  const [forgotNewPass, setForgotNewPass] = useState('');
+  const [forgotStep, setForgotStep] = useState(1);
+  const [forgotErr, setForgotErr] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotDone, setForgotDone] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState('');
   const [verifyCode, setVerifyCode] = useState('');
   const [verifyErr, setVerifyErr] = useState('');
   const [verifyLoading, setVerifyLoading] = useState(false);
   
+  async function handleForgotSend() {
+    if (!forgotEmail) return;
+    setForgotLoading(true); setForgotErr('');
+    try {
+      const d = await fetch('/api/forgot-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:forgotEmail})}).then(async r=>{
+        const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
+      });
+      setForgotStep(2);
+    } catch(e) { setForgotErr(e.message); }
+    setForgotLoading(false);
+  }
+
+  async function handleForgotReset() {
+    if (!forgotCode||!forgotNewPass) return;
+    setForgotLoading(true); setForgotErr('');
+    try {
+      const d = await fetch('/api/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:forgotEmail,code:forgotCode,password:forgotNewPass})}).then(async r=>{
+        const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
+      });
+      setForgotDone(true);
+    } catch(e) { setForgotErr(e.message); }
+    setForgotLoading(false);
+  }
+
   async function handleTeacherLogin() {
     if (!email||!pass) return;
     setLoading(true); setErr('');
@@ -1064,7 +1096,52 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
                 </button>
               ))}
             </div>
-            {err && <div style={{color:'#dc2626',fontSize:13,background:'#fef2f2',padding:'8px 12px',borderRadius:8,border:'1px solid #fecaca',marginBottom:12,textAlign:'center'}}>{err}</div>}
+            {forgotMode ? (
+              <div>
+                {forgotDone ? (
+                  <div style={{textAlign:'center',padding:'8px 0'}}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{display:'block',margin:'0 auto 12px'}}><path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <div style={{fontWeight:800,fontSize:15,marginBottom:4}}>Нууц үг амжилттай солигдлоо!</div>
+                    <button onClick={()=>{setForgotMode(false);setForgotStep(1);setForgotDone(false);setForgotEmail('');setForgotCode('');setForgotNewPass('');setTab('login');}}
+                      style={{width:'100%',padding:12,background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginTop:8}}>
+                      Нэвтрэх
+                    </button>
+                  </div>
+                ) : forgotStep===1 ? (
+                  <div>
+                    <div style={{fontWeight:800,fontSize:15,marginBottom:4}}>Нууц үг сэргээх</div>
+                    <div style={{fontSize:12,color:'#64748b',marginBottom:12}}>Email хаягаа оруулна уу</div>
+                    {forgotErr&&<div style={{color:'#dc2626',fontSize:12,background:'#fef2f2',padding:'6px 10px',borderRadius:6,marginBottom:8}}>{forgotErr}</div>}
+                    <input value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} placeholder="Email хаяг" type="email" style={inp}/>
+                    <button onClick={handleForgotSend} disabled={forgotLoading}
+                      style={{width:'100%',padding:12,background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8}}>
+                      {forgotLoading?'Илгээж байна...':'Код илгээх'}
+                    </button>
+                    <button onClick={()=>{setForgotMode(false);setForgotErr('');}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:12,width:'100%'}}>← Буцах</button>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{fontWeight:800,fontSize:15,marginBottom:4}}>Шинэ нууц үг тохируулах</div>
+                    <div style={{fontSize:12,color:'#64748b',marginBottom:12}}><b>{forgotEmail}</b> руу код илгээлээ. Spam шалгана уу.</div>
+                    {forgotErr&&<div style={{color:'#dc2626',fontSize:12,background:'#fef2f2',padding:'6px 10px',borderRadius:6,marginBottom:8}}>{forgotErr}</div>}
+                    <input value={forgotCode} onChange={e=>setForgotCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="6 оронтой код" maxLength={6} style={inp}/>
+                    <input value={forgotNewPass} onChange={e=>setForgotNewPass(e.target.value)} placeholder="Шинэ нууц үг" type="password" style={inp}/>
+                    <button onClick={handleForgotReset} disabled={forgotLoading||forgotCode.length!==6||!forgotNewPass}
+                      style={{width:'100%',padding:12,background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8,opacity:(forgotCode.length!==6||!forgotNewPass)?0.6:1}}>
+                      {forgotLoading?'Солиж байна...':'Нууц үг солих'}
+                    </button>
+                    <button onClick={()=>{setForgotStep(1);setForgotErr('');}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:12,width:'100%'}}>← Буцах</button>
+                  </div>
+                )}
+              </div>
+            ) : null}
+            {!forgotMode && err && <div style={{color:'#dc2626',fontSize:13,background:'#fef2f2',padding:'8px 12px',borderRadius:8,border:'1px solid #fecaca',marginBottom:12,textAlign:'center'}}>{err}</div>}
+            {!forgotMode&&tab==='login'&&(
+              <button onClick={()=>{setForgotMode(true);setForgotEmail(email);setForgotErr('');setForgotStep(1);setForgotDone(false);}}
+                style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:12,width:'100%',marginTop:4,textDecoration:'underline'}}>
+                Нууц үгээ мартсан?
+              </button>
+            )}
             {tab==='register'&&(
               <>
               <input value={name} onChange={e=>setName(e.target.value)} placeholder="Таны нэр (заавал биш)"
