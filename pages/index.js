@@ -2690,7 +2690,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
 function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
   const [filterClass, setFilterClass] = useState('');
   const allClasses = [...new Set(students.map(s=>s.class||'').filter(Boolean))].sort((a,b)=>a.localeCompare(b,'mn'));
-  const filtered = filterClass ? students.filter(s=>(s.class||')===filterClass) : students;
+  const filtered = filterClass ? students.filter(s=>(s.class||'')===filterClass) : students;
   if (!exam||!students.length) return <div style={{textAlign:'center',padding:80,color:'#94a3b8',fontWeight:600}}>Дүн шинжилгээнд хангалттай өгөгдөл байхгүй</div>;
   const n=filtered.length||1, ss=filtered.map(s=>s.scaled);
   const avg=(ss.reduce((a,b)=>a+b,0)/n).toFixed(1);
