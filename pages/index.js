@@ -753,7 +753,7 @@ function LandingPage({onEnter}) {
         <div style={{margin:'60px 0',textAlign:'center'}}>
           <div style={{background:'linear-gradient(135deg,#7f1d1d,#dc2626)',borderRadius:20,padding:'40px 32px',display:'inline-block',minWidth:300}}>
             <div style={{fontSize:14,opacity:.8,marginBottom:8,letterSpacing:2}}>ҮНЭ</div>
-            <div style={{fontSize:48,fontWeight:900,marginBottom:4}}>25,000₮</div>
+            <div style={{fontSize:48,fontWeight:900,marginBottom:4}}>9,900₮</div>
             <div style={{fontSize:15,opacity:.8,marginBottom:20}}>нэг сарын хязгааргүй ашиглалт</div>
             <button onClick={onEnter}
               style={{padding:'12px 32px',background:'white',color:'#dc2626',border:'none',borderRadius:10,fontSize:15,fontWeight:800,cursor:'pointer'}}>
@@ -784,7 +784,7 @@ function LandingPage({onEnter}) {
           <div style={{fontSize:14,color:'#94a3b8',marginBottom:28,textAlign:'center'}}>Хамгийн их асуудаг асуултууд</div>
           {[
             {q:'Ямар төхөөрөмжид ажилладаг вэ?', a:'Интернет холбоотой ямар ч төхөөрөмж дээр browser-ээр ажиллана. Суулгах шаардлагагүй.'},
-            {q:'Нэг сард хэдэн шалгалт шалгаж болох вэ?', a:'25,000₮-ийн тарифт хязгааргүй шалгалт шалгах боломжтой.'},
+            {q:'Нэг сард хэдэн шалгалт шалгаж болох вэ?', a:'9,900₮-ийн тарифт хязгааргүй шалгалт шалгах боломжтой.'},
             {q:'AI bubble detection хэр нарийвчлалтай вэ?', a:'Anthropic-ийн Claude AI ашиглан 90%+ нарийвчлалтайгаар таньдаг. Тодорхойгүй тохиолдолд гараар засах боломжтой.'},
             {q:'Өгөгдөл хаана хадгалагддаг вэ?', a:'Бүх өгөгдөл Neon cloud database-д найдвартай хадгалагдана. Өгөгдлийг гуравдагч этгээдэд дамжуулахгүй.'},
             {q:'Олон багш нэг платформ ашиглаж болох уу?', a:'Тийм. Багш бүр өөрийн бүртгэлтэй бөгөөд зөвхөн өөрийн шалгалт, сурагчдаа харна.'},
@@ -1074,7 +1074,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
                     <span style={{color:'#64748b',fontWeight:600}}>Эзэмшигч:</span>
                     <span style={{color:'#1e293b',fontWeight:700}}>М.Бямбадорж</span>
                     <span style={{color:'#64748b',fontWeight:600}}>Дүн:</span>
-                    <span style={{color:'#dc2626',fontWeight:900,fontSize:14}}>25,000 ₮ / сар</span>
+                    <span style={{color:'#dc2626',fontWeight:900,fontSize:14}}>9,900 ₮ / сар</span>
                     <span style={{color:'#64748b',fontWeight:600}}>Утга:</span>
                     <span style={{color:'#1e293b',fontWeight:700}}>Бүртгүүлсэн нэр, утасны дугаар</span>
                   </div>
