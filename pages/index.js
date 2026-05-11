@@ -131,16 +131,6 @@ function toScaled(earned,max){ return max>0?Math.round(earned/max*1000)/10:0; }
 // ── API helpers ───────────────────────────────────────────
 function getToken() { return typeof window!=='undefined'?localStorage.getItem('eyesh_token'):null; }
 
-function getDeviceId() {
-  if (typeof window==='undefined') return '';
-  let id = localStorage.getItem('eyesh_device_id');
-  if (!id) {
-    id = Date.now().toString(36) + Math.random().toString(36).slice(2);
-    localStorage.setItem('eyesh_device_id', id);
-  }
-  return id;
-}
-
 async function apiFetch(path, opts={}) {
   const token = getToken();
   const res = await fetch(path, {
@@ -169,7 +159,7 @@ async function callAI(payload) {
     body: JSON.stringify(payload),
   });
   const rawBody = await r.text();
-  if (!r.ok) throw new Error('AI API '+r.status+': '+rawBody.slice(0,300));
+  if (!r.ok) { const errMsg = rawBody.includes("credit") || rawBody.includes("too low") ? "AI шинжилгээ түр хугацаанд ажиллахгүй байна. Та шалгалт үүсгэх цэс рүү орж өөрөө шалгалтаа үүсгээрэй." : "AI API "+r.status+": "+rawBody.slice(0,200); throw new Error(errMsg); }
   const d = JSON.parse(rawBody);
   if (d.error) throw new Error(d.error.message+' ('+d.error.type+')');
   if (d.stop_reason==='max_tokens') throw new Error('max_tokens хэтэрлээ');
@@ -270,9 +260,9 @@ function calcScore(det, exam) {
       sec2Results[sub]={};
       SEC2_ROWS.forEach(row=>{
         const rowData=sec2Config?.[sub]?.[row];
-      const kv=typeof rowData==='object'?rowData.ans:rowData;
+      const kv=typeof rowData==='object'?(rowData.ans!==undefined?String(rowData.ans):undefined):rowData;
         if(kv===undefined||kv===null||kv==='') return;
-        const pts=typeof rowData==='object'?(rowData.score||sec2Score||1):(sec2Score||1);
+        const pts=typeof rowData==='object'?(parseFloat(rowData.score)||parseFloat(sec2Score)||1):(parseFloat(sec2Score)||1);
         rawMax+=pts;
         const dv=det.section2?.[sub]?.[row]?.digit||'BLANK';
         const conf=det.section2?.[sub]?.[row]?.confidence||0;
@@ -453,11 +443,10 @@ function ScoredPanel({scored, exam, onSave, onUpdateScored, onReset}) {
     results[qIdx] = r;
     // recalc totals from scratch
     let correct=0,wrong=0,blank=0;
-    results.forEach(x=>{ if(x.st==='ok')correct++; else if(x.st==='blank')blank++; else wrong++; });
-    const sec2Results = scored.sec2Results||{};
-    Object.values(sec2Results).flatMap(rows=>Object.values(rows)).forEach(x=>{ if(x.st==='ok')correct++; else if(x.st==='blank')blank++; else wrong++; });
+    const allSec2 = Object.values(scored.sec2Results||{}).flatMap(rows=>Object.values(rows));
+    [...results, ...allSec2].forEach(x=>{ if(x.st==='ok')correct++; else if(x.st==='blank')blank++; else wrong++; });
     const sec1earned = results.reduce((s,x)=>s+(x.pts||0),0);
-    const sec2earned = Object.values(sec2Results).flatMap(rows=>Object.values(rows)).reduce((s,x)=>s+(x.pts||0),0);
+    const sec2earned = allSec2.reduce((s,x)=>s+(x.pts||0),0);
     const totalEarned = sec1earned + sec2earned;
     const scaled = scored.rawMax>0?Math.round(totalEarned/scored.rawMax*1000)/10:0;
     onUpdateScored({...scored, sec1Results:results, correct, wrong, blank, rawEarned:totalEarned, scaled, grade:eyeshGrade(scaled)});
@@ -764,7 +753,7 @@ function LandingPage({onEnter}) {
         <div style={{margin:'60px 0',textAlign:'center'}}>
           <div style={{background:'linear-gradient(135deg,#7f1d1d,#dc2626)',borderRadius:20,padding:'40px 32px',display:'inline-block',minWidth:300}}>
             <div style={{fontSize:14,opacity:.8,marginBottom:8,letterSpacing:2}}>ҮНЭ</div>
-            <div style={{fontSize:48,fontWeight:900,marginBottom:4}}>25,000₮</div>
+            <div style={{fontSize:48,fontWeight:900,marginBottom:4}}>9,900₮</div>
             <div style={{fontSize:15,opacity:.8,marginBottom:20}}>нэг сарын хязгааргүй ашиглалт</div>
             <button onClick={onEnter}
               style={{padding:'12px 32px',background:'white',color:'#dc2626',border:'none',borderRadius:10,fontSize:15,fontWeight:800,cursor:'pointer'}}>
@@ -795,7 +784,7 @@ function LandingPage({onEnter}) {
           <div style={{fontSize:14,color:'#94a3b8',marginBottom:28,textAlign:'center'}}>Хамгийн их асуудаг асуултууд</div>
           {[
             {q:'Ямар төхөөрөмжид ажилладаг вэ?', a:'Интернет холбоотой ямар ч төхөөрөмж дээр browser-ээр ажиллана. Суулгах шаардлагагүй.'},
-            {q:'Нэг сард хэдэн шалгалт шалгаж болох вэ?', a:'25,000₮-ийн тарифт хязгааргүй шалгалт шалгах боломжтой.'},
+            {q:'Нэг сард хэдэн шалгалт шалгаж болох вэ?', a:'9,900₮-ийн тарифт хязгааргүй шалгалт шалгах боломжтой.'},
             {q:'AI bubble detection хэр нарийвчлалтай вэ?', a:'Anthropic-ийн Claude AI ашиглан 90%+ нарийвчлалтайгаар таньдаг. Тодорхойгүй тохиолдолд гараар засах боломжтой.'},
             {q:'Өгөгдөл хаана хадгалагддаг вэ?', a:'Бүх өгөгдөл Neon cloud database-д найдвартай хадгалагдана. Өгөгдлийг гуравдагч этгээдэд дамжуулахгүй.'},
             {q:'Олон багш нэг платформ ашиглаж болох уу?', a:'Тийм. Багш бүр өөрийн бүртгэлтэй бөгөөд зөвхөн өөрийн шалгалт, сурагчдаа харна.'},
@@ -881,12 +870,49 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
   const [loading, setLoading] = useState(false);
 
   const [registered, setRegistered] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotCode, setForgotCode] = useState('');
+  const [forgotNewPass, setForgotNewPass] = useState('');
+  const [forgotStep, setForgotStep] = useState(1);
+  const [forgotErr, setForgotErr] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotDone, setForgotDone] = useState(false);
+  const [verifyEmail, setVerifyEmail] = useState('');
+  const [verifyCode, setVerifyCode] = useState('');
+  const [verifyErr, setVerifyErr] = useState('');
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  
+  async function handleForgotSend() {
+    if (!forgotEmail) return;
+    setForgotLoading(true); setForgotErr('');
+    try {
+      const d = await fetch('/api/forgot-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:forgotEmail})}).then(async r=>{
+        const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
+      });
+      setForgotStep(2);
+    } catch(e) { setForgotErr(e.message); }
+    setForgotLoading(false);
+  }
+
+  async function handleForgotReset() {
+    if (!forgotCode||!forgotNewPass) return;
+    setForgotLoading(true); setForgotErr('');
+    try {
+      const d = await fetch('/api/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:forgotEmail,code:forgotCode,password:forgotNewPass})}).then(async r=>{
+        const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
+      });
+      setForgotDone(true);
+    } catch(e) { setForgotErr(e.message); }
+    setForgotLoading(false);
+  }
 
   async function handleTeacherLogin() {
     if (!email||!pass) return;
     setLoading(true); setErr('');
     try {
-      const d = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass,deviceId:getDeviceId()})}).then(async r=>{
+      const d = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})}).then(async r=>{
         const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
       });
       // Clear any leftover demo session data for non-demo users
@@ -911,7 +937,27 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
     setLoading(false);
   }
 
-  async function handleRegister() {
+  async function handleVerify() {
+    if (!verifyCode.trim()) return;
+    setVerifyLoading(true); setVerifyErr('');
+    try {
+      const d = await fetch('/api/verify-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:verifyEmail,code:verifyCode.trim()})}).then(async r=>{
+        const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
+      });
+      if (d.isAdmin) {
+        const d2 = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:verifyEmail,password:pass})}).then(r=>r.json());
+        localStorage.setItem('eyesh_token', d2.token);
+        localStorage.setItem('eyesh_teacher', JSON.stringify(d2.teacher));
+        onLogin(d2.teacher);
+      } else {
+        setVerifying(false);
+        setRegistered(true);
+      }
+    } catch(e) { setVerifyErr(e.message); }
+    setVerifyLoading(false);
+  }
+
+    async function handleRegister() {
     if (!email||!pass) return;
     setLoading(true); setErr('');
     try {
@@ -919,11 +965,13 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
         const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
       });
       if (d.isAdmin) {
-        // First user — auto active, login
         const d2 = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})}).then(r=>r.json());
         localStorage.setItem('eyesh_token', d2.token);
         localStorage.setItem('eyesh_teacher', JSON.stringify(d2.teacher));
         onLogin(d2.teacher);
+      } else if (d.needsVerification) {
+        setVerifyEmail(email);
+        setVerifying(true);
       } else {
         setRegistered(true);
       }
@@ -985,7 +1033,28 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
         {role==='teacher'&&(
           <>
             <button onClick={()=>{setRole(null);setErr('');setRegistered(false);}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:13,marginBottom:14,padding:0}}>← Буцах</button>
-            {registered ? (
+            {verifying ? (
+              <div style={{textAlign:'center',padding:'8px 0'}}>
+                <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
+                  <div style={{background:'#fee2e2',borderRadius:14,padding:12}}>
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
+                  </div>
+                </div>
+                <div style={{fontWeight:800,fontSize:15,color:'#1e293b',marginBottom:4}}>Email шалгана уу!</div>
+                <div style={{fontSize:12,color:'#64748b',marginBottom:8}}><b>{verifyEmail}</b> руу 6 оронтой код илгээлээ</div>
+                <div style={{fontSize:11,color:'#64748b',marginBottom:16,background:'#fef9c3',padding:'6px 10px',borderRadius:6,border:'1px solid #fde68a'}}>Хэрэв ирэхгүй бол spam/junk фолдероо шалгана уу</div>
+                {verifyErr && <div style={{color:'#dc2626',fontSize:12,background:'#fef2f2',padding:'6px 10px',borderRadius:6,marginBottom:10,textAlign:'center'}}>{verifyErr}</div>}
+                <input value={verifyCode} onChange={e=>setVerifyCode(e.target.value.replace(/\D/g,'').slice(0,6))}
+                  onKeyDown={e=>e.key==='Enter'&&handleVerify()}
+                  placeholder="000000" maxLength={6}
+                  style={{...inp,fontSize:22,textAlign:'center',letterSpacing:10,fontWeight:900,marginBottom:12}} />
+                <button onClick={handleVerify} disabled={verifyLoading||verifyCode.length!==6}
+                  style={{width:'100%',padding:12,background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8,opacity:verifyCode.length!==6?0.6:1}}>
+                  {verifyLoading&&<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>} Баталгаажуулах
+                </button>
+                <button onClick={()=>{setVerifying(false);setVerifyCode('');setVerifyErr('');}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Буцах</button>
+              </div>
+            ) : registered ? (
               <div style={{padding:'8px 0'}}>
                 <div style={{textAlign:'center',marginBottom:16}}>
                   <div style={{display:'flex',justifyContent:'center',marginBottom:10}}><div style={{background:'#fef3c7',borderRadius:14,padding:12}}><Ico d='M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z' size={40} color='#d97706'/></div></div>
@@ -1005,7 +1074,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
                     <span style={{color:'#64748b',fontWeight:600}}>Эзэмшигч:</span>
                     <span style={{color:'#1e293b',fontWeight:700}}>М.Бямбадорж</span>
                     <span style={{color:'#64748b',fontWeight:600}}>Дүн:</span>
-                    <span style={{color:'#dc2626',fontWeight:900,fontSize:14}}>25,000 ₮ / сар</span>
+                    <span style={{color:'#dc2626',fontWeight:900,fontSize:14}}>9,900 ₮ / сар</span>
                     <span style={{color:'#64748b',fontWeight:600}}>Утга:</span>
                     <span style={{color:'#1e293b',fontWeight:700}}>Бүртгүүлсэн нэр, утасны дугаар</span>
                   </div>
@@ -1027,7 +1096,52 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
                 </button>
               ))}
             </div>
-            {err && <div style={{color:'#dc2626',fontSize:13,background:'#fef2f2',padding:'8px 12px',borderRadius:8,border:'1px solid #fecaca',marginBottom:12,textAlign:'center'}}>{err}</div>}
+            {forgotMode ? (
+              <div>
+                {forgotDone ? (
+                  <div style={{textAlign:'center',padding:'8px 0'}}>
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{display:'block',margin:'0 auto 12px'}}><path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                    <div style={{fontWeight:800,fontSize:15,marginBottom:4}}>Нууц үг амжилттай солигдлоо!</div>
+                    <button onClick={()=>{setForgotMode(false);setForgotStep(1);setForgotDone(false);setForgotEmail('');setForgotCode('');setForgotNewPass('');setTab('login');}}
+                      style={{width:'100%',padding:12,background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginTop:8}}>
+                      Нэвтрэх
+                    </button>
+                  </div>
+                ) : forgotStep===1 ? (
+                  <div>
+                    <div style={{fontWeight:800,fontSize:15,marginBottom:4}}>Нууц үг сэргээх</div>
+                    <div style={{fontSize:12,color:'#64748b',marginBottom:12}}>Email хаягаа оруулна уу</div>
+                    {forgotErr&&<div style={{color:'#dc2626',fontSize:12,background:'#fef2f2',padding:'6px 10px',borderRadius:6,marginBottom:8}}>{forgotErr}</div>}
+                    <input value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} placeholder="Email хаяг" type="email" style={inp}/>
+                    <button onClick={handleForgotSend} disabled={forgotLoading}
+                      style={{width:'100%',padding:12,background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8}}>
+                      {forgotLoading?'Илгээж байна...':'Код илгээх'}
+                    </button>
+                    <button onClick={()=>{setForgotMode(false);setForgotErr('');}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:12,width:'100%'}}>← Буцах</button>
+                  </div>
+                ) : (
+                  <div>
+                    <div style={{fontWeight:800,fontSize:15,marginBottom:4}}>Шинэ нууц үг тохируулах</div>
+                    <div style={{fontSize:12,color:'#64748b',marginBottom:12}}><b>{forgotEmail}</b> руу код илгээлээ. Spam шалгана уу.</div>
+                    {forgotErr&&<div style={{color:'#dc2626',fontSize:12,background:'#fef2f2',padding:'6px 10px',borderRadius:6,marginBottom:8}}>{forgotErr}</div>}
+                    <input value={forgotCode} onChange={e=>setForgotCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="6 оронтой код" maxLength={6} style={inp}/>
+                    <input value={forgotNewPass} onChange={e=>setForgotNewPass(e.target.value)} placeholder="Шинэ нууц үг" type="password" style={inp}/>
+                    <button onClick={handleForgotReset} disabled={forgotLoading||forgotCode.length!==6||!forgotNewPass}
+                      style={{width:'100%',padding:12,background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8,opacity:(forgotCode.length!==6||!forgotNewPass)?0.6:1}}>
+                      {forgotLoading?'Солиж байна...':'Нууц үг солих'}
+                    </button>
+                    <button onClick={()=>{setForgotStep(1);setForgotErr('');}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:12,width:'100%'}}>← Буцах</button>
+                  </div>
+                )}
+              </div>
+            ) : null}
+            {!forgotMode && err && <div style={{color:'#dc2626',fontSize:13,background:'#fef2f2',padding:'8px 12px',borderRadius:8,border:'1px solid #fecaca',marginBottom:12,textAlign:'center'}}>{err}</div>}
+            {!forgotMode&&tab==='login'&&(
+              <button onClick={()=>{setForgotMode(true);setForgotEmail(email);setForgotErr('');setForgotStep(1);setForgotDone(false);}}
+                style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:12,width:'100%',marginTop:4,textDecoration:'underline'}}>
+                Нууц үгээ мартсан?
+              </button>
+            )}
             {tab==='register'&&(
               <>
               <input value={name} onChange={e=>setName(e.target.value)} placeholder="Таны нэр (заавал биш)"
@@ -1123,7 +1237,6 @@ function AdminPage({dark:d=false}) {
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontWeight:700,fontSize:14,color:text}}>{t.name||'—'}</div>
           <div style={{fontSize:12,color:muted}}>{t.email}</div>
-          {t.phone&&<div style={{fontSize:11,color:muted}}>📱 {t.phone}</div>}
           <div style={{fontSize:11,color:muted}}>{new Date(t.created_at).toLocaleDateString('mn-MN')}</div>
         </div>
         <div style={{display:'flex',gap:6,flexShrink:0}}>
@@ -1413,7 +1526,7 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
                 {SEC2_ROWS.map(row=>(
                   <div key={row} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 8px',background:'#f8fafc',borderRadius:8,border:'1px solid #e2e8f0'}}>
                     <span style={{fontSize:12,fontWeight:700,color:'#94a3b8',minWidth:14}}>{row}</span>
-                    <input type="text" maxLength={1} value={sec2Keys[sub]?.[row]?.ans||sec2Keys[sub]?.[row]||''} 
+                    <input type="text" maxLength={1} value={typeof sec2Keys[sub]?.[row]==='object'?(sec2Keys[sub][row].ans||''):(sec2Keys[sub]?.[row]||'')} 
                       onChange={e=>{const v=e.target.value.replace(/[^0-9]/g,'');setSec2Keys(k=>({...k,[sub]:{...k[sub],[row]:{...(typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''}),ans:v}}}));}}
                       placeholder="0-9" style={{width:44,padding:'5px 6px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,outline:'none',textAlign:'center'}} />
                     <span style={{fontSize:11,color:'#94a3b8'}}>оноо:</span>
@@ -1799,17 +1912,17 @@ function UploadPage({exam, students, onAddStudent}) {
       sec2Results[sub]={};
       SEC2_ROWS.forEach(row=>{
         const rowData=exam.sec2Config?.[sub]?.[row];
-        const kv=typeof rowData==='object'?rowData.ans:rowData;
+        if(rowData===undefined||rowData===null||rowData==='') return;
+        const kv=typeof rowData==='object'?(rowData.ans!==undefined?String(rowData.ans):undefined):rowData;
         if(kv===undefined||kv===null||kv==='') return;
-        const rowPts=typeof rowData==='object'?(rowData.score||exam.sec2Score||1):(exam.sec2Score||1);
+        const rowPts=typeof rowData==='object'?(parseFloat(rowData.score)||parseFloat(exam.sec2Score)||1):(parseFloat(exam.sec2Score)||1);
         sec2Results[sub][row]={sel:'BLANK',key:kv,st:'blank',pts:0,max:rowPts};
       });
     });
-    const rawMax=(exam.sec1Scores?.length
-      ? exam.sec1Scores.reduce((s,v)=>s+(v||1),0)
-      : exam.sec1Count||0)+
+    const rawMax=sec1Results.reduce((s,r)=>s+(r.max||1),0)+
       Object.values(sec2Results).flatMap(r=>Object.values(r)).reduce((s,r)=>s+(r.max||0),0);
-    setScored({correct:0,wrong:0,blank:exam.sec1Count,rawEarned:0,rawMax,scaled:0,grade:eyeshGrade(0),sec1Results,sec2Results,needsReview:false});
+    const totalBlank = sec1Results.length + Object.values(sec2Results).flatMap(r=>Object.values(r)).length;
+    setScored({correct:0,wrong:0,blank:totalBlank,rawEarned:0,rawMax,scaled:0,grade:eyeshGrade(0),sec1Results,sec2Results,needsReview:false});
     setMode('manual');
   }
 
@@ -2577,8 +2690,8 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
 // ── Analytics Page ────────────────────────────────────────
 function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
   const [filterClass, setFilterClass] = useState('');
-  const allClasses = [...new Set(students.map(s=>s.code?.split('-')?.[0]||'').filter(Boolean))].sort();
-  const filtered = filterClass ? students.filter(s=>(s.code||'').startsWith(filterClass)) : students;
+  const allClasses = [...new Set(students.map(s=>s.class||'').filter(Boolean))].sort((a,b)=>a.localeCompare(b,'mn'));
+  const filtered = filterClass ? students.filter(s=>(s.class||'')===filterClass) : students;
   if (!exam||!students.length) return <div style={{textAlign:'center',padding:80,color:'#94a3b8',fontWeight:600}}>Дүн шинжилгээнд хангалттай өгөгдөл байхгүй</div>;
   const n=filtered.length||1, ss=filtered.map(s=>s.scaled);
   const avg=(ss.reduce((a,b)=>a+b,0)/n).toFixed(1);
@@ -2827,7 +2940,7 @@ function StudentAccountsPage({dark:d=false}) {
       const parts = l.split(/[,\t]+/);
       // Format: нэр, анги (код хоосон бол автоматаар үүснэ)
       const name = parts[0]?.trim()||'';
-      const cls  = (parts[1]?.trim()||'').toUpperCase();
+      const cls  = parts[1]?.trim()||'';
       const all  = new Set([...existingCodes, ...usedCodes]);
       const code = genStudentCode(all);
       usedCodes.add(code);
@@ -2850,7 +2963,7 @@ function StudentAccountsPage({dark:d=false}) {
     const code = genStudentCode(existingCodes);
     setAdding(true);
     try {
-      await apiFetch('/api/student-accounts', {method:'POST', body:{id:uid(), code, name:singleName.trim(), class:singleClass.trim().toUpperCase(), createdAt:new Date().toISOString()}});
+      await apiFetch('/api/student-accounts', {method:'POST', body:{id:uid(), code, name:singleName.trim(), class:singleClass.trim(), createdAt:new Date().toISOString()}});
       setSingleName(''); setSingleClass('');
       loadAccounts();
     } catch(e) { setMsg('Алдаа: '+e.message); }
@@ -3366,10 +3479,7 @@ export default function App() {
               style={{padding:'5px 10px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,fontSize:11,color:d?'#e2e8f0':'#374151',fontWeight:700,cursor:'pointer'}} className="hide-mobile">
               {lang==='mn'?'🇬🇧':'🇲🇳'}
             </button>
-            <button onClick={async()=>{
-              try { await apiFetch('/api/logout',{method:'POST',body:{deviceId:getDeviceId()}}); } catch(e){}
-              localStorage.removeItem('eyesh_token');localStorage.removeItem('eyesh_teacher');setAuthed(false);setTeacher(null);
-            }}
+            <button onClick={()=>{localStorage.removeItem('eyesh_token');localStorage.removeItem('eyesh_teacher');setAuthed(false);setTeacher(null);}}
               style={{padding:'5px 10px',background:'#fee2e2',border:'none',borderRadius:8,fontSize:11,color:'#dc2626',fontWeight:700,cursor:'pointer'}}>
               {t.logout}
             </button>
