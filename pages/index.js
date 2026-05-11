@@ -222,14 +222,14 @@ PART A — Extract from the document:
 1. versions_found: list of exam versions (e.g. ["А","Б","В","Г"])
 2. scores: per-question score AND topic: [{"q":1,"score":2,"topic":"Алгебр"},...]
    - Topics MUST be one of: ${TOPICS.join(', ')}
-3. sec2_score_per_row: score per row in section 2 (usually 5)
+3. sec2_score_per_row: default per-row score in section 2 if uniform (usually 1)
 
 PART B — Solve ALL questions for ALL versions:
 - section1: {"А":[{"q":1,"answer":"B","confidence":90,"reasoning":"brief"},...],...}
 - section2: {"А":{"2.1":{"a":{"digit":"3","confidence":90},...},...},...}
 
 Return ONLY valid JSON:
-{"versions_found":["А","Б"],"subject":"${subject}","scores":[{"q":1,"score":2,"topic":"Алгебр"}],"sec2_score_per_row":5,"section1":{"А":[{"q":1,"answer":"B","confidence":90,"reasoning":""}]},"section2":{},"notes":""}`;
+{"versions_found":["А","Б"],"subject":"${subject}","scores":[{"q":1,"score":2,"topic":"Алгебр"}],"sec2_score_per_row":1,"section1":{"А":[{"q":1,"answer":"B","confidence":90,"reasoning":""}]},"section2":{},"notes":""}`;
   const rawTxt = await callAI({model:'claude-sonnet-4-20250514',max_tokens:16000,messages:[{role:'user',content:[contentBlock,{type:'text',text:prompt}]}]});
   const cleaned = rawTxt.replace(/```json/g,'').replace(/```/g,'').trim();
   const fb=cleaned.indexOf('{'), lb=cleaned.lastIndexOf('}');
@@ -262,7 +262,10 @@ function calcScore(det, exam) {
         const rowData=sec2Config?.[sub]?.[row];
       const kv=typeof rowData==='object'?(rowData.ans!==undefined?String(rowData.ans):undefined):rowData;
         if(kv===undefined||kv===null||kv==='') return;
-        const pts=typeof rowData==='object'?(parseFloat(rowData.score)||parseFloat(sec2Score)||1):(parseFloat(sec2Score)||1);
+        // Default 1 (per row) — sec2Score хэрэглэхгүй (хуучин буруу 5 default-аас зайлсхийнэ)
+        const pts=typeof rowData==='object'
+          ?(rowData.score!=null?parseFloat(rowData.score):(typeof rowData==='string'?(parseFloat(sec2Score)||1):1))
+          :(parseFloat(sec2Score)||1);
         rawMax+=pts;
         const dv=det.section2?.[sub]?.[row]?.digit||'BLANK';
         const conf=det.section2?.[sub]?.[row]?.confidence||0;
@@ -436,18 +439,18 @@ function ScoredPanel({scored, exam, onSave, onUpdateScored, onReset}) {
     const r = {...results[qIdx]};
     const key = exam?.sec1Key?.[qIdx]||'';
     const pts = exam?.sec1Scores?.[qIdx]||1;
+    const oldPts = r.st==='ok'?pts:0;
     r.sel = newSel;
-    if (newSel==='BLANK') { r.st='blank'; r.pts=0; }
-    else if (newSel===key) { r.st='ok'; r.pts=pts; }
-    else { r.st='ng'; r.pts=0; }
+    if (newSel==='BLANK') r.st='blank';
+    else if (newSel===key) r.st='ok';
+    else r.st='ng';
+    const newPts = r.st==='ok'?pts:0;
     results[qIdx] = r;
-    // recalc totals from scratch
-    let correct=0,wrong=0,blank=0;
-    const allSec2 = Object.values(scored.sec2Results||{}).flatMap(rows=>Object.values(rows));
-    [...results, ...allSec2].forEach(x=>{ if(x.st==='ok')correct++; else if(x.st==='blank')blank++; else wrong++; });
-    const sec1earned = results.reduce((s,x)=>s+(x.pts||0),0);
-    const sec2earned = allSec2.reduce((s,x)=>s+(x.pts||0),0);
-    const totalEarned = sec1earned + sec2earned;
+    // recalc totals
+    let correct=0,wrong=0,blank=0,rawEarned=scored.rawEarned - oldPts + newPts;
+    results.forEach(x=>{ if(x.st==='ok')correct++; else if(x.st==='blank')blank++; else wrong++; });
+    const sec2earned = Object.values(scored.sec2Results||{}).flatMap(rows=>Object.values(rows)).reduce((s,x)=>s+(x.pts||0),0);
+    const totalEarned = results.reduce((s,x)=>s+(x.pts||0),0) + sec2earned;
     const scaled = scored.rawMax>0?Math.round(totalEarned/scored.rawMax*1000)/10:0;
     onUpdateScored({...scored, sec1Results:results, correct, wrong, blank, rawEarned:totalEarned, scaled, grade:eyeshGrade(scaled)});
     setEditIdx(null);
@@ -1412,7 +1415,7 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
   const [keys,setKeys]=useState(()=>Array.from({length:cnt0},(_,i)=>prefill?.sec1Key?.[i]||'A'));
   const [scores,setScores]=useState(()=>Array.from({length:cnt0},(_,i)=>prefill?.sec1Scores?.[i]||2));
   const [topics,setTopics]=useState(()=>Array.from({length:cnt0},(_,i)=>prefill?.topics?.[i]||getTopics(prefill?.subject||SUBJECTS[0])[0]));
-  const [sec2Score,setSec2Score]=useState(prefill?.sec2Score||5);
+  const [sec2Score,setSec2Score]=useState(prefill?.sec2Score||1);
   const [sec2EnabledSubs,setSec2EnabledSubs]=useState(()=>SEC2_SUBS.map(s=>prefill?.sec2Config?.[s]?._enabled??true));
   const [sec2Keys,setSec2Keys]=useState(()=>{const o={};SEC2_SUBS.forEach(s=>{o[s]={};SEC2_ROWS.forEach(r=>{o[s][r]=prefill?.sec2Config?.[s]?.[r]||'';});});return o;});
   const [bulkScore,setBulkScore]=useState(2);
@@ -1915,14 +1918,16 @@ function UploadPage({exam, students, onAddStudent}) {
         if(rowData===undefined||rowData===null||rowData==='') return;
         const kv=typeof rowData==='object'?(rowData.ans!==undefined?String(rowData.ans):undefined):rowData;
         if(kv===undefined||kv===null||kv==='') return;
-        const rowPts=typeof rowData==='object'?(parseFloat(rowData.score)||parseFloat(exam.sec2Score)||1):(parseFloat(exam.sec2Score)||1);
+        // Default 1 (per row) — exam.sec2Score-г string-format-д л хэрэглэнэ
+        const rowPts=typeof rowData==='object'
+          ?(rowData.score!=null?parseFloat(rowData.score):1)
+          :(parseFloat(exam.sec2Score)||1);
         sec2Results[sub][row]={sel:'BLANK',key:kv,st:'blank',pts:0,max:rowPts};
       });
     });
-    const rawMax=sec1Results.reduce((s,r)=>s+(r.max||1),0)+
-      Object.values(sec2Results).flatMap(r=>Object.values(r)).reduce((s,r)=>s+(r.max||0),0);
-    const totalBlank = sec1Results.length + Object.values(sec2Results).flatMap(r=>Object.values(r)).length;
-    setScored({correct:0,wrong:0,blank:totalBlank,rawEarned:0,rawMax,scaled:0,grade:eyeshGrade(0),sec1Results,sec2Results,needsReview:false});
+    const rawMax=(exam.sec1Scores||[]).reduce((s,v)=>s+v,0)+
+      Object.values(sec2Results).flatMap(r=>Object.values(r)).reduce((s,r)=>s+r.max,0);
+    setScored({correct:0,wrong:0,blank:exam.sec1Count,rawEarned:0,rawMax,scaled:0,grade:eyeshGrade(0),sec1Results,sec2Results,needsReview:false});
     setMode('manual');
   }
 
@@ -2817,7 +2822,7 @@ function MaterialPage({onPrefill}) {
     const keys = Array.from({length:cnt},(_,i)=>sec1.find(q=>q.q===i+1)?.answer||'A');
     const prefill = {
       sec1Key:keys, sec1Count:cnt, subject,
-      useSec2, sec2Score:result.sec2_score_per_row||5,
+      useSec2, sec2Score:result.sec2_score_per_row||1,
       sec1Scores:Array.from({length:cnt},(_,i)=>{const s=result.scores?.find(s=>s.q===i+1);return s?.score||2;}),
       topics:Array.from({length:cnt},(_,i)=>{const s=result.scores?.find(s=>s.q===i+1);const tl=getTopics(subject);return tl.includes(s?.topic)?s.topic:tl[0];}),
     };
@@ -3109,14 +3114,18 @@ function StudentPortal({student, onLogout}) {
         if(!sec2Config?.[sub]?._enabled) return;
         sec2Results[sub]={};
         SEC2_ROWS.forEach(row=>{
-          const kv=sec2Config[sub][row];
+          const rowData=sec2Config[sub][row];
+          if(rowData===undefined||rowData===null||rowData==='') return;
+          // Хоёр форматыг дэмжих
+          const isObj=typeof rowData==='object';
+          const kv=isObj?rowData.ans:rowData;
           if(kv===undefined||kv===null||kv==='') return;
-          const rowCfg=typeof sec2Config[sub][row]==='object'?sec2Config[sub][row]:null;
-          const pts=rowCfg?.score||sec2Score||1; rawMax+=pts;
+          const pts=isObj?(rowData.score!=null?parseFloat(rowData.score):1):(parseFloat(sec2Score)||1);
+          rawMax+=pts;
           const dv=sec2Sel[sub]?.[row]||'BLANK';
-          if(dv==='BLANK'||dv===''){wrong++;blank++;sec2Results[sub][row]={sel:'BLANK',key:'?',st:'blank',pts:0,max:pts};}
-          else if(String(dv)===String(kv)){correct++;rawEarned+=pts;sec2Results[sub][row]={sel:dv,key:'?',st:'ok',pts,max:pts};}
-          else{wrong++;sec2Results[sub][row]={sel:dv,key:'?',st:'ng',pts:0,max:pts};}
+          if(dv==='BLANK'||dv===''){wrong++;blank++;sec2Results[sub][row]={sel:'BLANK',key:kv,st:'blank',pts:0,max:pts};}
+          else if(String(dv)===String(kv)){correct++;rawEarned+=pts;sec2Results[sub][row]={sel:dv,key:kv,st:'ok',pts,max:pts};}
+          else{wrong++;sec2Results[sub][row]={sel:dv,key:kv,st:'ng',pts:0,max:pts};}
         });
       });
     }

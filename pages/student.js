@@ -88,9 +88,18 @@ function calcScore(det, exam) {
       if(!subCfg?._enabled) return;
       sec2Results[sub]={};
       SEC2_ROWS.forEach(row=>{
-        const kv=subCfg?.[row];
-        if(kv===undefined||kv===null||kv==='') return;
-        const pts=sec2Score||5;
+        const cfgRow=subCfg?.[row];
+        if(cfgRow==null||cfgRow==='') return;
+        // Support both legacy (string) and new ({ans, score?}) formats
+        let kv, pts;
+        if(typeof cfgRow==='string'){
+          kv=cfgRow;
+          pts=(sec2Score!=null)?+sec2Score:1;
+        } else {
+          kv=cfgRow.ans;
+          if(kv===undefined||kv===null||kv==='') return;
+          pts=(cfgRow.score!=null)?+cfgRow.score:1;
+        }
         rawMax+=pts;
         const dv=det.section2?.[sub]?.[row]?.digit||'BLANK';
         if(dv==='BLANK'){blank++;sec2Results[sub][row]={sel:dv,key:kv,st:'blank',pts:0,max:pts};}
