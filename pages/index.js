@@ -1317,6 +1317,12 @@ function AdminPage({dark:d=false}) {
 
 // ── Home Page ─────────────────────────────────────────────
 function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onNavigate, onEditExam, dark:d=false}) {
+  // Subject filter — group exams by subject
+  const [filterSubject, setFilterSubject] = useState('all');
+  const examSubjects = [...new Set(exams.map(e=>e.subject||'Бусад').filter(Boolean))].sort((a,b)=>a.localeCompare(b,'mn'));
+  const subjectCounts = examSubjects.reduce((m,s)=>{m[s]=exams.filter(e=>(e.subject||'Бусад')===s).length;return m;},{});
+  const filteredExams = filterSubject==='all' ? exams : exams.filter(e=>(e.subject||'Бусад')===filterSubject);
+
   // Stats for currently selected exam (or all if none selected)
   const examStudents = currentExam ? students.filter(s=>s.examId===currentExam.id) : students;
   const avgScaled = examStudents.length ? (examStudents.reduce((a,b)=>a+b.scaled,0)/examStudents.length).toFixed(1) : '—';
@@ -1367,9 +1373,24 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
           <div style={{fontSize:16,fontWeight:600,marginBottom:6}}>Шалгалт байхгүй байна</div>
           <button onClick={()=>onNavigate('create')} style={{marginTop:12,padding:'10px 22px',background:'#dc2626',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>+ Шалгалт Үүсгэх</button>
         </div>
-      ):(
+      ):(<>
+        {/* Subject filter tabs */}
+        {examSubjects.length > 1 && (
+          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14,padding:'8px 4px',borderBottom:'1px solid '+(d?'#334155':'#e2e8f0')}}>
+            <button onClick={()=>setFilterSubject('all')}
+              style={{padding:'8px 14px',background:filterSubject==='all'?'#dc2626':(d?'#334155':'#f1f5f9'),color:filterSubject==='all'?'white':(d?'#cbd5e1':'#475569'),border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+              Бүгд ({exams.length})
+            </button>
+            {examSubjects.map(sub=>(
+              <button key={sub} onClick={()=>setFilterSubject(sub)}
+                style={{padding:'8px 14px',background:filterSubject===sub?'#dc2626':(d?'#334155':'#f1f5f9'),color:filterSubject===sub?'white':(d?'#cbd5e1':'#475569'),border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+                {sub} ({subjectCounts[sub]})
+              </button>
+            ))}
+          </div>
+        )}
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(270px,1fr))',gap:12}}>
-          {exams.map(exam=>{
+          {filteredExams.map(exam=>{
             const es=students.filter(s=>s.examId===exam.id);
             const avgS=es.length?(es.reduce((a,b)=>a+b.scaled,0)/es.length).toFixed(1):null;
             const act=currentExam?.id===exam.id;
@@ -1400,7 +1421,7 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
             );
           })}
         </div>
-      )}
+      </>)}
     </div>
   );
 }
@@ -2366,40 +2387,52 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
     } catch(e) { setZipErr(e.message||'CSV импортлоход алдаа'); }
     setZipBusy(false);
   }
-  // ── Sec2 manual entry ──
-  const [sec2Edit, setSec2Edit] = useState(null); // student object or null
+  // ── Student edit modal (Sec1 + Sec2) ──
+  const [editStu, setEditStu] = useState(null); // student object or null
+  const [sec1Vals, setSec1Vals] = useState([]);
   const [sec2Vals, setSec2Vals] = useState({});
-  const [sec2Busy, setSec2Busy] = useState(false);
-  const [sec2Err, setSec2Err] = useState('');
-  function openSec2(student) {
-    // seed from existing sec2_results
-    const init = {};
+  const [editBusy, setEditBusy] = useState(false);
+  const [editErr, setEditErr] = useState('');
+  const [editTab, setEditTab] = useState('sec1');
+  function openEdit(student, defaultTab='sec1') {
+    // Sec1 — seed from existing answers
+    const N = exam.sec1Count || (exam.sec1Key||[]).length || 36;
+    const byQ = {};
+    (student.sec1Results||[]).forEach(r=>{ if (r?.q) byQ[r.q] = r.sel; });
+    const s1 = [];
+    for (let i = 0; i < N; i++) {
+      const v = byQ[i+1];
+      s1.push((v && v !== 'BLANK') ? String(v) : '');
+    }
+    // Sec2 — seed from existing answers
+    const s2 = {};
     const cfg = exam.sec2Config || {};
     ['2.1','2.2','2.3','2.4'].forEach(sub=>{
       if (!cfg[sub]?._enabled) return;
-      init[sub] = {};
+      s2[sub] = {};
       ['a','b','c','d','e','f','g','h'].forEach(rk=>{
         const item = cfg[sub][rk];
         if (!item) return;
         const ans = typeof item==='object'?item.ans:item;
         if (ans===undefined||ans===null||ans==='') return;
         const cur = student.sec2Results?.[sub]?.[rk]?.sel;
-        init[sub][rk] = (cur && cur!=='BLANK') ? String(cur) : '';
+        s2[sub][rk] = (cur && cur!=='BLANK') ? String(cur) : '';
       });
     });
-    setSec2Vals(init); setSec2Err(''); setSec2Edit(student);
+    setSec1Vals(s1); setSec2Vals(s2); setEditErr(''); setEditTab(defaultTab); setEditStu(student);
   }
-  async function saveSec2() {
-    if (!sec2Edit) return;
-    setSec2Busy(true); setSec2Err('');
+  async function saveEdit() {
+    if (!editStu) return;
+    setEditBusy(true); setEditErr('');
     try {
       await apiFetch('/api/students/sec2', {
-        method:'PATCH', body:{ studentId: sec2Edit.id, sec2: sec2Vals }
+        method:'PATCH',
+        body: { studentId: editStu.id, sec1: sec1Vals, sec2: sec2Vals }
       });
       if (onReload) await onReload();
-      setSec2Edit(null);
-    } catch(e) { setSec2Err(e.message||'Хадгалахад алдаа'); }
-    setSec2Busy(false);
+      setEditStu(null);
+    } catch(e) { setEditErr(e.message||'Хадгалахад алдаа'); }
+    setEditBusy(false);
   }
 
   function exportStudentPDF(student) {
@@ -2711,7 +2744,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
           <table style={{width:'100%',borderCollapse:'collapse'}}>
             <thead>
               <tr style={{background:d?'#0f172a':'#f8fafc',borderBottom:'2px solid '+(d?'#334155':'#e2e8f0')}}>
-                {['#','Нэр','Код','Хув.','Зөв','Буруу','Хоосон','Гүйцэтгэл','Sec2','PDF',''].map(h=>(
+                {['#','Нэр','Код','Хув.','Зөв','Буруу','Хоосон','Гүйцэтгэл','Засах','PDF',''].map(h=>(
                   <th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:12,fontWeight:700,color:'#64748b'}}>{h}</th>
                 ))}
               </tr>
@@ -2730,10 +2763,8 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
                     <td style={{padding:'10px 14px',fontSize:13,color:'#94a3b8'}}>{s.blank}</td>
                     <td style={{padding:'10px 14px',fontSize:16,fontWeight:800,color:g.c}}>{s.scaled}%</td>
                     <td style={{padding:'10px 14px'}}>
-                      {exam.useSec2 && (
-                        <button onClick={()=>openSec2(s)}
-                          style={{padding:'3px 8px',background:'#dbeafe',border:'none',borderRadius:6,fontSize:11,color:'#1e40af',cursor:'pointer',fontWeight:700}}>✏️ Sec2</button>
-                      )}
+                      <button onClick={()=>openEdit(s,'sec1')}
+                        style={{padding:'3px 8px',background:'#dbeafe',border:'none',borderRadius:6,fontSize:11,color:'#1e40af',cursor:'pointer',fontWeight:700}}>✏️ Засах</button>
                     </td>
                     <td style={{padding:'10px 14px'}}>
                       <button onClick={()=>exportStudentPDF(s)}
@@ -2800,54 +2831,103 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
         </div>
       )}
 
-      {/* ── Sec2 manual entry modal ── */}
-      {sec2Edit && (
-        <div onClick={()=>!sec2Busy&&setSec2Edit(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,padding:20}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:d?'#1e293b':'white',borderRadius:14,padding:24,maxWidth:720,width:'100%',maxHeight:'90vh',overflow:'auto'}}>
-            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+      {/* ── Student edit modal (Sec1 + Sec2) ── */}
+      {editStu && (
+        <div onClick={()=>!editBusy&&setEditStu(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,padding:20}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:d?'#1e293b':'white',borderRadius:14,padding:24,maxWidth:820,width:'100%',maxHeight:'90vh',overflow:'auto'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
               <h2 style={{margin:0,fontSize:18,fontWeight:800,color:d?'#f1f5f9':'#1e293b'}}>
-                ✏️ 2-р хэсэг — {sec2Edit.name} <span style={{fontSize:12,color:'#94a3b8',fontWeight:500}}>({sec2Edit.code})</span>
+                ✏️ {editStu.name} <span style={{fontSize:12,color:'#94a3b8',fontWeight:500}}>({editStu.code})</span>
               </h2>
-              <button onClick={()=>!sec2Busy&&setSec2Edit(null)} style={{border:'none',background:'none',fontSize:22,cursor:'pointer',color:'#94a3b8'}}>×</button>
+              <button onClick={()=>!editBusy&&setEditStu(null)} style={{border:'none',background:'none',fontSize:22,cursor:'pointer',color:'#94a3b8'}}>×</button>
             </div>
-            <div style={{fontSize:12,color:d?'#cbd5e1':'#64748b',marginBottom:14}}>
-              Сурагчийн оруулсан 0–9 цифрийг бичнэ үү. Хоосон үлдээвэл "blank".
-            </div>
-            <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:14}}>
-              {Object.keys(sec2Vals).sort().map(sub=>(
-                <div key={sub} style={{padding:12,border:'1px solid '+(d?'#334155':'#e2e8f0'),borderRadius:10,background:d?'#0f172a':'#f8fafc'}}>
-                  <div style={{fontWeight:800,fontSize:14,color:d?'#f1f5f9':'#1e293b',marginBottom:8}}>{sub}</div>
-                  <div style={{display:'grid',gridTemplateColumns:'auto 1fr auto',gap:6,alignItems:'center'}}>
-                    {Object.keys(sec2Vals[sub]).map(rk=>{
-                      const cfg = exam.sec2Config?.[sub]?.[rk];
-                      const ans = typeof cfg==='object'?cfg.ans:cfg;
-                      const pts = typeof cfg==='object'?(cfg.score!=null?cfg.score:1):(exam.sec2Score||1);
-                      return (
-                        <div key={rk} style={{display:'contents'}}>
-                          <div style={{fontSize:12,fontWeight:700,color:d?'#cbd5e1':'#64748b',width:18}}>{rk})</div>
-                          <input
-                            type="text" inputMode="numeric" pattern="[0-9]*" maxLength={1}
-                            value={sec2Vals[sub][rk]}
-                            onChange={e=>{
-                              const v = e.target.value.replace(/[^0-9]/g,'').slice(0,1);
-                              setSec2Vals(prev=>({...prev,[sub]:{...prev[sub],[rk]:v}}));
-                            }}
-                            style={{width:42,padding:'6px 8px',border:'1px solid '+(d?'#475569':'#cbd5e1'),borderRadius:6,textAlign:'center',fontWeight:700,fontSize:14,background:d?'#1e293b':'white',color:d?'#f1f5f9':'#1e293b'}}
-                          />
-                          <div style={{fontSize:11,color:'#94a3b8',whiteSpace:'nowrap'}}>зөв={ans} ({pts}о)</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              ))}
-            </div>
-            {sec2Err && <div style={{marginTop:10,padding:10,background:'#fee2e2',color:'#dc2626',borderRadius:8,fontSize:13}}>{sec2Err}</div>}
-            <div style={{display:'flex',gap:8,marginTop:18}}>
-              <button onClick={saveSec2} disabled={sec2Busy} style={{flex:1,padding:'12px 18px',background:'#16a34a',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:sec2Busy?'wait':'pointer',opacity:sec2Busy?0.6:1}}>
-                {sec2Busy?'Хадгалж байна...':'Хадгалах'}
+            {/* Tabs */}
+            <div style={{display:'flex',gap:4,marginBottom:14,borderBottom:'1px solid '+(d?'#334155':'#e2e8f0')}}>
+              <button onClick={()=>setEditTab('sec1')}
+                style={{padding:'8px 16px',background:editTab==='sec1'?(d?'#1e40af':'#dbeafe'):'transparent',color:editTab==='sec1'?(d?'#dbeafe':'#1e40af'):(d?'#94a3b8':'#64748b'),border:'none',borderBottom:editTab==='sec1'?'2px solid #1e40af':'2px solid transparent',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+                1-р хэсэг (A–E)
               </button>
-              <button onClick={()=>setSec2Edit(null)} disabled={sec2Busy} style={{padding:'12px 18px',background:'#e2e8f0',color:'#475569',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
+              {exam.useSec2 && (
+                <button onClick={()=>setEditTab('sec2')}
+                  style={{padding:'8px 16px',background:editTab==='sec2'?(d?'#1e40af':'#dbeafe'):'transparent',color:editTab==='sec2'?(d?'#dbeafe':'#1e40af'):(d?'#94a3b8':'#64748b'),border:'none',borderBottom:editTab==='sec2'?'2px solid #1e40af':'2px solid transparent',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+                  2-р хэсэг (0–9)
+                </button>
+              )}
+            </div>
+
+            {/* Section 1 */}
+            {editTab==='sec1' && (
+              <div>
+                <div style={{fontSize:12,color:d?'#cbd5e1':'#64748b',marginBottom:10}}>
+                  Асуулт бүрд A/B/C/D/E эсвэл хоосон сонго.
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:8}}>
+                  {sec1Vals.map((val,i)=>{
+                    const key = exam.sec1Key?.[i] || '';
+                    const pts = exam.sec1Scores?.[i] || 1;
+                    return (
+                      <div key={i} style={{padding:8,border:'1px solid '+(d?'#334155':'#e2e8f0'),borderRadius:8,background:d?'#0f172a':'#f8fafc',display:'flex',alignItems:'center',gap:6}}>
+                        <div style={{fontSize:11,fontWeight:700,color:d?'#cbd5e1':'#64748b',width:32}}>Q{i+1}</div>
+                        <div style={{display:'flex',gap:2,flex:1}}>
+                          {['A','B','C','D','E'].map(c=>(
+                            <button key={c} onClick={()=>setSec1Vals(p=>{const n=[...p];n[i]=n[i]===c?'':c;return n;})}
+                              style={{padding:'4px 6px',minWidth:24,border:'1px solid '+(d?'#475569':'#cbd5e1'),borderRadius:4,background:val===c?(c===key?'#16a34a':'#dc2626'):(d?'#1e293b':'white'),color:val===c?'white':(d?'#f1f5f9':'#1e293b'),fontSize:11,fontWeight:700,cursor:'pointer'}}>
+                              {c}
+                            </button>
+                          ))}
+                        </div>
+                        <div style={{fontSize:10,color:'#94a3b8',whiteSpace:'nowrap'}}>{key}·{pts}о</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Section 2 */}
+            {editTab==='sec2' && (
+              <div>
+                <div style={{fontSize:12,color:d?'#cbd5e1':'#64748b',marginBottom:10}}>
+                  Сурагчийн оруулсан 0–9 цифрийг бичнэ үү. Хоосон үлдээвэл "blank".
+                </div>
+                <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:14}}>
+                  {Object.keys(sec2Vals).sort().map(sub=>(
+                    <div key={sub} style={{padding:12,border:'1px solid '+(d?'#334155':'#e2e8f0'),borderRadius:10,background:d?'#0f172a':'#f8fafc'}}>
+                      <div style={{fontWeight:800,fontSize:14,color:d?'#f1f5f9':'#1e293b',marginBottom:8}}>{sub}</div>
+                      <div style={{display:'grid',gridTemplateColumns:'auto 1fr auto',gap:6,alignItems:'center'}}>
+                        {Object.keys(sec2Vals[sub]).map(rk=>{
+                          const cfg = exam.sec2Config?.[sub]?.[rk];
+                          const ans = typeof cfg==='object'?cfg.ans:cfg;
+                          const pts = typeof cfg==='object'?(cfg.score!=null?cfg.score:1):(exam.sec2Score||1);
+                          return (
+                            <div key={rk} style={{display:'contents'}}>
+                              <div style={{fontSize:12,fontWeight:700,color:d?'#cbd5e1':'#64748b',width:18}}>{rk})</div>
+                              <input
+                                type="text" inputMode="numeric" pattern="[0-9]*" maxLength={1}
+                                value={sec2Vals[sub][rk]}
+                                onChange={e=>{
+                                  const v = e.target.value.replace(/[^0-9]/g,'').slice(0,1);
+                                  setSec2Vals(prev=>({...prev,[sub]:{...prev[sub],[rk]:v}}));
+                                }}
+                                style={{width:42,padding:'6px 8px',border:'1px solid '+(d?'#475569':'#cbd5e1'),borderRadius:6,textAlign:'center',fontWeight:700,fontSize:14,background:d?'#1e293b':'white',color:d?'#f1f5f9':'#1e293b'}}
+                              />
+                              <div style={{fontSize:11,color:'#94a3b8',whiteSpace:'nowrap'}}>зөв={ans} ({pts}о)</div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {editErr && <div style={{marginTop:10,padding:10,background:'#fee2e2',color:'#dc2626',borderRadius:8,fontSize:13}}>{editErr}</div>}
+            <div style={{display:'flex',gap:8,marginTop:18,position:'sticky',bottom:0,background:d?'#1e293b':'white',padding:'10px 0 0'}}>
+              <button onClick={saveEdit} disabled={editBusy} style={{flex:1,padding:'12px 18px',background:'#16a34a',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:editBusy?'wait':'pointer',opacity:editBusy?0.6:1}}>
+                {editBusy?'Хадгалж байна...':'Хадгалах'}
+              </button>
+              <button onClick={()=>setEditStu(null)} disabled={editBusy} style={{padding:'12px 18px',background:'#e2e8f0',color:'#475569',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
                 Цуцлах
               </button>
             </div>
