@@ -2344,10 +2344,63 @@ function RatingPage({exams, students, dark:d=false}) {
 }
 
 // ── Board Page ────────────────────────────────────────────
-function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false}) {
+function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, dark:d=false}) {
   if (!exam) return <div style={{textAlign:'center',padding:80,color:'#94a3b8',fontWeight:600}}>Шалгалт сонгоно уу</div>;
   const sorted=[...students].sort((a,b)=>b.scaled-a.scaled);
   const [pdfOpen, setPdfOpen] = useState(false);
+  // ── ZipGrade CSV import ──
+  const [zipOpen, setZipOpen] = useState(false);
+  const [zipBusy, setZipBusy] = useState(false);
+  const [zipResult, setZipResult] = useState(null);
+  const [zipErr, setZipErr] = useState('');
+  async function handleZipImport(file) {
+    if (!file) return;
+    setZipBusy(true); setZipErr(''); setZipResult(null);
+    try {
+      const csvText = await file.text();
+      const r = await apiFetch('/api/exams/import-zipgrade', {
+        method:'POST', body:{ examId: exam.id, csvText }
+      });
+      setZipResult(r);
+      if (onReload) await onReload();
+    } catch(e) { setZipErr(e.message||'CSV импортлоход алдаа'); }
+    setZipBusy(false);
+  }
+  // ── Sec2 manual entry ──
+  const [sec2Edit, setSec2Edit] = useState(null); // student object or null
+  const [sec2Vals, setSec2Vals] = useState({});
+  const [sec2Busy, setSec2Busy] = useState(false);
+  const [sec2Err, setSec2Err] = useState('');
+  function openSec2(student) {
+    // seed from existing sec2_results
+    const init = {};
+    const cfg = exam.sec2Config || {};
+    ['2.1','2.2','2.3','2.4'].forEach(sub=>{
+      if (!cfg[sub]?._enabled) return;
+      init[sub] = {};
+      ['a','b','c','d','e','f','g','h'].forEach(rk=>{
+        const item = cfg[sub][rk];
+        if (!item) return;
+        const ans = typeof item==='object'?item.ans:item;
+        if (ans===undefined||ans===null||ans==='') return;
+        const cur = student.sec2Results?.[sub]?.[rk]?.sel;
+        init[sub][rk] = (cur && cur!=='BLANK') ? String(cur) : '';
+      });
+    });
+    setSec2Vals(init); setSec2Err(''); setSec2Edit(student);
+  }
+  async function saveSec2() {
+    if (!sec2Edit) return;
+    setSec2Busy(true); setSec2Err('');
+    try {
+      await apiFetch('/api/students/sec2', {
+        method:'PATCH', body:{ studentId: sec2Edit.id, sec2: sec2Vals }
+      });
+      if (onReload) await onReload();
+      setSec2Edit(null);
+    } catch(e) { setSec2Err(e.message||'Хадгалахад алдаа'); }
+    setSec2Busy(false);
+  }
 
   function exportStudentPDF(student) {
     import('jspdf').then(({jsPDF})=>{
@@ -2616,6 +2669,9 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
         <h1 style={{margin:0,fontSize:22,fontWeight:800,color:d?'#f1f5f9':'#1e293b'}}>{exam.title} — Жагсаалт</h1>
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
+          <button onClick={()=>setZipOpen(true)} style={{padding:'10px 16px',background:'linear-gradient(135deg,#0369a1,#0284c7)',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
+            📥 ZipGrade CSV
+          </button>
           <button onClick={()=>onExportExcel(exam,students)} style={{padding:'10px 16px',background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
             Excel татах
           </button>
@@ -2655,7 +2711,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
           <table style={{width:'100%',borderCollapse:'collapse'}}>
             <thead>
               <tr style={{background:d?'#0f172a':'#f8fafc',borderBottom:'2px solid '+(d?'#334155':'#e2e8f0')}}>
-                {['#','Нэр','Код','Хув.','Зөв','Буруу','Хоосон','Гүйцэтгэл','PDF',''].map(h=>(
+                {['#','Нэр','Код','Хув.','Зөв','Буруу','Хоосон','Гүйцэтгэл','Sec2','PDF',''].map(h=>(
                   <th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:12,fontWeight:700,color:'#64748b'}}>{h}</th>
                 ))}
               </tr>
@@ -2674,6 +2730,12 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
                     <td style={{padding:'10px 14px',fontSize:13,color:'#94a3b8'}}>{s.blank}</td>
                     <td style={{padding:'10px 14px',fontSize:16,fontWeight:800,color:g.c}}>{s.scaled}%</td>
                     <td style={{padding:'10px 14px'}}>
+                      {exam.useSec2 && (
+                        <button onClick={()=>openSec2(s)}
+                          style={{padding:'3px 8px',background:'#dbeafe',border:'none',borderRadius:6,fontSize:11,color:'#1e40af',cursor:'pointer',fontWeight:700}}>✏️ Sec2</button>
+                      )}
+                    </td>
+                    <td style={{padding:'10px 14px'}}>
                       <button onClick={()=>exportStudentPDF(s)}
                         style={{padding:'3px 8px',background:'#fef3c7',border:'none',borderRadius:6,fontSize:11,color:'#92400e',cursor:'pointer',fontWeight:700}}>PDF</button>
                     </td>
@@ -2686,6 +2748,110 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, dark:d=false
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* ── ZipGrade CSV import modal ── */}
+      {zipOpen && (
+        <div onClick={()=>!zipBusy&&setZipOpen(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,padding:20}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:d?'#1e293b':'white',borderRadius:14,padding:24,maxWidth:560,width:'100%',maxHeight:'90vh',overflow:'auto'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+              <h2 style={{margin:0,fontSize:18,fontWeight:800,color:d?'#f1f5f9':'#1e293b'}}>📥 ZipGrade CSV оруулах</h2>
+              <button onClick={()=>!zipBusy&&setZipOpen(false)} style={{border:'none',background:'none',fontSize:22,cursor:'pointer',color:'#94a3b8'}}>×</button>
+            </div>
+            <div style={{fontSize:13,color:d?'#cbd5e1':'#64748b',marginBottom:16,lineHeight:1.6}}>
+              ZipGrade-н <b>"Quiz Results CSV"</b> файлыг оруулна уу. Зөвхөн <b>1-р хэсэг (A–E)</b> автоматаар тооцогдоно. <b>2-р хэсгийг</b> сурагч бүрд "Sec2" товчоор гар оруулна.
+              <ul style={{marginTop:8,paddingLeft:18,fontSize:12}}>
+                <li>Шаардлагатай багана: <code>Stu1, Stu2, ..., Stu{exam.sec1Count||36}</code></li>
+                <li>Сурагчийн код: <code>ExternalId</code> баганаас (эсвэл FirstName)</li>
+                <li>Давхардсан кодтой сурагч <b>солигдоно</b></li>
+              </ul>
+            </div>
+            {!zipResult && !zipBusy && (
+              <label style={{display:'block',padding:30,border:'2px dashed '+(d?'#475569':'#cbd5e1'),borderRadius:10,textAlign:'center',cursor:'pointer',background:d?'#0f172a':'#f8fafc'}}>
+                <div style={{fontSize:32,marginBottom:6}}>📄</div>
+                <div style={{fontSize:14,fontWeight:700,color:d?'#f1f5f9':'#1e293b'}}>CSV файл сонгох</div>
+                <div style={{fontSize:12,color:'#94a3b8',marginTop:4}}>.csv файлыг энд дарж оруулна уу</div>
+                <input type="file" accept=".csv,text/csv" style={{display:'none'}} onChange={e=>handleZipImport(e.target.files?.[0])} />
+              </label>
+            )}
+            {zipBusy && <div style={{textAlign:'center',padding:30,color:'#94a3b8'}}>Импортлож байна...</div>}
+            {zipErr && <div style={{padding:12,background:'#fee2e2',color:'#dc2626',borderRadius:8,marginTop:10,fontSize:13}}>{zipErr}</div>}
+            {zipResult && (
+              <div style={{marginTop:16}}>
+                <div style={{padding:14,background:'#dcfce7',color:'#166534',borderRadius:8,fontSize:14,fontWeight:700}}>
+                  ✅ Амжилттай: {zipResult.imported} нэмэгдсэн · {zipResult.replaced} шинэчилсэн · {zipResult.skipped} алгассан
+                </div>
+                <div style={{fontSize:12,color:d?'#cbd5e1':'#64748b',marginTop:8}}>
+                  Нийт оноо: {zipResult.totalMax} (Sec1: {zipResult.sec1Max} + Sec2: {zipResult.sec2Max})
+                </div>
+                {zipResult.errors?.length>0 && (
+                  <div style={{marginTop:8,padding:10,background:'#fef3c7',color:'#92400e',borderRadius:8,fontSize:12,maxHeight:120,overflow:'auto'}}>
+                    <b>Алдаа:</b>
+                    {zipResult.errors.map((e,i)=>(<div key={i}>· {e}</div>))}
+                  </div>
+                )}
+                <button onClick={()=>{setZipOpen(false);setZipResult(null);}} style={{marginTop:14,padding:'10px 18px',background:'#16a34a',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer',width:'100%'}}>
+                  Хаах
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ── Sec2 manual entry modal ── */}
+      {sec2Edit && (
+        <div onClick={()=>!sec2Busy&&setSec2Edit(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,padding:20}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:d?'#1e293b':'white',borderRadius:14,padding:24,maxWidth:720,width:'100%',maxHeight:'90vh',overflow:'auto'}}>
+            <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
+              <h2 style={{margin:0,fontSize:18,fontWeight:800,color:d?'#f1f5f9':'#1e293b'}}>
+                ✏️ 2-р хэсэг — {sec2Edit.name} <span style={{fontSize:12,color:'#94a3b8',fontWeight:500}}>({sec2Edit.code})</span>
+              </h2>
+              <button onClick={()=>!sec2Busy&&setSec2Edit(null)} style={{border:'none',background:'none',fontSize:22,cursor:'pointer',color:'#94a3b8'}}>×</button>
+            </div>
+            <div style={{fontSize:12,color:d?'#cbd5e1':'#64748b',marginBottom:14}}>
+              Сурагчийн оруулсан 0–9 цифрийг бичнэ үү. Хоосон үлдээвэл "blank".
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:14}}>
+              {Object.keys(sec2Vals).sort().map(sub=>(
+                <div key={sub} style={{padding:12,border:'1px solid '+(d?'#334155':'#e2e8f0'),borderRadius:10,background:d?'#0f172a':'#f8fafc'}}>
+                  <div style={{fontWeight:800,fontSize:14,color:d?'#f1f5f9':'#1e293b',marginBottom:8}}>{sub}</div>
+                  <div style={{display:'grid',gridTemplateColumns:'auto 1fr auto',gap:6,alignItems:'center'}}>
+                    {Object.keys(sec2Vals[sub]).map(rk=>{
+                      const cfg = exam.sec2Config?.[sub]?.[rk];
+                      const ans = typeof cfg==='object'?cfg.ans:cfg;
+                      const pts = typeof cfg==='object'?(cfg.score!=null?cfg.score:1):(exam.sec2Score||1);
+                      return (
+                        <div key={rk} style={{display:'contents'}}>
+                          <div style={{fontSize:12,fontWeight:700,color:d?'#cbd5e1':'#64748b',width:18}}>{rk})</div>
+                          <input
+                            type="text" inputMode="numeric" pattern="[0-9]*" maxLength={1}
+                            value={sec2Vals[sub][rk]}
+                            onChange={e=>{
+                              const v = e.target.value.replace(/[^0-9]/g,'').slice(0,1);
+                              setSec2Vals(prev=>({...prev,[sub]:{...prev[sub],[rk]:v}}));
+                            }}
+                            style={{width:42,padding:'6px 8px',border:'1px solid '+(d?'#475569':'#cbd5e1'),borderRadius:6,textAlign:'center',fontWeight:700,fontSize:14,background:d?'#1e293b':'white',color:d?'#f1f5f9':'#1e293b'}}
+                          />
+                          <div style={{fontSize:11,color:'#94a3b8',whiteSpace:'nowrap'}}>зөв={ans} ({pts}о)</div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+            {sec2Err && <div style={{marginTop:10,padding:10,background:'#fee2e2',color:'#dc2626',borderRadius:8,fontSize:13}}>{sec2Err}</div>}
+            <div style={{display:'flex',gap:8,marginTop:18}}>
+              <button onClick={saveSec2} disabled={sec2Busy} style={{flex:1,padding:'12px 18px',background:'#16a34a',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:sec2Busy?'wait':'pointer',opacity:sec2Busy?0.6:1}}>
+                {sec2Busy?'Хадгалж байна...':'Хадгалах'}
+              </button>
+              <button onClick={()=>setSec2Edit(null)} disabled={sec2Busy} style={{padding:'12px 18px',background:'#e2e8f0',color:'#475569',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
+                Цуцлах
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -3536,7 +3702,7 @@ export default function App() {
         {page==='edit'&&<CreatePage onCreated={handleUpdateExam} prefill={editingExam} isEdit={true} dark={d} />}
         {page==='material'&&<MaterialPage onPrefill={handlePrefill} dark={d} />}
         {page==='upload'&&<UploadPage exam={currentExam} students={examStudents} onAddStudent={handleAddStudent} dark={d} />}
-        {page==='board'&&<BoardPage exam={currentExam} students={examStudents} onDeleteStudent={handleDeleteStudent} onExportExcel={exportExcel} dark={d} />}
+        {page==='board'&&<BoardPage exam={currentExam} students={examStudents} onDeleteStudent={handleDeleteStudent} onExportExcel={exportExcel} onReload={loadData} dark={d} />}
         {page==='analytics'&&<AnalyticsPage exam={currentExam} students={examStudents} onExportAnalytics={exportAnalytics} dark={d} />}
         {page==='rating'&&<RatingPage exams={exams} students={students} dark={d} />}
         {page==='students'&&<StudentAccountsPage dark={d} />}
