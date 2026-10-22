@@ -1,11 +1,11 @@
 {
-  "name": "EYESH Checker",
-  "short_name": "EYESH",
-  "description": "ЭЕШ хариулт хуудас шалгагч",
+  "name": "ЭЕШ шалгагч — CyberMath",
+  "short_name": "ЭЕШ шалгагч",
+  "description": "ЭЕШ хариултын хуудсыг утасны камераар шалгагч",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#dc2626",
+  "background_color": "#f1eef8",
+  "theme_color": "#7B52EE",
   "orientation": "portrait",
   "icons": [
     {

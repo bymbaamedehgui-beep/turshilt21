@@ -1,4 +1,4 @@
-const CACHE = 'eyesh-v1';
+const CACHE = 'eyesh-v2';
 const OFFLINE = ['/'];
 
 self.addEventListener('install', e => {
