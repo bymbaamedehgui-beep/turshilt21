@@ -1429,22 +1429,22 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
 
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:6}}>
           {Array.from({length:cnt},(_,i)=>(
-            <div key={i} style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px',background:'#faf8ff',borderRadius:8,border:'1px solid #e7ddff'}}>
-              <span style={{fontSize:11,fontWeight:700,color:'#9a93b5',minWidth:26,textAlign:'right'}}>D{i+1}</span>
-              <div style={{display:'flex',gap:2}}>
+            <div key={i} className="cm-keyrow" style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px',background:'#faf8ff',borderRadius:8,border:'1px solid #e7ddff'}}>
+              <span className="cm-keyno" style={{fontSize:11,fontWeight:700,color:'#9a93b5',minWidth:26,textAlign:'right'}}>D{i+1}</span>
+              <div className="cm-keych" style={{display:'flex',gap:2}}>
                 {SEC1_CHOICES.map(c=>(
                   <button key={c} onClick={()=>setKeys(k=>{const n=[...k];n[i]=c;return n;})}
                     style={{width:28,height:28,borderRadius:6,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:keys[i]===c?'#7c3aed':'#e7ddff',color:keys[i]===c?'white':'#7c7596'}}>{c}</button>
                 ))}
               </div>
-              <div style={{display:'flex',alignItems:'center',gap:2}}>
+              <div className="cm-keyst" style={{display:'flex',alignItems:'center',gap:2}}>
                 <button onClick={()=>setScores(s=>{const n=[...s];n[i]=Math.max(1,n[i]-1);return n;})}
                   style={{width:20,height:20,border:'1px solid #e7ddff',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f1eef8',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#7c7596'}}>−</button>
                 <span style={{minWidth:20,textAlign:'center',fontSize:12,fontWeight:700,color:'#2e2748'}}>{scores[i]}</span>
                 <button onClick={()=>setScores(s=>{const n=[...s];n[i]=Math.min(10,n[i]+1);return n;})}
                   style={{width:20,height:20,border:'1px solid #e7ddff',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f1eef8',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#7c7596'}}>+</button>
               </div>
-              <select value={topics[i]} onChange={e=>setTopics(t=>{const n=[...t];n[i]=e.target.value;return n;})}
+              <select className="cm-keytp" value={topics[i]} onChange={e=>setTopics(t=>{const n=[...t];n[i]=e.target.value;return n;})}
                 style={{flex:1,padding:'4px 8px',border:'none',borderRadius:8,fontWeight:700,fontSize:11,cursor:'pointer',background:TOPIC_COLORS[getTopics(subject).indexOf(topics[i])%8]+'22',color:TOPIC_COLORS[getTopics(subject).indexOf(topics[i])%8],outline:'none',minWidth:0}}>
                 {getTopics(subject).map(tp=>(
                   <option key={tp} value={tp}>{tp}</option>
@@ -1462,10 +1462,10 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
               <div style={{fontWeight:700,fontSize:14,color:'#7c3aed',marginBottom:8}}>Дэд хэсэг {sub}</div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:6}}>
                 {SEC2_ROWS.map(row=>(
-                  <div key={row} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 8px',background:'#faf8ff',borderRadius:8,border:'1px solid #e7ddff'}}>
+                  <div key={row} className="cm-s2key" style={{display:'flex',alignItems:'center',gap:6,padding:'6px 8px',background:'#faf8ff',borderRadius:8,border:'1px solid #e7ddff'}}>
                     <span style={{fontSize:12,fontWeight:700,color:'#9a93b5',minWidth:14}}>{row}</span>
                     <input type="text" maxLength={1} value={typeof sec2Keys[sub]?.[row]==='object'?(sec2Keys[sub][row].ans||''):(sec2Keys[sub]?.[row]||'')} 
-                      onChange={e=>{const v=e.target.value.replace(/[^0-9]/g,'');setSec2Keys(k=>({...k,[sub]:{...k[sub],[row]:{...(typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''}),ans:v}}}));}}
+                      onChange={e=>{const v=e.target.value.replace(/[^0-9.-]/g,'');setSec2Keys(k=>({...k,[sub]:{...k[sub],[row]:{...(typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''}),ans:v}}}));}}
                       placeholder="0-9" style={{width:44,padding:'5px 6px',border:'1px solid #e7ddff',borderRadius:6,fontSize:13,outline:'none',textAlign:'center'}} />
                     <span style={{fontSize:11,color:'#9a93b5'}}>оноо:</span>
                     <div style={{display:'flex',alignItems:'center',gap:2}}>
@@ -2385,7 +2385,28 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
       {sorted.length===0?(
         <div style={{background:d?'#1a1030':'white',borderRadius:12,padding:'44px',textAlign:'center',color:'#9a93b5'}}>Одоохондоо сурагч байхгүй</div>
       ):(
-        <div style={{background:d?'#1a1030':'white',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+        <>
+        <div className="cm-card cm-only-phone" style={{padding:0,overflow:'hidden'}}>
+          {sorted.map((s,i)=>{
+            const g=eyeshGrade(s.scaled);
+            return (
+              <div key={s.id} className="cm-srow">
+                <div className="cm-srow-top">
+                  <span className="cm-srank">{i+1}</span>
+                  <div className="cm-sinfo"><b>{s.name}</b><span>{[s.class,s.code,s.version&&s.version!=='—'?'Хув. '+s.version:''].filter(Boolean).join(' · ')||'—'}</span></div>
+                  <div className="cm-sscore" style={{color:g.c}}><b>{s.scaled}</b><span>{g.g} · {g.l}</span></div>
+                </div>
+                <div className="cm-schips"><i className="ok">✓ {s.correct} зөв</i><i className="ng">✗ {s.wrong} буруу</i><i>○ {s.blank} хоосон</i></div>
+                <div className="cm-sacts">
+                  <button className="e" onClick={()=>openEdit(s,'sec1')}>✏️ Засах</button>
+                  <button className="p" onClick={()=>exportStudentPDF(s)}>PDF</button>
+                  <button className="x" onClick={()=>{const c=prompt(s.name+' устгахын тулд УСТГАХ гэж бичнэ үү:');if(c==='УСТГАХ')onDeleteStudent(s.id);}}>Устгах</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="cm-only-desk" style={{background:d?'#1a1030':'white',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
           <table style={{width:'100%',borderCollapse:'collapse'}}>
             <thead>
               <tr style={{background:d?'#0f0a1f':'#faf8ff',borderBottom:'2px solid '+(d?'#2d2159':'#e7ddff')}}>
@@ -2425,6 +2446,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {/* ── ZipGrade CSV import modal ── */}
@@ -2632,7 +2654,7 @@ function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
           </div>
         ))}
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+      <div className="cm-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
         <div style={{background:'white',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
           <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Зэрэглэлийн тархалт</div>
           {grades.map((g,i)=>{
@@ -2724,7 +2746,7 @@ function MaterialPage({onPrefill}) {
     <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px'}}>
       <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(90,50,214,.10)',marginBottom:16}}>
         <div style={{fontWeight:800,fontSize:16,color:'#1a1030',marginBottom:16}}>1. Шалгалтын тохиргоо</div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr auto',gap:12,alignItems:'end'}}>
+        <div className="cm-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr auto',gap:12,alignItems:'end'}}>
           <div>
             <label style={{fontSize:13,fontWeight:600,display:'block',marginBottom:4}}>Хичээл</label>
             <select value={subject} onChange={e=>setSubject(e.target.value)}
@@ -2880,7 +2902,7 @@ function StudentAccountsPage({dark:d=false}) {
         Сурагчид <strong>/student</strong> хуудсаар орж кодоороо нэвтэрч шалгалтаа өгнө.
       </div>
 
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+      <div className="cm-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
         <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
           <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>Нэг сурагч нэмэх</div>
           <input value={singleName} onChange={e=>setSingleName(e.target.value)} placeholder="Нэр (заавал биш)"
