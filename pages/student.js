@@ -114,7 +114,7 @@ function calcScore(det, exam) {
 }
 
 function Spinner() {
-  return <div style={{width:20,height:20,border:'3px solid #e7ddff',borderTopColor:'#7B52EE',borderRadius:'50%',animation:'spin 0.8s linear infinite',display:'inline-block'}} />;
+  return <div style={{width:20,height:20,border:'3px solid #e5e7eb',borderTopColor:'#7B52EE',borderRadius:'50%',animation:'spin 0.8s linear infinite',display:'inline-block'}} />;
 }
 
 // ── Camera Component ──────────────────────────────────────
@@ -155,7 +155,7 @@ function CameraCapture({onCapture, onClose}) {
           <video ref={videoRef} autoPlay playsInline style={{width:'100%',maxWidth:500,borderRadius:12,marginBottom:16}} />
           <div style={{display:'flex',gap:12}}>
             <button onClick={capture} style={{padding:'14px 32px',background:'#7B52EE',color:'white',border:'none',borderRadius:12,fontWeight:800,fontSize:16,cursor:'pointer'}}>Зураг авах</button>
-            <button onClick={()=>{stream?.getTracks().forEach(t=>t.stop());onClose();}} style={{padding:'14px 24px',background:'#2e2748',color:'white',border:'none',borderRadius:12,fontWeight:700,cursor:'pointer'}}>Болих</button>
+            <button onClick={()=>{stream?.getTracks().forEach(t=>t.stop());onClose();}} style={{padding:'14px 24px',background:'#374151',color:'white',border:'none',borderRadius:12,fontWeight:700,cursor:'pointer'}}>Болих</button>
           </div>
         </>
       )}
@@ -182,18 +182,18 @@ function StudentLogin({onLogin}) {
   }
 
   return (
-    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#7B52EE,#9333ea 60%,#A855F7)',padding:20}}>
-      <div style={{background:'white',borderRadius:20,padding:'36px 32px',width:'100%',maxWidth:360,boxShadow:'0 20px 60px rgba(0,0,0,.3)'}}>
-        <div style={{textAlign:'center',marginBottom:28}}>
-          <div style={{fontSize:48,marginBottom:10}}>📝</div>
-          <div style={{fontSize:22,fontWeight:900,color:'#1a1030'}}>EYESH Шалгалт</div>
-          <div style={{fontSize:13,color:'#9a93b5',marginTop:4}}>Кодоо оруулж нэвтрэнэ үү</div>
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'#f5f6f8',padding:20}}>
+      <div style={{background:'white',borderRadius:24,padding:'28px 22px',width:'100%',maxWidth:380,border:'1px solid #e5e7eb',boxShadow:'0 24px 60px -30px rgba(17,24,39,.35)'}}>
+        <div style={{textAlign:'center',marginBottom:24}}>
+          <img src="/chick.svg" alt="" style={{width:72,height:72,display:'block',margin:'0 auto 8px'}} />
+          <div style={{fontSize:22,fontWeight:900,color:'#1c1f2a'}}>ЭЕШ шалгалт</div>
+          <div style={{fontSize:13,color:'#9ca3af',marginTop:4}}>Кодоо оруулж нэвтрэнэ үү</div>
         </div>
         {err && <div style={{color:'#b3261e',fontSize:13,background:'#fdecec',padding:'8px 12px',borderRadius:8,border:'1px solid #f6c9c9',marginBottom:14,textAlign:'center'}}>{err}</div>}
         <input value={code} onChange={e=>setCode(e.target.value)} placeholder="Таны код" onKeyDown={e=>e.key==='Enter'&&handleLogin()}
-          style={{width:'100%',padding:'14px',border:'2px solid #e7ddff',borderRadius:10,fontSize:18,outline:'none',marginBottom:14,boxSizing:'border-box',textAlign:'center',letterSpacing:4,fontWeight:700}} />
+          style={{width:'100%',padding:'14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:18,outline:'none',marginBottom:14,boxSizing:'border-box',textAlign:'center',letterSpacing:4,fontWeight:700}} />
         <button onClick={handleLogin} disabled={loading}
-          style={{width:'100%',padding:14,background:'linear-gradient(135deg,#7B52EE,#A855F7)',color:'white',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          style={{width:'100%',padding:14,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
           {loading&&<Spinner/>} Нэвтрэх
         </button>
       </div>
@@ -211,23 +211,23 @@ function ExamList({student, onSelect, onLogout}) {
   },[]);
 
   return (
-    <div style={{minHeight:'100vh',background:'#f1eef8'}}>
-      <header style={{background:'white',borderBottom:'1px solid #e7ddff',padding:'14px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+    <div style={{minHeight:'100vh',background:'#f3f4f6'}}>
+      <header style={{background:'white',borderBottom:'1px solid #e5e7eb',padding:'14px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <div>
-          <div style={{fontWeight:800,fontSize:16,color:'#1a1030'}}>Сайн байна уу!</div>
-          <div style={{fontSize:13,color:'#7c7596'}}>Код: {student.code} {student.name&&'· '+student.name}</div>
+          <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a'}}>Сайн байна уу!</div>
+          <div style={{fontSize:13,color:'#6b7280'}}>Код: {student.code} {student.name&&'· '+student.name}</div>
         </div>
         <button onClick={onLogout} style={{padding:'6px 14px',background:'#f3eeff',border:'none',borderRadius:8,fontSize:13,color:'#7B52EE',fontWeight:700,cursor:'pointer'}}>Гарах</button>
       </header>
       <div style={{maxWidth:600,margin:'0 auto',padding:'24px 16px'}}>
-        <div style={{fontWeight:800,fontSize:18,color:'#1a1030',marginBottom:16}}>Шалгалт сонгох</div>
+        <div style={{fontWeight:800,fontSize:18,color:'#1c1f2a',marginBottom:16}}>Шалгалт сонгох</div>
         {loading ? <div style={{textAlign:'center',padding:40}}><Spinner/></div> : exams.length===0 ? (
-          <div style={{background:'white',borderRadius:12,padding:40,textAlign:'center',color:'#9a93b5'}}>Одоогоор шалгалт байхгүй байна</div>
+          <div style={{background:'white',borderRadius:12,padding:40,textAlign:'center',color:'#9ca3af'}}>Одоогоор шалгалт байхгүй байна</div>
         ) : exams.map(exam=>(
           <div key={exam.id} onClick={()=>onSelect(exam)}
-            style={{background:'white',borderRadius:12,padding:18,marginBottom:10,cursor:'pointer',border:'2px solid #e7ddff',boxShadow:'0 1px 4px rgba(90,50,214,.08)'}}>
-            <div style={{fontWeight:800,fontSize:16,color:'#1a1030'}}>{exam.title}</div>
-            <div style={{fontSize:13,color:'#7c7596',marginTop:4}}>{exam.subject} · {exam.sec1Count} дасгал{exam.useSec2?' · 2-р хэсэг':''}</div>
+            style={{background:'white',borderRadius:12,padding:18,marginBottom:10,cursor:'pointer',border:'2px solid #e5e7eb',boxShadow:'0 1px 4px rgba(17,24,39,.05)'}}>
+            <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a'}}>{exam.title}</div>
+            <div style={{fontSize:13,color:'#6b7280',marginTop:4}}>{exam.subject} · {exam.sec1Count} дасгал{exam.useSec2?' · 2-р хэсэг':''}</div>
           </div>
         ))}
       </div>
@@ -284,34 +284,34 @@ function StudentUpload({student, exam, onDone, onBack}) {
   }
 
   if (submitted) return (
-    <div style={{minHeight:'100vh',background:'#f1eef8',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
+    <div style={{minHeight:'100vh',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
       <div style={{background:'white',borderRadius:20,padding:'40px 32px',textAlign:'center',maxWidth:360,width:'100%'}}>
         <div style={{fontSize:60,marginBottom:12}}>✅</div>
         <div style={{fontSize:22,fontWeight:900,color:'#15803d',marginBottom:8}}>Амжилттай илгээгдлээ!</div>
-        <div style={{fontSize:14,color:'#7c7596',marginBottom:8}}>ЭЕШ оноо: <span style={{fontSize:28,fontWeight:900,color:scored.grade?.c}}>{scored.scaled}</span></div>
-        <div style={{fontSize:14,color:'#7c7596',marginBottom:20}}>{scored.grade?.g} — {scored.grade?.l}</div>
+        <div style={{fontSize:14,color:'#6b7280',marginBottom:8}}>ЭЕШ оноо: <span style={{fontSize:28,fontWeight:900,color:scored.grade?.c}}>{scored.scaled}</span></div>
+        <div style={{fontSize:14,color:'#6b7280',marginBottom:20}}>{scored.grade?.g} — {scored.grade?.l}</div>
         <button onClick={onDone} style={{width:'100%',padding:13,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontWeight:700,fontSize:15,cursor:'pointer'}}>Буцах</button>
       </div>
     </div>
   );
 
   return (
-    <div style={{minHeight:'100vh',background:'#f1eef8'}}>
+    <div style={{minHeight:'100vh',background:'#f3f4f6'}}>
       {showCamera && <CameraCapture onCapture={(data,mime)=>{setImgData(data);setImgMime(mime);setShowCamera(false);setDet(null);setScored(null);}} onClose={()=>setShowCamera(false)} />}
-      <header style={{background:'white',borderBottom:'1px solid #e7ddff',padding:'14px 20px',display:'flex',alignItems:'center',gap:12}}>
-        <button onClick={onBack} style={{padding:'6px 12px',background:'#f1eef8',border:'none',borderRadius:8,cursor:'pointer',fontWeight:700}}>← Буцах</button>
+      <header style={{background:'white',borderBottom:'1px solid #e5e7eb',padding:'14px 20px',display:'flex',alignItems:'center',gap:12}}>
+        <button onClick={onBack} style={{padding:'6px 12px',background:'#f3f4f6',border:'none',borderRadius:8,cursor:'pointer',fontWeight:700}}>← Буцах</button>
         <div>
           <div style={{fontWeight:800,fontSize:15}}>{exam.title}</div>
-          <div style={{fontSize:12,color:'#7c7596'}}>{exam.subject}</div>
+          <div style={{fontSize:12,color:'#6b7280'}}>{exam.subject}</div>
         </div>
       </header>
       <div style={{maxWidth:600,margin:'0 auto',padding:'20px 16px'}}>
         {!imgData ? (
-          <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+          <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
             <div style={{fontWeight:800,fontSize:16,marginBottom:16}}>Хариулт хуудасны зураг</div>
             <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
               <button onClick={()=>setShowCamera(true)}
-                style={{padding:'20px 16px',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',border:'none',borderRadius:12,fontWeight:700,fontSize:15,cursor:'pointer'}}>
+                style={{padding:'20px 16px',background:'#7B52EE',color:'white',border:'none',borderRadius:12,fontWeight:700,fontSize:15,cursor:'pointer'}}>
                 📷 Camera
               </button>
               <button onClick={()=>fileRef.current.click()}
@@ -322,11 +322,11 @@ function StudentUpload({student, exam, onDone, onBack}) {
             <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={e=>handleFile(e.target.files[0])} />
           </div>
         ) : (
-          <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(90,50,214,.10)',marginBottom:12}}>
+          <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:12}}>
             <img src={`data:${imgMime};base64,${imgData}`} style={{width:'100%',maxHeight:350,objectFit:'contain',borderRadius:8,marginBottom:12}} />
             <div style={{display:'flex',gap:8}}>
               <button onClick={handleAnalyze} disabled={analyzing}
-                style={{flex:1,padding:13,background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',border:'none',borderRadius:10,fontWeight:700,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+                style={{flex:1,padding:13,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontWeight:700,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
                 {analyzing&&<Spinner/>} AI Шинжлэх
               </button>
               <button onClick={()=>{setImgData(null);setDet(null);setScored(null);}}
@@ -336,13 +336,13 @@ function StudentUpload({student, exam, onDone, onBack}) {
         )}
         {err && <div style={{color:'#b3261e',fontSize:13,background:'#fdecec',padding:'10px 14px',borderRadius:8,border:'1px solid #f6c9c9',marginBottom:12}}>{err}</div>}
         {scored && (
-          <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+          <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
             <div style={{fontWeight:800,fontSize:16,marginBottom:16}}>Таны дүн</div>
             <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:10,marginBottom:16}}>
               {[['ЭЕШ оноо',scored.scaled,scored.grade?.c],['Зөв',scored.correct,'#16a34a'],['Буруу',scored.wrong,'#dc2626']].map(([l,v,c])=>(
-                <div key={l} style={{background:'#faf8ff',borderRadius:10,padding:'12px',textAlign:'center'}}>
+                <div key={l} style={{background:'#f9fafb',borderRadius:10,padding:'12px',textAlign:'center'}}>
                   <div style={{fontSize:24,fontWeight:900,color:c}}>{v}</div>
-                  <div style={{fontSize:11,color:'#9a93b5'}}>{l}</div>
+                  <div style={{fontSize:11,color:'#9ca3af'}}>{l}</div>
                 </div>
               ))}
             </div>

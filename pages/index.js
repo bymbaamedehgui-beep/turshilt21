@@ -364,7 +364,7 @@ function exportAnalytics(exam, students) {
 // ─────────────────────────────────────────────────────────
 
 function Spinner() {
-  return <div style={{width:20,height:20,border:'3px solid #e7ddff',borderTopColor:'#7B52EE',borderRadius:'50%',animation:'spin 0.8s linear infinite',display:'inline-block'}} />;
+  return <div style={{width:20,height:20,border:'3px solid #e5e7eb',borderTopColor:'#7B52EE',borderRadius:'50%',animation:'spin 0.8s linear infinite',display:'inline-block'}} />;
 }
 
 function Badge({children, color='#7B52EE'}) {
@@ -431,8 +431,8 @@ function ScoredPanel({scored, exam, onSave, onUpdateScored, onReset}) {
   const grade = eyeshGrade(p);
 
   return (
-    <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(90,50,214,.10)',marginBottom:16}}>
-      <div style={{fontWeight:800,fontSize:16,color:'#1a1030',marginBottom:16}}>Дүн</div>
+    <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+      <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>Дүн</div>
 
       {/* Summary stats */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:10,marginBottom:20}}>
@@ -440,21 +440,21 @@ function ScoredPanel({scored, exam, onSave, onUpdateScored, onReset}) {
           ['Гүйцэтгэл',p+'%',grade.c],
           ['Зөв',scored.correct,'#16a34a'],
           ['Буруу (хоосон орно)',scored.wrong,'#dc2626'],
-          ['Хоосон',scored.blank,'#9a93b5'],
+          ['Хоосон',scored.blank,'#9ca3af'],
         ].map(([l,v,c])=>(
-          <div key={l} style={{background:'#faf8ff',borderRadius:10,padding:'12px 16px'}}>
+          <div key={l} style={{background:'#f9fafb',borderRadius:10,padding:'12px 16px'}}>
             <div style={{fontSize:20,fontWeight:800,color:c}}>{v}</div>
-            <div style={{fontSize:11,color:'#9a93b5'}}>{l}</div>
+            <div style={{fontSize:11,color:'#9ca3af'}}>{l}</div>
           </div>
         ))}
       </div>
 
       {/* Section 1 — editable */}
       <div style={{marginBottom:20}}>
-        <div style={{fontWeight:700,fontSize:14,color:'#2e2748',marginBottom:6}}>1-р хэсэг — дасгал бүрийн хариулт <span style={{fontSize:11,color:'#9a93b5',fontWeight:400}}>(дарж засварлах)</span></div>
+        <div style={{fontWeight:700,fontSize:14,color:'#374151',marginBottom:6}}>1-р хэсэг — дасгал бүрийн хариулт <span style={{fontSize:11,color:'#9ca3af',fontWeight:400}}>(дарж засварлах)</span></div>
         <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
           {(scored.sec1Results||[]).map((r,i)=>{
-            const bg = r.st==='ok'?'#16a34a':r.st==='blank'?'#9a93b5':'#dc2626';
+            const bg = r.st==='ok'?'#16a34a':r.st==='blank'?'#9ca3af':'#dc2626';
             const key = exam?.sec1Key?.[i]||'?';
             const isEditing = editIdx===i;
             return (
@@ -470,8 +470,8 @@ function ScoredPanel({scored, exam, onSave, onUpdateScored, onReset}) {
                     {['A','B','C','D','E','BLANK'].map(ch=>(
                       <button key={ch} onClick={()=>updateSel(i,ch)}
                         style={{padding:'4px 7px',border:'none',borderRadius:5,fontWeight:700,fontSize:12,cursor:'pointer',
-                          background:ch===r.sel?'#1a1030':ch===key?'#dcfce7':'#f1eef8',
-                          color:ch===r.sel?'white':ch===key?'#16a34a':'#2e2748'}}>
+                          background:ch===r.sel?'#1c1f2a':ch===key?'#dcfce7':'#f3f4f6',
+                          color:ch===r.sel?'white':ch===key?'#16a34a':'#374151'}}>
                         {ch==='BLANK'?'—':ch}
                       </button>
                     ))}
@@ -481,30 +481,30 @@ function ScoredPanel({scored, exam, onSave, onUpdateScored, onReset}) {
             );
           })}
         </div>
-        <div style={{display:'flex',gap:16,marginTop:8,fontSize:11,color:'#7c7596',flexWrap:'wrap'}}>
+        <div style={{display:'flex',gap:16,marginTop:8,fontSize:11,color:'#6b7280',flexWrap:'wrap'}}>
           <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:10,height:10,borderRadius:2,background:'#16a34a',display:'inline-block'}}></span>Зөв</span>
           <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:10,height:10,borderRadius:2,background:'#dc2626',display:'inline-block'}}></span>Буруу (жижигээр=зөв)</span>
-          <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:10,height:10,borderRadius:2,background:'#9a93b5',display:'inline-block'}}></span>Хоосон</span>
+          <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:10,height:10,borderRadius:2,background:'#9ca3af',display:'inline-block'}}></span>Хоосон</span>
         </div>
       </div>
 
       {/* Section 2 — editable */}
       {exam?.useSec2&&scored.sec2Results&&Object.keys(scored.sec2Results).length>0&&(
         <div style={{marginBottom:20}}>
-          <div style={{fontWeight:700,fontSize:14,color:'#2e2748',marginBottom:8}}>2-р хэсэг <span style={{fontSize:11,color:'#9a93b5',fontWeight:400}}>(дарж засварлах)</span></div>
+          <div style={{fontWeight:700,fontSize:14,color:'#374151',marginBottom:8}}>2-р хэсэг <span style={{fontSize:11,color:'#9ca3af',fontWeight:400}}>(дарж засварлах)</span></div>
           <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
             {Object.entries(scored.sec2Results).map(([sub,rows])=>(
-              <div key={sub} style={{background:'#faf8ff',borderRadius:10,padding:'10px 14px'}}>
-                <div style={{fontWeight:700,fontSize:12,color:'#7c3aed',marginBottom:6}}>{sub}</div>
+              <div key={sub} style={{background:'#f9fafb',borderRadius:10,padding:'10px 14px'}}>
+                <div style={{fontWeight:700,fontSize:12,color:'#7B52EE',marginBottom:6}}>{sub}</div>
                 <div style={{display:'flex',flexDirection:'column',gap:4}}>
                   {Object.entries(rows).map(([row,r])=>{
                     const isEd = editSec2?.sub===sub&&editSec2?.row===row;
                     return (
                       <div key={row} style={{position:'relative',display:'flex',alignItems:'center',gap:6}}>
-                        <span style={{fontSize:11,color:'#9a93b5',minWidth:12}}>{row}</span>
+                        <span style={{fontSize:11,color:'#9ca3af',minWidth:12}}>{row}</span>
                         <div onClick={()=>setEditSec2(isEd?null:{sub,row})}
                           style={{padding:'3px 10px',borderRadius:5,fontSize:13,fontWeight:700,cursor:'pointer',
-                            background:r.st==='ok'?'#16a34a':r.st==='blank'?'#9a93b5':'#dc2626',
+                            background:r.st==='ok'?'#16a34a':r.st==='blank'?'#9ca3af':'#dc2626',
                             color:'white',minWidth:30,textAlign:'center',
                             boxShadow:isEd?'0 0 0 2px #f59e0b':'none'}}>
                           {r.sel==='BLANK'?'—':r.sel}
@@ -515,8 +515,8 @@ function ScoredPanel({scored, exam, onSave, onUpdateScored, onReset}) {
                             {['0','1','2','3','4','5','6','7','8','9','BLANK'].map(d=>(
                               <button key={d} onClick={()=>updateSec2(sub,row,d==='BLANK'?'BLANK':d)}
                                 style={{padding:'4px 7px',border:'none',borderRadius:5,fontWeight:700,fontSize:12,cursor:'pointer',
-                                  background:d===String(r.sel)?'#1a1030':d===String(r.key)?'#dcfce7':'#f1eef8',
-                                  color:d===String(r.sel)?'white':d===String(r.key)?'#16a34a':'#2e2748'}}>
+                                  background:d===String(r.sel)?'#1c1f2a':d===String(r.key)?'#dcfce7':'#f3f4f6',
+                                  color:d===String(r.sel)?'white':d===String(r.key)?'#16a34a':'#374151'}}>
                                 {d==='BLANK'?'—':d}
                               </button>
                             ))}
@@ -534,7 +534,7 @@ function ScoredPanel({scored, exam, onSave, onUpdateScored, onReset}) {
 
       <div style={{display:'flex',gap:8}}>
         {onReset&&<button onClick={onReset}
-          style={{padding:'14px 20px',background:'#f1eef8',color:'#7c7596',border:'none',borderRadius:12,fontSize:14,fontWeight:700,cursor:'pointer'}}>
+          style={{padding:'14px 20px',background:'#f3f4f6',color:'#6b7280',border:'none',borderRadius:12,fontSize:14,fontWeight:700,cursor:'pointer'}}>
           ← Дахин
         </button>}
         <button onClick={onSave} style={{flex:1,padding:14,background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',border:'none',borderRadius:12,fontSize:15,fontWeight:800,cursor:'pointer'}}>
@@ -585,7 +585,7 @@ function CameraCapture({onCapture, onClose}) {
           <video ref={videoRef} autoPlay playsInline style={{width:'100%',maxWidth:500,borderRadius:12,marginBottom:16}} />
           <div style={{display:'flex',gap:12}}>
             <button onClick={capture} style={{padding:'14px 32px',background:'#7B52EE',color:'white',border:'none',borderRadius:12,fontWeight:800,fontSize:16,cursor:'pointer'}}>Зураг авах</button>
-            <button onClick={close} style={{padding:'14px 24px',background:'#2e2748',color:'white',border:'none',borderRadius:12,fontWeight:700,cursor:'pointer'}}>Болих</button>
+            <button onClick={close} style={{padding:'14px 24px',background:'#374151',color:'white',border:'none',borderRadius:12,fontWeight:700,cursor:'pointer'}}>Болих</button>
           </div>
         </>
       )}
@@ -899,47 +899,47 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
     setLoading(false);
   }
 
-  const inp = {width:'100%',padding:'12px 14px',border:'1.6px solid #e7ddff',borderRadius:12,fontSize:16,outline:'none',marginBottom:10,boxSizing:'border-box',background:'#fff',color:'#1a1030'};
+  const inp = {width:'100%',padding:'12px 14px',border:'1.6px solid #e5e7eb',borderRadius:12,fontSize:16,outline:'none',marginBottom:10,boxSizing:'border-box',background:'#fff',color:'#1c1f2a'};
 
   return (
-    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'radial-gradient(900px 420px at 10% -10%,#c9b6ff 0,rgba(201,182,255,0) 60%),linear-gradient(160deg,#7B52EE,#9333ea 55%,#A855F7)',padding:'20px 16px'}}>
-      <div style={{background:'white',borderRadius:24,padding:'26px 22px',width:'100%',maxWidth:420,boxShadow:'0 30px 70px -30px rgba(30,10,80,.75)'}}>
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'radial-gradient(900px 420px at 100% -10%,#fff2cf 0,rgba(255,242,207,0) 60%),#f5f6f8',padding:'20px 16px'}}>
+      <div style={{background:'white',borderRadius:24,padding:'26px 22px',width:'100%',maxWidth:420,border:'1px solid #e5e7eb',boxShadow:'0 24px 60px -30px rgba(17,24,39,.35)'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
           {onBack
-            ? <button onClick={onBack} style={{background:'none',border:'none',color:'#9a93b5',cursor:'pointer',fontSize:13,padding:0}}>← Буцах</button>
+            ? <button onClick={onBack} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:13,padding:0}}>← Буцах</button>
             : <span/>
           }
-          <button onClick={toggleLang} style={{padding:'4px 12px',background:'#f1eef8',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer',color:'#2e2748'}}>
+          <button onClick={toggleLang} style={{padding:'4px 12px',background:'#f3f4f6',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer',color:'#374151'}}>
             {lang==='mn'?'EN':'МН'}
           </button>
         </div>
         <div style={{textAlign:'center',marginBottom:24}}>
           <img src="/chick.svg" alt="" style={{width:76,height:76,display:'block',margin:'0 auto 8px',animation:'bob 3.4s ease-in-out infinite'}} />
-          <div style={{fontSize:22,fontWeight:900,color:'#1a1030',letterSpacing:'-.3px'}}>ЭЕШ шалгагч</div>
+          <div style={{fontSize:22,fontWeight:900,color:'#1c1f2a',letterSpacing:'-.3px'}}>ЭЕШ шалгагч</div>
           <div style={{fontSize:12,fontWeight:800,color:'#7B52EE'}}>CyberMath</div>
-          <div style={{fontSize:13,color:'#9a93b5',marginTop:4}}>{t.selectRole}</div>
+          <div style={{fontSize:13,color:'#9ca3af',marginTop:4}}>{t.selectRole}</div>
         </div>
 
         {!role&&(
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
             <button onClick={()=>{setRole('teacher');setErr('');setTab('login');}}
-              style={{padding:'24px 16px',background:'#faf8ff',border:'2px solid #e7ddff',borderRadius:14,cursor:'pointer',textAlign:'center'}}>
+              style={{padding:'24px 16px',background:'#f9fafb',border:'2px solid #e5e7eb',borderRadius:14,cursor:'pointer',textAlign:'center'}}>
               <div style={{display:'flex',justifyContent:'center',marginBottom:8}}><div style={{background:'#f3eeff',borderRadius:12,padding:10}}><Ico d={['M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z']} size={32} color='#7B52EE'/></div></div>
-              <div style={{fontWeight:800,fontSize:15,color:'#1a1030'}}>Багш</div>
-              <div style={{fontSize:11,color:'#9a93b5',marginTop:4}}>Нэвтрэх / Бүртгүүлэх</div>
+              <div style={{fontWeight:800,fontSize:15,color:'#1c1f2a'}}>Багш</div>
+              <div style={{fontSize:11,color:'#9ca3af',marginTop:4}}>Нэвтрэх / Бүртгүүлэх</div>
             </button>
             <button onClick={()=>{setRole('student');setErr('');}}
-              style={{padding:'24px 16px',background:'#faf8ff',border:'2px solid #e7ddff',borderRadius:14,cursor:'pointer',textAlign:'center'}}>
+              style={{padding:'24px 16px',background:'#f9fafb',border:'2px solid #e5e7eb',borderRadius:14,cursor:'pointer',textAlign:'center'}}>
               <div style={{display:'flex',justifyContent:'center',marginBottom:8}}><div style={{background:'#f3eeff',borderRadius:12,padding:10}}><Ico d='M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5' size={32} color='#7B52EE'/></div></div>
-              <div style={{fontWeight:800,fontSize:15,color:'#1a1030'}}>Сурагч</div>
-              <div style={{fontSize:11,color:'#9a93b5',marginTop:4}}>Кодоор нэвтрэх</div>
+              <div style={{fontWeight:800,fontSize:15,color:'#1c1f2a'}}>Сурагч</div>
+              <div style={{fontSize:11,color:'#9ca3af',marginTop:4}}>Кодоор нэвтрэх</div>
             </button>
           </div>
         )}
 
         {role==='teacher'&&(
           <>
-            <button onClick={()=>{setRole(null);setErr('');setRegistered(false);}} style={{background:'none',border:'none',color:'#9a93b5',cursor:'pointer',fontSize:13,marginBottom:14,padding:0}}>← Буцах</button>
+            <button onClick={()=>{setRole(null);setErr('');setRegistered(false);}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:13,marginBottom:14,padding:0}}>← Буцах</button>
             {verifying ? (
               <div style={{textAlign:'center',padding:'8px 0'}}>
                 <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
@@ -947,57 +947,57 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
                     <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#7B52EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
                   </div>
                 </div>
-                <div style={{fontWeight:800,fontSize:15,color:'#1a1030',marginBottom:4}}>Email шалгана уу!</div>
-                <div style={{fontSize:12,color:'#7c7596',marginBottom:8}}><b>{verifyEmail}</b> руу 6 оронтой код илгээлээ</div>
-                <div style={{fontSize:11,color:'#7c7596',marginBottom:16,background:'#fef9c3',padding:'6px 10px',borderRadius:6,border:'1px solid #fde68a'}}>Хэрэв ирэхгүй бол spam/junk фолдероо шалгана уу</div>
+                <div style={{fontWeight:800,fontSize:15,color:'#1c1f2a',marginBottom:4}}>Email шалгана уу!</div>
+                <div style={{fontSize:12,color:'#6b7280',marginBottom:8}}><b>{verifyEmail}</b> руу 6 оронтой код илгээлээ</div>
+                <div style={{fontSize:11,color:'#6b7280',marginBottom:16,background:'#fef9c3',padding:'6px 10px',borderRadius:6,border:'1px solid #fde68a'}}>Хэрэв ирэхгүй бол spam/junk фолдероо шалгана уу</div>
                 {verifyErr && <div style={{color:'#b3261e',fontSize:12,background:'#fdecec',padding:'6px 10px',borderRadius:6,marginBottom:10,textAlign:'center'}}>{verifyErr}</div>}
                 <input value={verifyCode} onChange={e=>setVerifyCode(e.target.value.replace(/\D/g,'').slice(0,6))}
                   onKeyDown={e=>e.key==='Enter'&&handleVerify()}
                   placeholder="000000" maxLength={6}
                   style={{...inp,fontSize:22,textAlign:'center',letterSpacing:10,fontWeight:900,marginBottom:12}} />
                 <button onClick={handleVerify} disabled={verifyLoading||verifyCode.length!==6}
-                  style={{width:'100%',padding:12,background:'linear-gradient(135deg,#7B52EE,#A855F7)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8,opacity:verifyCode.length!==6?0.6:1}}>
+                  style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8,opacity:verifyCode.length!==6?0.6:1}}>
                   {verifyLoading&&<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>} Баталгаажуулах
                 </button>
-                <button onClick={()=>{setVerifying(false);setVerifyCode('');setVerifyErr('');}} style={{background:'none',border:'none',color:'#9a93b5',cursor:'pointer',fontSize:12}}>← Буцах</button>
+                <button onClick={()=>{setVerifying(false);setVerifyCode('');setVerifyErr('');}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12}}>← Буцах</button>
               </div>
             ) : registered ? (
               <div style={{padding:'8px 0'}}>
                 <div style={{textAlign:'center',marginBottom:16}}>
                   <div style={{display:'flex',justifyContent:'center',marginBottom:10}}><div style={{background:'#fef3c7',borderRadius:14,padding:12}}><Ico d='M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z' size={40} color='#d97706'/></div></div>
-                  <div style={{fontWeight:800,fontSize:16,color:'#1a1030',marginBottom:6}}>Хүсэлт илгээгдлээ!</div>
-                  <div style={{fontSize:12,color:'#7c7596',lineHeight:1.6}}>Admin таны төлбөрийг баталгаажуулсны дараа нэвтэрч болно.</div>
+                  <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:6}}>Хүсэлт илгээгдлээ!</div>
+                  <div style={{fontSize:12,color:'#6b7280',lineHeight:1.6}}>Admin таны төлбөрийг баталгаажуулсны дараа нэвтэрч болно.</div>
                 </div>
                 {/* Payment info */}
-                <div style={{background:'#faf8ff',border:'1px solid #e7ddff',borderRadius:12,padding:'16px',marginBottom:14}}>
-                  <div style={{fontWeight:800,fontSize:13,color:'#1a1030',marginBottom:10,textAlign:'center'}}>💳 Төлбөрийн мэдээлэл</div>
+                <div style={{background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:12,padding:'16px',marginBottom:14}}>
+                  <div style={{fontWeight:800,fontSize:13,color:'#1c1f2a',marginBottom:10,textAlign:'center'}}>💳 Төлбөрийн мэдээлэл</div>
                   <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:'6px 12px',fontSize:12}}>
-                    <span style={{color:'#7c7596',fontWeight:600}}>Банк:</span>
-                    <span style={{color:'#1a1030',fontWeight:700}}>Хаан банк</span>
-                    <span style={{color:'#7c7596',fontWeight:600}}>Данс:</span>
-                    <span style={{color:'#1a1030',fontWeight:700,letterSpacing:1}}>5542136007</span>
-                    <span style={{color:'#7c7596',fontWeight:600}}>IBAN:</span>
-                    <span style={{color:'#1a1030',fontWeight:700}}>34000500</span>
-                    <span style={{color:'#7c7596',fontWeight:600}}>Эзэмшигч:</span>
-                    <span style={{color:'#1a1030',fontWeight:700}}>М.Бямбадорж</span>
-                    <span style={{color:'#7c7596',fontWeight:600}}>Дүн:</span>
+                    <span style={{color:'#6b7280',fontWeight:600}}>Банк:</span>
+                    <span style={{color:'#1c1f2a',fontWeight:700}}>Хаан банк</span>
+                    <span style={{color:'#6b7280',fontWeight:600}}>Данс:</span>
+                    <span style={{color:'#1c1f2a',fontWeight:700,letterSpacing:1}}>5542136007</span>
+                    <span style={{color:'#6b7280',fontWeight:600}}>IBAN:</span>
+                    <span style={{color:'#1c1f2a',fontWeight:700}}>34000500</span>
+                    <span style={{color:'#6b7280',fontWeight:600}}>Эзэмшигч:</span>
+                    <span style={{color:'#1c1f2a',fontWeight:700}}>М.Бямбадорж</span>
+                    <span style={{color:'#6b7280',fontWeight:600}}>Дүн:</span>
                     <span style={{color:'#7B52EE',fontWeight:900,fontSize:14}}>9,900 ₮ / сар</span>
-                    <span style={{color:'#7c7596',fontWeight:600}}>Утга:</span>
-                    <span style={{color:'#1a1030',fontWeight:700}}>Бүртгүүлсэн нэр, утасны дугаар</span>
+                    <span style={{color:'#6b7280',fontWeight:600}}>Утга:</span>
+                    <span style={{color:'#1c1f2a',fontWeight:700}}>Бүртгүүлсэн нэр, утасны дугаар</span>
                   </div>
                 </div>
                 <div style={{background:'#fef9c3',border:'1px solid #fde68a',borderRadius:8,padding:'8px 12px',fontSize:11,color:'#92400e',marginBottom:12,textAlign:'center'}}>
                   Төлбөр хийсний дараа admin эрхийг нээнэ
                 </div>
-                <button onClick={()=>{setRegistered(false);setTab('login');}} style={{width:'100%',padding:'8px',background:'#f1eef8',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer'}}>Нэвтрэх хуудас руу</button>
+                <button onClick={()=>{setRegistered(false);setTab('login');}} style={{width:'100%',padding:'8px',background:'#f3f4f6',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer'}}>Нэвтрэх хуудас руу</button>
               </div>
             ) : (
               <>
-              <div style={{display:'flex',background:'#f1eef8',borderRadius:10,padding:3,marginBottom:18}}>
+              <div style={{display:'flex',background:'#f3f4f6',borderRadius:10,padding:3,marginBottom:18}}>
               {['login','register'].map(tb=>(
                 <button key={tb} onClick={()=>{setTab(tb);setErr('');}}
                   style={{flex:1,padding:'8px',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer',
-                    background:tab===tb?'white':'transparent',color:tab===tb?'#1a1030':'#9a93b5',
+                    background:tab===tb?'white':'transparent',color:tab===tb?'#1c1f2a':'#9ca3af',
                     boxShadow:tab===tb?'0 1px 4px rgba(0,0,0,.1)':'none'}}>
                   {tb==='login'?'Нэвтрэх':'Бүртгүүлэх'}
                 </button>
@@ -1010,34 +1010,34 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{display:'block',margin:'0 auto 12px'}}><path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     <div style={{fontWeight:800,fontSize:15,marginBottom:4}}>Нууц үг амжилттай солигдлоо!</div>
                     <button onClick={()=>{setForgotMode(false);setForgotStep(1);setForgotDone(false);setForgotEmail('');setForgotCode('');setForgotNewPass('');setTab('login');}}
-                      style={{width:'100%',padding:12,background:'linear-gradient(135deg,#7B52EE,#A855F7)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginTop:8}}>
+                      style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginTop:8}}>
                       Нэвтрэх
                     </button>
                   </div>
                 ) : forgotStep===1 ? (
                   <div>
                     <div style={{fontWeight:800,fontSize:15,marginBottom:4}}>Нууц үг сэргээх</div>
-                    <div style={{fontSize:12,color:'#7c7596',marginBottom:12}}>Email хаягаа оруулна уу</div>
+                    <div style={{fontSize:12,color:'#6b7280',marginBottom:12}}>Email хаягаа оруулна уу</div>
                     {forgotErr&&<div style={{color:'#b3261e',fontSize:12,background:'#fdecec',padding:'6px 10px',borderRadius:6,marginBottom:8}}>{forgotErr}</div>}
                     <input value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} placeholder="Email хаяг" type="email" style={inp}/>
                     <button onClick={handleForgotSend} disabled={forgotLoading}
-                      style={{width:'100%',padding:12,background:'linear-gradient(135deg,#7B52EE,#A855F7)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8}}>
+                      style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8}}>
                       {forgotLoading?'Илгээж байна...':'Код илгээх'}
                     </button>
-                    <button onClick={()=>{setForgotMode(false);setForgotErr('');}} style={{background:'none',border:'none',color:'#9a93b5',cursor:'pointer',fontSize:12,width:'100%'}}>← Буцах</button>
+                    <button onClick={()=>{setForgotMode(false);setForgotErr('');}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12,width:'100%'}}>← Буцах</button>
                   </div>
                 ) : (
                   <div>
                     <div style={{fontWeight:800,fontSize:15,marginBottom:4}}>Шинэ нууц үг тохируулах</div>
-                    <div style={{fontSize:12,color:'#7c7596',marginBottom:12}}><b>{forgotEmail}</b> руу код илгээлээ. Spam шалгана уу.</div>
+                    <div style={{fontSize:12,color:'#6b7280',marginBottom:12}}><b>{forgotEmail}</b> руу код илгээлээ. Spam шалгана уу.</div>
                     {forgotErr&&<div style={{color:'#b3261e',fontSize:12,background:'#fdecec',padding:'6px 10px',borderRadius:6,marginBottom:8}}>{forgotErr}</div>}
                     <input value={forgotCode} onChange={e=>setForgotCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="6 оронтой код" maxLength={6} style={inp}/>
                     <input value={forgotNewPass} onChange={e=>setForgotNewPass(e.target.value)} placeholder="Шинэ нууц үг" type="password" style={inp}/>
                     <button onClick={handleForgotReset} disabled={forgotLoading||forgotCode.length!==6||!forgotNewPass}
-                      style={{width:'100%',padding:12,background:'linear-gradient(135deg,#7B52EE,#A855F7)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8,opacity:(forgotCode.length!==6||!forgotNewPass)?0.6:1}}>
+                      style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8,opacity:(forgotCode.length!==6||!forgotNewPass)?0.6:1}}>
                       {forgotLoading?'Солиж байна...':'Нууц үг солих'}
                     </button>
-                    <button onClick={()=>{setForgotStep(1);setForgotErr('');}} style={{background:'none',border:'none',color:'#9a93b5',cursor:'pointer',fontSize:12,width:'100%'}}>← Буцах</button>
+                    <button onClick={()=>{setForgotStep(1);setForgotErr('');}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12,width:'100%'}}>← Буцах</button>
                   </div>
                 )}
               </div>
@@ -1045,7 +1045,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
             {!forgotMode && err && <div style={{color:'#b3261e',fontSize:13,background:'#fdecec',padding:'8px 12px',borderRadius:8,border:'1px solid #f6c9c9',marginBottom:12,textAlign:'center'}}>{err}</div>}
             {!forgotMode&&tab==='login'&&(
               <button onClick={()=>{setForgotMode(true);setForgotEmail(email);setForgotErr('');setForgotStep(1);setForgotDone(false);}}
-                style={{background:'none',border:'none',color:'#9a93b5',cursor:'pointer',fontSize:12,width:'100%',marginTop:4,textDecoration:'underline'}}>
+                style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12,width:'100%',marginTop:4,textDecoration:'underline'}}>
                 Нууц үгээ мартсан?
               </button>
             )}
@@ -1062,11 +1062,11 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
             <input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="Нууц үг" onKeyDown={e=>e.key==='Enter'&&(tab==='login'?handleTeacherLogin():handleRegister())}
               style={{...inp,marginBottom:16}} />
             <button onClick={tab==='login'?handleTeacherLogin:handleRegister} disabled={loading}
-              style={{width:'100%',padding:13,background:'linear-gradient(135deg,#7B52EE,#A855F7)',color:'white',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+              style={{width:'100%',padding:13,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
               {loading&&<Spinner/>} {tab==='login'?'Нэвтрэх':'Хүсэлт илгээх'}
             </button>
             {tab==='register'&&(
-              <div style={{fontSize:11,color:'#9a93b5',textAlign:'center',marginTop:10}}>
+              <div style={{fontSize:11,color:'#9ca3af',textAlign:'center',marginTop:10}}>
                 Бүртгүүлсний дараа admin зөвшөөрнө
               </div>
             )}
@@ -1078,13 +1078,13 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
         {/* Student login */}
         {role==='student'&&(
           <>
-            <button onClick={()=>{setRole(null);setErr('');}} style={{background:'none',border:'none',color:'#9a93b5',cursor:'pointer',fontSize:13,marginBottom:16,padding:0}}>← Буцах</button>
+            <button onClick={()=>{setRole(null);setErr('');}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:13,marginBottom:16,padding:0}}>← Буцах</button>
             {err && <div style={{color:'#b3261e',fontSize:13,background:'#fdecec',padding:'8px 12px',borderRadius:8,border:'1px solid #f6c9c9',marginBottom:14,textAlign:'center'}}>{err}</div>}
-            <div style={{fontSize:13,color:'#7c7596',marginBottom:12,textAlign:'center'}}>Багшаас авсан кодоо оруулна уу</div>
+            <div style={{fontSize:13,color:'#6b7280',marginBottom:12,textAlign:'center'}}>Багшаас авсан кодоо оруулна уу</div>
             <input value={code} onChange={e=>setCode(e.target.value)} placeholder="Кодоо оруулах" onKeyDown={e=>e.key==='Enter'&&handleStudentLogin()}
               style={{...inp,fontSize:20,textAlign:'center',letterSpacing:4,fontWeight:700,marginBottom:16}} />
             <button onClick={handleStudentLogin} disabled={loading}
-              style={{width:'100%',padding:13,background:'linear-gradient(135deg,#7B52EE,#A855F7)',color:'white',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+              style={{width:'100%',padding:13,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
               {loading&&<Spinner/>} Нэвтрэх
             </button>
           </>
@@ -1130,15 +1130,15 @@ function AdminPage({dark:d=false}) {
   const active   = teachers.filter(t => t.status==='active' && !t.is_admin);
   const disabled = teachers.filter(t => t.status==='disabled');
 
-  const bg   = d ? '#1a1030' : 'white';
-  const text = d ? '#f1eef8' : '#1a1030';
-  const muted= d ? '#9a93b5' : '#7c7596';
-  const border= d ? '#2d2159' : '#e7ddff';
+  const bg   = d ? '#1c1f2a' : 'white';
+  const text = d ? '#f3f4f6' : '#1c1f2a';
+  const muted= d ? '#9ca3af' : '#6b7280';
+  const border= d ? '#2a2e38' : '#e5e7eb';
 
   function TeacherRow({t, actions}) {
     return (
       <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',borderBottom:'1px solid '+border}}>
-        <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#7B52EE,#9333ea 60%,#A855F7)',color:'white',fontWeight:900,fontSize:14,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+        <div style={{width:36,height:36,borderRadius:'50%',background:'#7B52EE',color:'white',fontWeight:900,fontSize:14,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
           {(t.name||t.email||'?')[0].toUpperCase()}
         </div>
         <div style={{flex:1,minWidth:0}}>
@@ -1158,8 +1158,8 @@ function AdminPage({dark:d=false}) {
   return (
     <div style={{maxWidth:800,margin:'0 auto',padding:'24px 20px'}}>
       {/* Header */}
-      <div style={{background:'linear-gradient(135deg,#1a1030,#2d2159)',borderRadius:20,padding:'24px 28px',color:'white',marginBottom:20}}>
-        <div style={{fontSize:11,letterSpacing:3,opacity:.7,marginBottom:4}}>EYESH CHECKER</div>
+      <div style={{background:'linear-gradient(135deg,#1c1f2a,#2a2e38)',borderRadius:20,padding:'24px 28px',color:'white',marginBottom:20}}>
+        <div style={{fontSize:11,letterSpacing:2,opacity:.7,marginBottom:4}}>CYBERMATH · ЭЕШ</div>
         <div style={{fontSize:26,fontWeight:900}}>Admin панель</div>
         <div style={{opacity:.8,fontSize:13,marginTop:4}}>Багш нарын хандалтыг удирдах</div>
       </div>
@@ -1169,7 +1169,7 @@ function AdminPage({dark:d=false}) {
 
       {/* Pending */}
       {pending.length>0 && (
-        <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(90,50,214,.10)',marginBottom:16}}>
+        <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
           <div style={{padding:'12px 16px',background:'#fef9c3',borderBottom:'1px solid #fde68a',display:'flex',alignItems:'center',gap:8}}>
             <span style={{fontSize:16}}>⏳</span>
             <span style={{fontWeight:800,fontSize:14,color:'#92400e'}}>Хүлээгдэж буй хүсэлтүүд — {pending.length}</span>
@@ -1184,7 +1184,7 @@ function AdminPage({dark:d=false}) {
       )}
 
       {/* Active */}
-      <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(90,50,214,.10)',marginBottom:16}}>
+      <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
         <div style={{padding:'12px 16px',borderBottom:'1px solid '+border,display:'flex',alignItems:'center',gap:8}}>
           <span style={{fontSize:16}}>✅</span>
           <span style={{fontWeight:800,fontSize:14,color:text}}>Идэвхтэй багш нар — {active.length}</span>
@@ -1193,7 +1193,7 @@ function AdminPage({dark:d=false}) {
           ? <div style={{padding:'24px',textAlign:'center',color:muted,fontSize:13}}>Одоохондоо байхгүй</div>
           : active.map(t=>(
             <TeacherRow key={t.id} t={t} actions={<>
-              <button style={btnStyle('#f1eef8','#2e2748')} onClick={()=>updateStatus(t.id,'disabled')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636' size={14} color='#2e2748'/>Хаах</span></button>
+              <button style={btnStyle('#f3f4f6','#374151')} onClick={()=>updateStatus(t.id,'disabled')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636' size={14} color='#374151'/>Хаах</span></button>
               <button style={btnStyle('#fdecec','#b3261e')} onClick={()=>removeTeacher(t.id,t.email)}><Ico d='M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0' size={14} color='#b3261e'/></button>
             </>}/>
           ))
@@ -1202,7 +1202,7 @@ function AdminPage({dark:d=false}) {
 
       {/* Disabled */}
       {disabled.length>0 && (
-        <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+        <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{padding:'12px 16px',borderBottom:'1px solid '+border,display:'flex',alignItems:'center',gap:8}}>
             <span style={{fontSize:16}}>🚫</span>
             <span style={{fontWeight:800,fontSize:14,color:muted}}>Хаагдсан — {disabled.length}</span>
@@ -1232,8 +1232,8 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
   const avgScaled = examStudents.length ? (examStudents.reduce((a,b)=>a+b.scaled,0)/examStudents.length).toFixed(1) : '—';
   const passCount = examStudents.filter(s=>s.scaled>=60).length;
 
-  const bg = d?'#1a1030':'white';
-  const muted = d?'#9a93b5':'#7c7596';
+  const bg = d?'#1c1f2a':'white';
+  const muted = d?'#9ca3af':'#6b7280';
 
   const stats = currentExam
     ? [
@@ -1265,35 +1265,35 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
       </div>
       <div className="cm-stats" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12,marginBottom:24}}>
         {currentExam && (
-          <div style={{gridColumn:'1/-1',background:'linear-gradient(135deg,#7c3aed18,#a855f718)',border:'1px solid #a855f730',borderRadius:10,padding:'8px 16px',display:'flex',alignItems:'center',gap:8}}>
-            <span style={{fontSize:13,fontWeight:700,color:'#7c3aed'}}>{currentExam.title}</span>
+          <div style={{gridColumn:'1/-1',background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:10,padding:'8px 16px',display:'flex',alignItems:'center',gap:8}}>
+            <span style={{fontSize:13,fontWeight:700,color:'#7B52EE'}}>{currentExam.title}</span>
             <span style={{fontSize:12,color:muted}}>{currentExam.subject}</span>
             <button onClick={()=>onSelectExam(null)} style={{marginLeft:'auto',background:'none',border:'none',color:muted,cursor:'pointer',fontSize:12}}>✕ Бүгдийг харах</button>
           </div>
         )}
         {stats.map(([label,val,c])=>(
-          <div key={label} style={{background:bg,borderRadius:12,padding:'16px 20px',boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+          <div key={label} style={{background:bg,borderRadius:12,padding:'16px 20px',boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
             <div style={{fontSize:28,fontWeight:900,color:c}}>{val}</div>
             <div style={{fontSize:12,color:muted,marginTop:4}}>{label}</div>
           </div>
         ))}
       </div>
       {exams.length===0?(
-        <div style={{background:'white',borderRadius:12,padding:'44px',textAlign:'center',color:'#9a93b5'}}>
+        <div style={{background:'white',borderRadius:12,padding:'44px',textAlign:'center',color:'#9ca3af'}}>
           <div style={{fontSize:16,fontWeight:600,marginBottom:6}}>Шалгалт байхгүй байна</div>
           <button onClick={()=>onNavigate('create')} style={{marginTop:12,padding:'10px 22px',background:'#7B52EE',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>+ Шалгалт Үүсгэх</button>
         </div>
       ):(<>
         {/* Subject filter tabs */}
         {examSubjects.length > 1 && (
-          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14,padding:'8px 4px',borderBottom:'1px solid '+(d?'#2d2159':'#e7ddff')}}>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14,padding:'8px 4px',borderBottom:'1px solid '+(d?'#2a2e38':'#e5e7eb')}}>
             <button onClick={()=>setFilterSubject('all')}
-              style={{padding:'8px 14px',background:filterSubject==='all'?'#7B52EE':(d?'#2d2159':'#f1eef8'),color:filterSubject==='all'?'white':(d?'#d9cff5':'#4a4366'),border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+              style={{padding:'8px 14px',background:filterSubject==='all'?'#7B52EE':(d?'#2a2e38':'#f3f4f6'),color:filterSubject==='all'?'white':(d?'#d1d5db':'#4b5563'),border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer'}}>
               Бүгд ({exams.length})
             </button>
             {examSubjects.map(sub=>(
               <button key={sub} onClick={()=>setFilterSubject(sub)}
-                style={{padding:'8px 14px',background:filterSubject===sub?'#7B52EE':(d?'#2d2159':'#f1eef8'),color:filterSubject===sub?'white':(d?'#d9cff5':'#4a4366'),border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+                style={{padding:'8px 14px',background:filterSubject===sub?'#7B52EE':(d?'#2a2e38':'#f3f4f6'),color:filterSubject===sub?'white':(d?'#d1d5db':'#4b5563'),border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer'}}>
                 {sub} ({subjectCounts[sub]})
               </button>
             ))}
@@ -1307,11 +1307,11 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
             const rm=exam.sec1Scores?.reduce((a,b)=>a+b,0)||0;
             return (
               <div key={exam.id} onClick={()=>onSelectExam(exam)}
-                style={{background:'white',borderRadius:12,padding:18,cursor:'pointer',border:`2px solid ${act?'#7B52EE':'#e7ddff'}`,boxShadow:act?'0 0 0 4px #e7ddff':'0 1px 4px rgba(90,50,214,.10)',transition:'all .2s'}}>
+                style={{background:'white',borderRadius:12,padding:18,cursor:'pointer',border:`2px solid ${act?'#7B52EE':'#e5e7eb'}`,boxShadow:act?'0 0 0 4px #e5e7eb':'0 1px 4px rgba(17,24,39,.06)',transition:'all .2s'}}>
                 <div style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',gap:8,marginBottom:10}}>
                   <div style={{flex:'1 1 100%',minWidth:0}}>
-                    <div style={{fontSize:15.5,fontWeight:900,color:'#1a1030',lineHeight:1.3}}>{exam.title}</div>
-                    <div style={{fontSize:12,color:'#7c7596',marginTop:2}}>{exam.subject} · {exam.sec1Count} дасгал · Raw max: {rm}</div>
+                    <div style={{fontSize:15.5,fontWeight:900,color:'#1c1f2a',lineHeight:1.3}}>{exam.title}</div>
+                    <div style={{fontSize:12,color:'#6b7280',marginTop:2}}>{exam.subject} · {exam.sec1Count} дасгал · Raw max: {rm}</div>
                     {exam.useSec2&&<div style={{fontSize:11,color:'#059669',marginTop:1}}>2-р хэсэг</div>}
                   </div>
                   <div style={{display:'flex',gap:6,alignItems:'center'}}>
@@ -1323,9 +1323,9 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
                   </div>
                 </div>
                 <div style={{display:'flex',gap:14,alignItems:'flex-end'}}>
-                  <div><div style={{fontSize:20,fontWeight:800,color:'#7B52EE'}}>{es.length}</div><div style={{fontSize:11,color:'#9a93b5'}}>Сурагч</div></div>
-                  {avgS&&<div><div style={{fontSize:20,fontWeight:800,color:eyeshGrade(pf(avgS)).c}}>{avgS}</div><div style={{fontSize:11,color:'#9a93b5'}}>Дундаж ЭЕШ</div></div>}
-                  <div style={{flex:1,textAlign:'right',fontSize:11,color:'#9a93b5'}}>{new Date(exam.createdAt).toLocaleDateString('mn-MN')}</div>
+                  <div><div style={{fontSize:20,fontWeight:800,color:'#7B52EE'}}>{es.length}</div><div style={{fontSize:11,color:'#9ca3af'}}>Сурагч</div></div>
+                  {avgS&&<div><div style={{fontSize:20,fontWeight:800,color:eyeshGrade(pf(avgS)).c}}>{avgS}</div><div style={{fontSize:11,color:'#9ca3af'}}>Дундаж ЭЕШ</div></div>}
+                  <div style={{flex:1,textAlign:'right',fontSize:11,color:'#9ca3af'}}>{new Date(exam.createdAt).toLocaleDateString('mn-MN')}</div>
                 </div>
                 <div style={{display:'flex',gap:8,marginTop:12}}>
                   <button className="cm-btn" style={{flex:1,padding:'.6rem .8rem',fontSize:13.5}} onClick={e=>{e.stopPropagation();onSelectExam(exam);onNavigate('scan');}}>Шалгах</button>
@@ -1385,36 +1385,36 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
 
   return (
     <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px'}}>
-      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(90,50,214,.10)',marginBottom:16}}>
-        <div style={{fontWeight:800,fontSize:16,color:'#1a1030',marginBottom:16}}>1. Шалгалтын тохиргоо</div>
+      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+        <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>1. Шалгалтын тохиргоо</div>
         <div style={{marginBottom:12}}>
-          <label style={{fontSize:13,fontWeight:600,color:'#2e2748',display:'block',marginBottom:4}}>Шалгалтын нэр</label>
+          <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>Шалгалтын нэр</label>
           <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Жишээ: Математик 2024 Дадлага 1"
-            style={{width:'100%',padding:'10px 14px',border:'2px solid #e7ddff',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
+            style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:12}}>
           <div>
-            <label style={{fontSize:13,fontWeight:600,color:'#2e2748',display:'block',marginBottom:4}}>Хичээл</label>
+            <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>Хичээл</label>
             <select value={subject} onChange={e=>setSubject(e.target.value)}
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e7ddff',borderRadius:10,fontSize:14,outline:'none'}}>
+              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none'}}>
               {SUBJECTS.map(s=><option key={s}>{s}</option>)}
             </select>
           </div>
           <div>
-            <label style={{fontSize:13,fontWeight:600,color:'#2e2748',display:'block',marginBottom:4}}>1-р хэсэг дасгал (1-36)</label>
+            <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>1-р хэсэг дасгал (1-36)</label>
             <input type="number" min={1} max={200} value={cnt} onChange={e=>handleCntChange(e.target.value)}
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e7ddff',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
+              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
           </div>
           <div style={{display:'flex',alignItems:'center',gap:10,paddingTop:24}}>
             <input type="checkbox" checked={useSec2} onChange={e=>setUseSec2(e.target.checked)} id="us2" style={{width:18,height:18}} />
-            <label htmlFor="us2" style={{fontSize:14,fontWeight:600,color:'#2e2748',cursor:'pointer'}}>2-р хэсэг оролцуулах</label>
+            <label htmlFor="us2" style={{fontSize:14,fontWeight:600,color:'#374151',cursor:'pointer'}}>2-р хэсэг оролцуулах</label>
           </div>
         </div>
         {useSec2&&(
           <div style={{marginBottom:8,display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'}}>
             <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
               {SEC2_SUBS.map((sub,si)=>(
-                <label key={sub} style={{display:'flex',alignItems:'center',gap:4,cursor:'pointer',fontSize:13,fontWeight:600,padding:'6px 10px',background:sec2EnabledSubs[si]?'#dcfce7':'#f1eef8',borderRadius:8,border:'1px solid '+(sec2EnabledSubs[si]?'#86efac':'#e7ddff')}}>
+                <label key={sub} style={{display:'flex',alignItems:'center',gap:4,cursor:'pointer',fontSize:13,fontWeight:600,padding:'6px 10px',background:sec2EnabledSubs[si]?'#dcfce7':'#f3f4f6',borderRadius:8,border:'1px solid '+(sec2EnabledSubs[si]?'#86efac':'#e5e7eb')}}>
                   <input type="checkbox" checked={!!sec2EnabledSubs[si]} onChange={e=>{const n=[...sec2EnabledSubs];n[si]=e.target.checked;setSec2EnabledSubs(n);}} style={{width:14,height:14}} />
                   {sub}
                 </label>
@@ -1424,25 +1424,25 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
         )}
       </div>
 
-      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(90,50,214,.10)',marginBottom:16}}>
-        <div style={{fontWeight:800,fontSize:16,color:'#1a1030',marginBottom:12}}>2. Зөв хариулт, оноо, сэдэв</div>
+      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+        <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:12}}>2. Зөв хариулт, оноо, сэдэв</div>
 
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:6}}>
           {Array.from({length:cnt},(_,i)=>(
-            <div key={i} className="cm-keyrow" style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px',background:'#faf8ff',borderRadius:8,border:'1px solid #e7ddff'}}>
-              <span className="cm-keyno" style={{fontSize:11,fontWeight:700,color:'#9a93b5',minWidth:26,textAlign:'right'}}>D{i+1}</span>
+            <div key={i} className="cm-keyrow" style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px',background:'#f9fafb',borderRadius:8,border:'1px solid #e5e7eb'}}>
+              <span className="cm-keyno" style={{fontSize:11,fontWeight:700,color:'#9ca3af',minWidth:26,textAlign:'right'}}>D{i+1}</span>
               <div className="cm-keych" style={{display:'flex',gap:2}}>
                 {SEC1_CHOICES.map(c=>(
                   <button key={c} onClick={()=>setKeys(k=>{const n=[...k];n[i]=c;return n;})}
-                    style={{width:28,height:28,borderRadius:6,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:keys[i]===c?'#7c3aed':'#e7ddff',color:keys[i]===c?'white':'#7c7596'}}>{c}</button>
+                    style={{width:28,height:28,borderRadius:6,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:keys[i]===c?'#7B52EE':'#e5e7eb',color:keys[i]===c?'white':'#6b7280'}}>{c}</button>
                 ))}
               </div>
               <div className="cm-keyst" style={{display:'flex',alignItems:'center',gap:2}}>
                 <button onClick={()=>setScores(s=>{const n=[...s];n[i]=Math.max(1,n[i]-1);return n;})}
-                  style={{width:20,height:20,border:'1px solid #e7ddff',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f1eef8',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#7c7596'}}>−</button>
-                <span style={{minWidth:20,textAlign:'center',fontSize:12,fontWeight:700,color:'#2e2748'}}>{scores[i]}</span>
+                  style={{width:20,height:20,border:'1px solid #e5e7eb',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#6b7280'}}>−</button>
+                <span style={{minWidth:20,textAlign:'center',fontSize:12,fontWeight:700,color:'#374151'}}>{scores[i]}</span>
                 <button onClick={()=>setScores(s=>{const n=[...s];n[i]=Math.min(10,n[i]+1);return n;})}
-                  style={{width:20,height:20,border:'1px solid #e7ddff',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f1eef8',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#7c7596'}}>+</button>
+                  style={{width:20,height:20,border:'1px solid #e5e7eb',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#6b7280'}}>+</button>
               </div>
               <select className="cm-keytp" value={topics[i]} onChange={e=>setTopics(t=>{const n=[...t];n[i]=e.target.value;return n;})}
                 style={{flex:1,padding:'4px 8px',border:'none',borderRadius:8,fontWeight:700,fontSize:11,cursor:'pointer',background:TOPIC_COLORS[getTopics(subject).indexOf(topics[i])%8]+'22',color:TOPIC_COLORS[getTopics(subject).indexOf(topics[i])%8],outline:'none',minWidth:0}}>
@@ -1455,27 +1455,27 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
         </div>
       </div>
       {useSec2&&(
-        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(90,50,214,.10)',marginBottom:16}}>
-          <div style={{fontWeight:800,fontSize:16,color:'#1a1030',marginBottom:12}}>3. 2-р хэсгийн зөв хариулт, оноо</div>
+        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+          <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:12}}>3. 2-р хэсгийн зөв хариулт, оноо</div>
           {SEC2_SUBS.filter((_,i)=>sec2EnabledSubs[i]).map(sub=>(
             <div key={sub} style={{marginBottom:20}}>
-              <div style={{fontWeight:700,fontSize:14,color:'#7c3aed',marginBottom:8}}>Дэд хэсэг {sub}</div>
+              <div style={{fontWeight:700,fontSize:14,color:'#7B52EE',marginBottom:8}}>Дэд хэсэг {sub}</div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:6}}>
                 {SEC2_ROWS.map(row=>(
-                  <div key={row} className="cm-s2key" style={{display:'flex',alignItems:'center',gap:6,padding:'6px 8px',background:'#faf8ff',borderRadius:8,border:'1px solid #e7ddff'}}>
-                    <span style={{fontSize:12,fontWeight:700,color:'#9a93b5',minWidth:14}}>{row}</span>
+                  <div key={row} className="cm-s2key" style={{display:'flex',alignItems:'center',gap:6,padding:'6px 8px',background:'#f9fafb',borderRadius:8,border:'1px solid #e5e7eb'}}>
+                    <span style={{fontSize:12,fontWeight:700,color:'#9ca3af',minWidth:14}}>{row}</span>
                     <input type="text" maxLength={1} value={typeof sec2Keys[sub]?.[row]==='object'?(sec2Keys[sub][row].ans||''):(sec2Keys[sub]?.[row]||'')} 
                       onChange={e=>{const v=e.target.value.replace(/[^0-9.-]/g,'');setSec2Keys(k=>({...k,[sub]:{...k[sub],[row]:{...(typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''}),ans:v}}}));}}
-                      placeholder="0-9" style={{width:44,padding:'5px 6px',border:'1px solid #e7ddff',borderRadius:6,fontSize:13,outline:'none',textAlign:'center'}} />
-                    <span style={{fontSize:11,color:'#9a93b5'}}>оноо:</span>
+                      placeholder="0-9" style={{width:44,padding:'5px 6px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,outline:'none',textAlign:'center'}} />
+                    <span style={{fontSize:11,color:'#9ca3af'}}>оноо:</span>
                     <div style={{display:'flex',alignItems:'center',gap:2}}>
                       <button onClick={()=>setSec2Keys(k=>{const cur=typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''};const sc=Math.max(0.5,Math.round(((cur.score||1)-0.5)*10)/10);return{...k,[sub]:{...k[sub],[row]:{...cur,score:sc}}};} )}
-                        style={{width:20,height:20,border:'1px solid #e7ddff',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f1eef8',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#7c7596'}}>−</button>
+                        style={{width:20,height:20,border:'1px solid #e5e7eb',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#6b7280'}}>−</button>
                       <span style={{minWidth:28,textAlign:'center',fontSize:12,fontWeight:700}}>
                         {(typeof sec2Keys[sub]?.[row]==='object'?sec2Keys[sub][row].score:null)||1}
                       </span>
                       <button onClick={()=>setSec2Keys(k=>{const cur=typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''};const sc=Math.min(20,Math.round(((cur.score||1)+0.5)*10)/10);return{...k,[sub]:{...k[sub],[row]:{...cur,score:sc}}};} )}
-                        style={{width:20,height:20,border:'1px solid #e7ddff',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f1eef8',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#7c7596'}}>+</button>
+                        style={{width:20,height:20,border:'1px solid #e5e7eb',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#6b7280'}}>+</button>
                     </div>
                   </div>
                 ))}
@@ -1484,7 +1484,7 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
           ))}
         </div>
       )}
-      <button onClick={handleSave} style={{width:'100%',padding:'14px',background:'linear-gradient(135deg,#7B52EE,#A855F7)',color:'white',border:'none',borderRadius:12,fontSize:16,fontWeight:800,cursor:'pointer'}}>
+      <button onClick={handleSave} style={{width:'100%',padding:'14px',background:'#7B52EE',color:'white',border:'none',borderRadius:12,fontSize:16,fontWeight:800,cursor:'pointer'}}>
         {isEdit ? 'Шалгалт Хадгалах (Засвар)' : 'Шалгалт Хадгалах'}
       </button>
     </div>
@@ -1599,7 +1599,7 @@ function UploadPage({exam, students, onAddStudent, onNavigate}) {
   const fileRef=useRef();
 
   if (!exam) return (
-    <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px',textAlign:'center',color:'#9a93b5',paddingTop:80}}>
+    <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px',textAlign:'center',color:'#9ca3af',paddingTop:80}}>
       <div style={{fontSize:16,fontWeight:600}}>Эхлээд шалгалт сонгоно уу</div>
     </div>
   );
@@ -1672,32 +1672,32 @@ function UploadPage({exam, students, onAddStudent, onNavigate}) {
   return (
     <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px'}}>
       {/* Student info */}
-      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(90,50,214,.10)',marginBottom:16}}>
-        <div style={{fontWeight:800,fontSize:16,color:'#1a1030',marginBottom:16}}>Сурагчийн мэдээлэл</div>
+      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+        <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>Сурагчийн мэдээлэл</div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
           <div>
-            <label style={{fontSize:13,fontWeight:600,color:'#2e2748',display:'block',marginBottom:4}}>Нэр</label>
+            <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>Нэр</label>
             <input value={name} onChange={e=>setName(e.target.value)} placeholder="Сурагчийн нэр"
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e7ddff',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
+              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
           </div>
           <div>
-            <label style={{fontSize:13,fontWeight:600,color:'#2e2748',display:'block',marginBottom:4}}>Код / ID</label>
+            <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>Код / ID</label>
             <input value={code} onChange={e=>setCode(e.target.value)} placeholder="Сурагчийн код"
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e7ddff',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
+              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
           </div>
         </div>
       </div>
 
       {/* Mode selector */}
       {!scored&&(
-        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(90,50,214,.10)',marginBottom:16}}>
-          <div style={{fontWeight:800,fontSize:16,color:'#1a1030',marginBottom:16}}>Хариулт оруулах арга</div>
+        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+          <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>Хариулт оруулах арга</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
             <button onClick={()=>setMode('ai')}
-              style={{padding:'22px 16px',background:mode==='ai'?'linear-gradient(135deg,#7c3aed,#a855f7)':'#faf8ff',
-                color:mode==='ai'?'white':'#2e2748',border:'2px solid '+(mode==='ai'?'#7c3aed':'#e7ddff'),
+              style={{padding:'22px 16px',background:mode==='ai'?'#7B52EE':'#f9fafb',
+                color:mode==='ai'?'white':'#374151',border:'2px solid '+(mode==='ai'?'#7B52EE':'#e5e7eb'),
                 borderRadius:14,fontWeight:700,fontSize:15,cursor:'pointer',textAlign:'center'}}>
-              <div style={{display:'flex',justifyContent:'center',marginBottom:6}}><Ico d='M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z' size={28} color='#7c3aed'/></div>
+              <div style={{display:'flex',justifyContent:'center',marginBottom:6}}><Ico d='M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z' size={28} color='#7B52EE'/></div>
               AI шинжлэх
               <div style={{fontSize:12,fontWeight:400,marginTop:4,opacity:.8}}>Бүтэн хуудас нэг зураг</div>
             </button>
@@ -1709,8 +1709,8 @@ function UploadPage({exam, students, onAddStudent, onNavigate}) {
               <div style={{fontSize:12,fontWeight:500,marginTop:4,opacity:.85}}>CyberMath хуудсыг AI-гүй, шууд уншина</div>
             </button>
             <button onClick={startManual}
-              style={{padding:'22px 16px',background:mode==='manual'?'linear-gradient(135deg,#0369a1,#0ea5e9)':'#faf8ff',
-                color:mode==='manual'?'white':'#2e2748',border:'2px solid '+(mode==='manual'?'#0369a1':'#e7ddff'),
+              style={{padding:'22px 16px',background:mode==='manual'?'linear-gradient(135deg,#0369a1,#0ea5e9)':'#f9fafb',
+                color:mode==='manual'?'white':'#374151',border:'2px solid '+(mode==='manual'?'#0369a1':'#e5e7eb'),
                 borderRadius:14,fontWeight:700,fontSize:15,cursor:'pointer',textAlign:'center'}}>
               <div style={{display:'flex',justifyContent:'center',marginBottom:6}}><Ico d='M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10' size={28} color='#f97316'/></div>
               Гараар оруулах
@@ -1722,8 +1722,8 @@ function UploadPage({exam, students, onAddStudent, onNavigate}) {
 
       {/* AI mode — image upload */}
       {mode==='ai'&&!scored&&(
-        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(90,50,214,.10)',marginBottom:16}}>
-          <div style={{fontWeight:800,fontSize:16,color:'#1a1030',marginBottom:8}}>Хариулт хуудасны зураг</div>
+        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+          <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:8}}>Хариулт хуудасны зураг</div>
           <div style={{fontSize:12.5,color:'#7a4b00',background:'#fff7e0',border:'1px solid #fde68a',borderRadius:10,padding:'8px 12px',marginBottom:14}}>
             AI уншилт алдаа гаргаж болзошгүй тул дасгал бүрийг шалгаж баталгаажуулна уу. 100% найдвартай уншихын тулд «Хуудас хэвлэх»-ээр CyberMath хуудас хэвлээд «Камераар (OMR)» ашиглана уу.
           </div>
@@ -1732,7 +1732,7 @@ function UploadPage({exam, students, onAddStudent, onNavigate}) {
             <div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
                 <button onClick={()=>setShowCamera(true)}
-                  style={{padding:'18px',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>
+                  style={{padding:'18px',background:'#7B52EE',color:'white',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>
                   📷 Camera
                 </button>
                 <button onClick={()=>fileRef.current.click()}
@@ -1753,13 +1753,13 @@ function UploadPage({exam, students, onAddStudent, onNavigate}) {
               </div>
               {scored&&(
                 <button onClick={()=>setShowOverlay(v=>!v)}
-                  style={{width:'100%',marginBottom:8,padding:'10px',background:showOverlay?'#dcfce7':'#f1eef8',border:`2px solid ${showOverlay?'#16a34a':'#e7ddff'}`,borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer',color:showOverlay?'#16a34a':'#7c7596'}}>
+                  style={{width:'100%',marginBottom:8,padding:'10px',background:showOverlay?'#dcfce7':'#f3f4f6',border:`2px solid ${showOverlay?'#16a34a':'#e5e7eb'}`,borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer',color:showOverlay?'#16a34a':'#6b7280'}}>
                   {showOverlay?'Overlay харуулж байна — нуух':'Зураг дээр overlay харах'}
                 </button>
               )}
               {!scored&&<div style={{display:'flex',gap:8}}>
                 <button onClick={handleAnalyze} disabled={analyzing}
-                  style={{flex:1,padding:'12px',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',border:'none',borderRadius:10,fontWeight:700,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+                  style={{flex:1,padding:'12px',background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontWeight:700,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
                   {analyzing&&<Spinner/>} AI-аар Шинжлэх
                 </button>
                 <button onClick={()=>{setImgData(null);setDet(null);setScored(null);}}
@@ -1870,36 +1870,36 @@ function RatingPage({exams, students, dark:d=false}) {
     return {cls, members, clsAvg, count:members.length};
   }).filter(g=>g.count>0).sort((a,b)=>b.clsAvg-a.clsAvg);
 
-  const bg = d?'#1a1030':'white';
-  const borderC = d?'#2d2159':'#e7ddff';
-  const textC = d?'#f1eef8':'#1a1030';
-  const mutedC = d?'#9a93b5':'#7c7596';
-  const rowBg = d?'#0f0a1f':'#faf8ff';
+  const bg = d?'#1c1f2a':'white';
+  const borderC = d?'#2a2e38':'#e5e7eb';
+  const textC = d?'#f3f4f6':'#1c1f2a';
+  const mutedC = d?'#9ca3af':'#6b7280';
+  const rowBg = d?'#0f1115':'#f9fafb';
 
   return (
     <div style={{maxWidth:1000,margin:'0 auto',padding:'24px 20px'}}>
       {/* Header */}
-      <div style={{background:'linear-gradient(135deg,#7c3aed,#a855f7)',borderRadius:20,padding:'24px 28px',color:'white',marginBottom:20}}>
-        <div style={{fontSize:11,letterSpacing:3,opacity:.7,marginBottom:4}}>EYESH CHECKER</div>
+      <div style={{background:'white',border:'1px solid #e5e7eb',borderRadius:20,padding:'20px 22px',color:'#1c1f2a',marginBottom:20}}>
+        <div style={{fontSize:11,letterSpacing:2,opacity:.7,marginBottom:4}}>CYBERMATH · ЭЕШ</div>
         <div style={{fontSize:26,fontWeight:900}}>Рейтинг</div>
         <div style={{opacity:.8,fontSize:13,marginTop:4}}>Судлагдахуунаар, кодоор эрэмбэлсэн</div>
       </div>
 
       {/* Subject filter */}
-      <div style={{background:bg,borderRadius:14,padding:'14px 16px',marginBottom:12,boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+      <div style={{background:bg,borderRadius:14,padding:'14px 16px',marginBottom:12,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
         <div style={{fontSize:11,fontWeight:700,color:mutedC,marginBottom:8,letterSpacing:1}}>СУДЛАГДАХУУН</div>
         <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
           <button onClick={()=>setFilterSubject('all')}
             style={{padding:'6px 14px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',
-              background:filterSubject==='all'?'#7c3aed':(d?'#2d2159':'#f1eef8'),
-              color:filterSubject==='all'?'white':(d?'#e7ddff':'#2e2748')}}>
+              background:filterSubject==='all'?'#7B52EE':(d?'#2a2e38':'#f3f4f6'),
+              color:filterSubject==='all'?'white':(d?'#e5e7eb':'#374151')}}>
             Бүгд
           </button>
           {allSubjects.map(s=>(
             <button key={s} onClick={()=>setFilterSubject(s)}
               style={{padding:'6px 14px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',
-                background:filterSubject===s?'#7c3aed':(d?'#2d2159':'#f1eef8'),
-                color:filterSubject===s?'white':(d?'#e7ddff':'#2e2748')}}>
+                background:filterSubject===s?'#7B52EE':(d?'#2a2e38':'#f3f4f6'),
+                color:filterSubject===s?'white':(d?'#e5e7eb':'#374151')}}>
               {s}
             </button>
           ))}
@@ -1908,13 +1908,13 @@ function RatingPage({exams, students, dark:d=false}) {
 
       {/* Class accordion filter */}
       {allClasses.length>0&&(
-        <div style={{background:bg,borderRadius:14,padding:'14px 16px',marginBottom:16,boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+        <div style={{background:bg,borderRadius:14,padding:'14px 16px',marginBottom:16,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontSize:11,fontWeight:700,color:mutedC,marginBottom:8,letterSpacing:1}}>АНГИ</div>
           <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
             <button onClick={()=>{setFilterClass('all');setOpenClass(null);}}
               style={{padding:'6px 14px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',
-                background:filterClass==='all'?'#7B52EE':(d?'#2d2159':'#f1eef8'),
-                color:filterClass==='all'?'white':(d?'#e7ddff':'#2e2748')}}>
+                background:filterClass==='all'?'#7B52EE':(d?'#2a2e38':'#f3f4f6'),
+                color:filterClass==='all'?'white':(d?'#e5e7eb':'#374151')}}>
               Бүгд
             </button>
             {allClasses.map(cls=>(
@@ -1924,8 +1924,8 @@ function RatingPage({exams, students, dark:d=false}) {
                   setOpenClass(o=>o===cls?null:cls);
                 }}
                 style={{padding:'6px 14px',borderRadius:8,border:'1px solid '+(openClass===cls?'#7B52EE':borderC),fontWeight:700,fontSize:12,cursor:'pointer',
-                  background:filterClass===cls?'#7B52EE':(d?'#2d2159':'#f1eef8'),
-                  color:filterClass===cls?'white':(d?'#e7ddff':'#2e2748')}}>
+                  background:filterClass===cls?'#7B52EE':(d?'#2a2e38':'#f3f4f6'),
+                  color:filterClass===cls?'white':(d?'#e5e7eb':'#374151')}}>
                 {cls} {openClass===cls?'▲':'▼'}
               </button>
             ))}
@@ -1941,7 +1941,7 @@ function RatingPage({exams, students, dark:d=false}) {
                   {grp.members.map((st,i)=>{
                     const g=eyeshGrade(st.avg);
                     return (
-                      <div key={st.code} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 10px',borderRadius:8,background:i%2===0?(d?'#1a1030':rowBg):(d?'#0f0a1f':'white')}}>
+                      <div key={st.code} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 10px',borderRadius:8,background:i%2===0?(d?'#1c1f2a':rowBg):(d?'#0f1115':'white')}}>
                         <span style={{minWidth:24,fontSize:12,fontWeight:800,color:mutedC}}>{i+1}</span>
                         <span style={{flex:1,fontSize:13,fontWeight:700,color:textC,fontFamily:'monospace'}}>{st.code}</span>
                         {st.subjectAvgs.map(sa=>(
@@ -1963,7 +1963,7 @@ function RatingPage({exams, students, dark:d=false}) {
       )}
 
       {/* Main ranked list */}
-      <div style={{background:bg,borderRadius:14,boxShadow:'0 1px 4px rgba(90,50,214,.10)',overflow:'hidden'}}>
+      <div style={{background:bg,borderRadius:14,boxShadow:'0 1px 4px rgba(17,24,39,.06)',overflow:'hidden'}}>
         {ranked.length===0
           ? <div style={{textAlign:'center',padding:60,color:mutedC}}>Өгөгдөл байхгүй</div>
           : ranked.map((st,i)=>{
@@ -1973,7 +1973,7 @@ function RatingPage({exams, students, dark:d=false}) {
                 <div key={st.code} style={{
                   display:'flex',alignItems:'center',gap:12,padding:'11px 18px',
                   borderBottom:'1px solid '+borderC,
-                  background:i===0?(d?'#2d1f00':'#fffbeb'):i===1?(d?'#1a2030':'#faf8ff'):i===2?(d?'#271a0a':'#fef3e2'):bg
+                  background:i===0?(d?'#2d1f00':'#fffbeb'):i===1?(d?'#1a2030':'#f9fafb'):i===2?(d?'#271a0a':'#fef3e2'):bg
                 }}>
                   <div style={{minWidth:32,textAlign:'center'}}>
                     {isMedal
@@ -2011,7 +2011,7 @@ function RatingPage({exams, students, dark:d=false}) {
 
 // ── Board Page ────────────────────────────────────────────
 function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, dark:d=false}) {
-  if (!exam) return <div style={{textAlign:'center',padding:80,color:'#9a93b5',fontWeight:600}}>Шалгалт сонгоно уу</div>;
+  if (!exam) return <div style={{textAlign:'center',padding:80,color:'#9ca3af',fontWeight:600}}>Шалгалт сонгоно уу</div>;
   const sorted=[...students].sort((a,b)=>b.scaled-a.scaled);
   const [pdfOpen, setPdfOpen] = useState(false);
   // ── ZipGrade CSV import ──
@@ -2345,7 +2345,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
   return (
     <div style={{maxWidth:1200,margin:'0 auto',padding:'24px 20px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
-        <h1 style={{margin:0,fontSize:22,fontWeight:800,color:d?'#f1eef8':'#1a1030'}}>{exam.title} — Жагсаалт</h1>
+        <h1 style={{margin:0,fontSize:22,fontWeight:800,color:d?'#f3f4f6':'#1c1f2a'}}>{exam.title} — Жагсаалт</h1>
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
           <button onClick={()=>setZipOpen(true)} style={{padding:'10px 16px',background:'linear-gradient(135deg,#0369a1,#0284c7)',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
             📥 ZipGrade CSV
@@ -2357,24 +2357,24 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
           <div style={{position:'relative',display:'inline-block'}}>
             <button
               onClick={()=>setPdfOpen(o=>!o)}
-              style={{padding:'10px 16px',background:'linear-gradient(135deg,#7B52EE,#A855F7)',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+              style={{padding:'10px 16px',background:'#7B52EE',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
               PDF бөөнөөр {pdfOpen?'↑':'↓'}
             </button>
             {pdfOpen&&(
-              <div style={{position:'absolute',right:0,top:'100%',marginTop:4,background:d?'#1a1030':'white',border:'1px solid '+(d?'#2d2159':'#e7ddff'),borderRadius:10,boxShadow:'0 4px 20px rgba(0,0,0,.12)',zIndex:50,minWidth:200,overflow:'hidden'}}>
-                <div style={{padding:'8px 16px',fontSize:11,color:'#9a93b5',fontWeight:700,borderBottom:'1px solid '+(d?'#2d2159':'#f1eef8'),letterSpacing:1}}>АНГИ СОНГОХ</div>
+              <div style={{position:'absolute',right:0,top:'100%',marginTop:4,background:d?'#1c1f2a':'white',border:'1px solid '+(d?'#2a2e38':'#e5e7eb'),borderRadius:10,boxShadow:'0 4px 20px rgba(0,0,0,.12)',zIndex:50,minWidth:200,overflow:'hidden'}}>
+                <div style={{padding:'8px 16px',fontSize:11,color:'#9ca3af',fontWeight:700,borderBottom:'1px solid '+(d?'#2a2e38':'#f3f4f6'),letterSpacing:1}}>АНГИ СОНГОХ</div>
                 <button onClick={()=>{exportClassPDFs('__all__');setPdfOpen(false);}}
-                  style={{display:'block',width:'100%',padding:'10px 16px',background:'none',border:'none',textAlign:'left',cursor:'pointer',fontSize:13,fontWeight:700,color:d?'#f1eef8':'#1a1030',borderBottom:'1px solid '+(d?'#2d2159':'#f1eef8')}}>
+                  style={{display:'block',width:'100%',padding:'10px 16px',background:'none',border:'none',textAlign:'left',cursor:'pointer',fontSize:13,fontWeight:700,color:d?'#f3f4f6':'#1c1f2a',borderBottom:'1px solid '+(d?'#2a2e38':'#f3f4f6')}}>
                   Бүгд ({sorted.length} сурагч)
                 </button>
                 {classes.map(cls=>(
                   <button key={cls} onClick={()=>{exportClassPDFs(cls);setPdfOpen(false);}}
-                    style={{display:'block',width:'100%',padding:'10px 16px',background:'none',border:'none',textAlign:'left',cursor:'pointer',fontSize:13,color:d?'#e7ddff':'#2e2748',borderBottom:'1px solid '+(d?'#2d2159':'#f1eef8')}}>
+                    style={{display:'block',width:'100%',padding:'10px 16px',background:'none',border:'none',textAlign:'left',cursor:'pointer',fontSize:13,color:d?'#e5e7eb':'#374151',borderBottom:'1px solid '+(d?'#2a2e38':'#f3f4f6')}}>
                     {cls} ({sorted.filter(s=>(s.class||'')===cls).length} сурагч)
                   </button>
                 ))}
                 <button onClick={()=>setPdfOpen(false)}
-                  style={{display:'block',width:'100%',padding:'8px 16px',background:'none',border:'none',textAlign:'center',cursor:'pointer',fontSize:12,color:'#9a93b5'}}>
+                  style={{display:'block',width:'100%',padding:'8px 16px',background:'none',border:'none',textAlign:'center',cursor:'pointer',fontSize:12,color:'#9ca3af'}}>
                   Хаах
                 </button>
               </div>
@@ -2383,7 +2383,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
         </div>
       </div>
       {sorted.length===0?(
-        <div style={{background:d?'#1a1030':'white',borderRadius:12,padding:'44px',textAlign:'center',color:'#9a93b5'}}>Одоохондоо сурагч байхгүй</div>
+        <div style={{background:d?'#1c1f2a':'white',borderRadius:12,padding:'44px',textAlign:'center',color:'#9ca3af'}}>Одоохондоо сурагч байхгүй</div>
       ):(
         <>
         <div className="cm-card cm-only-phone" style={{padding:0,overflow:'hidden'}}>
@@ -2406,12 +2406,12 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
             );
           })}
         </div>
-        <div className="cm-only-desk" style={{background:d?'#1a1030':'white',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+        <div className="cm-only-desk" style={{background:d?'#1c1f2a':'white',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <table style={{width:'100%',borderCollapse:'collapse'}}>
             <thead>
-              <tr style={{background:d?'#0f0a1f':'#faf8ff',borderBottom:'2px solid '+(d?'#2d2159':'#e7ddff')}}>
+              <tr style={{background:d?'#0f1115':'#f9fafb',borderBottom:'2px solid '+(d?'#2a2e38':'#e5e7eb')}}>
                 {['#','Нэр','Код','Хув.','Зөв','Буруу','Хоосон','Гүйцэтгэл','Засах','PDF',''].map(h=>(
-                  <th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:12,fontWeight:700,color:'#7c7596'}}>{h}</th>
+                  <th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:12,fontWeight:700,color:'#6b7280'}}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -2419,14 +2419,14 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
               {sorted.map((s,i)=>{
                 const g=eyeshGrade(s.scaled);
                 return (
-                  <tr key={s.id} style={{borderBottom:'1px solid '+(d?'#1a1030':'#f1eef8'),background:d?'#1a1030':'white'}}>
-                    <td style={{padding:'10px 14px',fontSize:13,color:'#9a93b5'}}>{i+1}</td>
-                    <td style={{padding:'10px 14px',fontSize:14,fontWeight:700,color:d?'#f1eef8':'#1a1030'}}>{s.name}</td>
-                    <td style={{padding:'10px 14px',fontSize:13,color:'#7c7596'}}>{s.code}</td>
-                    <td style={{padding:'10px 14px',fontSize:13,color:d?'#9a93b5':'#7c7596'}}>{s.version}</td>
+                  <tr key={s.id} style={{borderBottom:'1px solid '+(d?'#1c1f2a':'#f3f4f6'),background:d?'#1c1f2a':'white'}}>
+                    <td style={{padding:'10px 14px',fontSize:13,color:'#9ca3af'}}>{i+1}</td>
+                    <td style={{padding:'10px 14px',fontSize:14,fontWeight:700,color:d?'#f3f4f6':'#1c1f2a'}}>{s.name}</td>
+                    <td style={{padding:'10px 14px',fontSize:13,color:'#6b7280'}}>{s.code}</td>
+                    <td style={{padding:'10px 14px',fontSize:13,color:d?'#9ca3af':'#6b7280'}}>{s.version}</td>
                     <td style={{padding:'10px 14px',fontSize:13,color:'#16a34a',fontWeight:600}}>{s.correct}</td>
                     <td style={{padding:'10px 14px',fontSize:13,color:'#dc2626',fontWeight:600}}>{s.wrong}</td>
-                    <td style={{padding:'10px 14px',fontSize:13,color:'#9a93b5'}}>{s.blank}</td>
+                    <td style={{padding:'10px 14px',fontSize:13,color:'#9ca3af'}}>{s.blank}</td>
                     <td style={{padding:'10px 14px',fontSize:16,fontWeight:800,color:g.c}}>{s.scaled}%</td>
                     <td style={{padding:'10px 14px'}}>
                       <button onClick={()=>openEdit(s,'sec1')}
@@ -2452,12 +2452,12 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
       {/* ── ZipGrade CSV import modal ── */}
       {zipOpen && (
         <div onClick={()=>!zipBusy&&setZipOpen(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,padding:20}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:d?'#1a1030':'white',borderRadius:14,padding:24,maxWidth:560,width:'100%',maxHeight:'90vh',overflow:'auto'}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:d?'#1c1f2a':'white',borderRadius:14,padding:24,maxWidth:560,width:'100%',maxHeight:'90vh',overflow:'auto'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
-              <h2 style={{margin:0,fontSize:18,fontWeight:800,color:d?'#f1eef8':'#1a1030'}}>📥 ZipGrade CSV оруулах</h2>
-              <button onClick={()=>!zipBusy&&setZipOpen(false)} style={{border:'none',background:'none',fontSize:22,cursor:'pointer',color:'#9a93b5'}}>×</button>
+              <h2 style={{margin:0,fontSize:18,fontWeight:800,color:d?'#f3f4f6':'#1c1f2a'}}>📥 ZipGrade CSV оруулах</h2>
+              <button onClick={()=>!zipBusy&&setZipOpen(false)} style={{border:'none',background:'none',fontSize:22,cursor:'pointer',color:'#9ca3af'}}>×</button>
             </div>
-            <div style={{fontSize:13,color:d?'#d9cff5':'#7c7596',marginBottom:16,lineHeight:1.6}}>
+            <div style={{fontSize:13,color:d?'#d1d5db':'#6b7280',marginBottom:16,lineHeight:1.6}}>
               ZipGrade-н <b>"Quiz Results CSV"</b> файлыг оруулна уу. Зөвхөн <b>1-р хэсэг (A–E)</b> автоматаар тооцогдоно. <b>2-р хэсгийг</b> сурагч бүрд "Sec2" товчоор гар оруулна.
               <ul style={{marginTop:8,paddingLeft:18,fontSize:12}}>
                 <li>Шаардлагатай багана: <code>Stu1, Stu2, ..., Stu{exam.sec1Count||36}</code></li>
@@ -2466,21 +2466,21 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
               </ul>
             </div>
             {!zipResult && !zipBusy && (
-              <label style={{display:'block',padding:30,border:'2px dashed '+(d?'#4a4366':'#d9cff5'),borderRadius:10,textAlign:'center',cursor:'pointer',background:d?'#0f0a1f':'#faf8ff'}}>
+              <label style={{display:'block',padding:30,border:'2px dashed '+(d?'#4b5563':'#d1d5db'),borderRadius:10,textAlign:'center',cursor:'pointer',background:d?'#0f1115':'#f9fafb'}}>
                 <div style={{fontSize:32,marginBottom:6}}>📄</div>
-                <div style={{fontSize:14,fontWeight:700,color:d?'#f1eef8':'#1a1030'}}>CSV файл сонгох</div>
-                <div style={{fontSize:12,color:'#9a93b5',marginTop:4}}>.csv файлыг энд дарж оруулна уу</div>
+                <div style={{fontSize:14,fontWeight:700,color:d?'#f3f4f6':'#1c1f2a'}}>CSV файл сонгох</div>
+                <div style={{fontSize:12,color:'#9ca3af',marginTop:4}}>.csv файлыг энд дарж оруулна уу</div>
                 <input type="file" accept=".csv,text/csv" style={{display:'none'}} onChange={e=>handleZipImport(e.target.files?.[0])} />
               </label>
             )}
-            {zipBusy && <div style={{textAlign:'center',padding:30,color:'#9a93b5'}}>Импортлож байна...</div>}
+            {zipBusy && <div style={{textAlign:'center',padding:30,color:'#9ca3af'}}>Импортлож байна...</div>}
             {zipErr && <div style={{padding:12,background:'#fdecec',color:'#b3261e',borderRadius:8,marginTop:10,fontSize:13}}>{zipErr}</div>}
             {zipResult && (
               <div style={{marginTop:16}}>
                 <div style={{padding:14,background:'#dcfce7',color:'#166534',borderRadius:8,fontSize:14,fontWeight:700}}>
                   ✅ Амжилттай: {zipResult.imported} нэмэгдсэн · {zipResult.replaced} шинэчилсэн · {zipResult.skipped} алгассан
                 </div>
-                <div style={{fontSize:12,color:d?'#d9cff5':'#7c7596',marginTop:8}}>
+                <div style={{fontSize:12,color:d?'#d1d5db':'#6b7280',marginTop:8}}>
                   Нийт оноо: {zipResult.totalMax} (Sec1: {zipResult.sec1Max} + Sec2: {zipResult.sec2Max})
                 </div>
                 {zipResult.errors?.length>0 && (
@@ -2501,22 +2501,22 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
       {/* ── Student edit modal (Sec1 + Sec2) ── */}
       {editStu && (
         <div onClick={()=>!editBusy&&setEditStu(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,padding:20}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:d?'#1a1030':'white',borderRadius:14,padding:24,maxWidth:820,width:'100%',maxHeight:'90vh',overflow:'auto'}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:d?'#1c1f2a':'white',borderRadius:14,padding:24,maxWidth:820,width:'100%',maxHeight:'90vh',overflow:'auto'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-              <h2 style={{margin:0,fontSize:18,fontWeight:800,color:d?'#f1eef8':'#1a1030'}}>
-                ✏️ {editStu.name} <span style={{fontSize:12,color:'#9a93b5',fontWeight:500}}>({editStu.code})</span>
+              <h2 style={{margin:0,fontSize:18,fontWeight:800,color:d?'#f3f4f6':'#1c1f2a'}}>
+                ✏️ {editStu.name} <span style={{fontSize:12,color:'#9ca3af',fontWeight:500}}>({editStu.code})</span>
               </h2>
-              <button onClick={()=>!editBusy&&setEditStu(null)} style={{border:'none',background:'none',fontSize:22,cursor:'pointer',color:'#9a93b5'}}>×</button>
+              <button onClick={()=>!editBusy&&setEditStu(null)} style={{border:'none',background:'none',fontSize:22,cursor:'pointer',color:'#9ca3af'}}>×</button>
             </div>
             {/* Tabs */}
-            <div style={{display:'flex',gap:4,marginBottom:14,borderBottom:'1px solid '+(d?'#2d2159':'#e7ddff')}}>
+            <div style={{display:'flex',gap:4,marginBottom:14,borderBottom:'1px solid '+(d?'#2a2e38':'#e5e7eb')}}>
               <button onClick={()=>setEditTab('sec1')}
-                style={{padding:'8px 16px',background:editTab==='sec1'?(d?'#1e40af':'#dbeafe'):'transparent',color:editTab==='sec1'?(d?'#dbeafe':'#1e40af'):(d?'#9a93b5':'#7c7596'),border:'none',borderBottom:editTab==='sec1'?'2px solid #1e40af':'2px solid transparent',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+                style={{padding:'8px 16px',background:editTab==='sec1'?(d?'#1e40af':'#dbeafe'):'transparent',color:editTab==='sec1'?(d?'#dbeafe':'#1e40af'):(d?'#9ca3af':'#6b7280'),border:'none',borderBottom:editTab==='sec1'?'2px solid #1e40af':'2px solid transparent',fontSize:13,fontWeight:700,cursor:'pointer'}}>
                 1-р хэсэг (A–E)
               </button>
               {exam.useSec2 && (
                 <button onClick={()=>setEditTab('sec2')}
-                  style={{padding:'8px 16px',background:editTab==='sec2'?(d?'#1e40af':'#dbeafe'):'transparent',color:editTab==='sec2'?(d?'#dbeafe':'#1e40af'):(d?'#9a93b5':'#7c7596'),border:'none',borderBottom:editTab==='sec2'?'2px solid #1e40af':'2px solid transparent',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+                  style={{padding:'8px 16px',background:editTab==='sec2'?(d?'#1e40af':'#dbeafe'):'transparent',color:editTab==='sec2'?(d?'#dbeafe':'#1e40af'):(d?'#9ca3af':'#6b7280'),border:'none',borderBottom:editTab==='sec2'?'2px solid #1e40af':'2px solid transparent',fontSize:13,fontWeight:700,cursor:'pointer'}}>
                   2-р хэсэг (0–9)
                 </button>
               )}
@@ -2525,7 +2525,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
             {/* Section 1 */}
             {editTab==='sec1' && (
               <div>
-                <div style={{fontSize:12,color:d?'#d9cff5':'#7c7596',marginBottom:10}}>
+                <div style={{fontSize:12,color:d?'#d1d5db':'#6b7280',marginBottom:10}}>
                   Асуулт бүрд A/B/C/D/E эсвэл хоосон сонго.
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:8}}>
@@ -2533,17 +2533,17 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
                     const key = exam.sec1Key?.[i] || '';
                     const pts = exam.sec1Scores?.[i] || 1;
                     return (
-                      <div key={i} style={{padding:8,border:'1px solid '+(d?'#2d2159':'#e7ddff'),borderRadius:8,background:d?'#0f0a1f':'#faf8ff',display:'flex',alignItems:'center',gap:6}}>
-                        <div style={{fontSize:11,fontWeight:700,color:d?'#d9cff5':'#7c7596',width:32}}>Q{i+1}</div>
+                      <div key={i} style={{padding:8,border:'1px solid '+(d?'#2a2e38':'#e5e7eb'),borderRadius:8,background:d?'#0f1115':'#f9fafb',display:'flex',alignItems:'center',gap:6}}>
+                        <div style={{fontSize:11,fontWeight:700,color:d?'#d1d5db':'#6b7280',width:32}}>Q{i+1}</div>
                         <div style={{display:'flex',gap:2,flex:1}}>
                           {['A','B','C','D','E'].map(c=>(
                             <button key={c} onClick={()=>setSec1Vals(p=>{const n=[...p];n[i]=n[i]===c?'':c;return n;})}
-                              style={{padding:'4px 6px',minWidth:24,border:'1px solid '+(d?'#4a4366':'#d9cff5'),borderRadius:4,background:val===c?(c===key?'#16a34a':'#dc2626'):(d?'#1a1030':'white'),color:val===c?'white':(d?'#f1eef8':'#1a1030'),fontSize:11,fontWeight:700,cursor:'pointer'}}>
+                              style={{padding:'4px 6px',minWidth:24,border:'1px solid '+(d?'#4b5563':'#d1d5db'),borderRadius:4,background:val===c?(c===key?'#16a34a':'#dc2626'):(d?'#1c1f2a':'white'),color:val===c?'white':(d?'#f3f4f6':'#1c1f2a'),fontSize:11,fontWeight:700,cursor:'pointer'}}>
                               {c}
                             </button>
                           ))}
                         </div>
-                        <div style={{fontSize:10,color:'#9a93b5',whiteSpace:'nowrap'}}>{key}·{pts}о</div>
+                        <div style={{fontSize:10,color:'#9ca3af',whiteSpace:'nowrap'}}>{key}·{pts}о</div>
                       </div>
                     );
                   })}
@@ -2554,13 +2554,13 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
             {/* Section 2 */}
             {editTab==='sec2' && (
               <div>
-                <div style={{fontSize:12,color:d?'#d9cff5':'#7c7596',marginBottom:10}}>
+                <div style={{fontSize:12,color:d?'#d1d5db':'#6b7280',marginBottom:10}}>
                   Сурагчийн оруулсан 0–9 цифрийг бичнэ үү. Хоосон үлдээвэл "blank".
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:14}}>
                   {Object.keys(sec2Vals).sort().map(sub=>(
-                    <div key={sub} style={{padding:12,border:'1px solid '+(d?'#2d2159':'#e7ddff'),borderRadius:10,background:d?'#0f0a1f':'#faf8ff'}}>
-                      <div style={{fontWeight:800,fontSize:14,color:d?'#f1eef8':'#1a1030',marginBottom:8}}>{sub}</div>
+                    <div key={sub} style={{padding:12,border:'1px solid '+(d?'#2a2e38':'#e5e7eb'),borderRadius:10,background:d?'#0f1115':'#f9fafb'}}>
+                      <div style={{fontWeight:800,fontSize:14,color:d?'#f3f4f6':'#1c1f2a',marginBottom:8}}>{sub}</div>
                       <div style={{display:'grid',gridTemplateColumns:'auto 1fr auto',gap:6,alignItems:'center'}}>
                         {Object.keys(sec2Vals[sub]).map(rk=>{
                           const cfg = exam.sec2Config?.[sub]?.[rk];
@@ -2568,7 +2568,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
                           const pts = typeof cfg==='object'?(cfg.score!=null?cfg.score:1):(exam.sec2Score||1);
                           return (
                             <div key={rk} style={{display:'contents'}}>
-                              <div style={{fontSize:12,fontWeight:700,color:d?'#d9cff5':'#7c7596',width:18}}>{rk})</div>
+                              <div style={{fontSize:12,fontWeight:700,color:d?'#d1d5db':'#6b7280',width:18}}>{rk})</div>
                               <input
                                 type="text" inputMode="numeric" pattern="[0-9]*" maxLength={1}
                                 value={sec2Vals[sub][rk]}
@@ -2576,9 +2576,9 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
                                   const v = e.target.value.replace(/[^0-9]/g,'').slice(0,1);
                                   setSec2Vals(prev=>({...prev,[sub]:{...prev[sub],[rk]:v}}));
                                 }}
-                                style={{width:42,padding:'6px 8px',border:'1px solid '+(d?'#4a4366':'#d9cff5'),borderRadius:6,textAlign:'center',fontWeight:700,fontSize:14,background:d?'#1a1030':'white',color:d?'#f1eef8':'#1a1030'}}
+                                style={{width:42,padding:'6px 8px',border:'1px solid '+(d?'#4b5563':'#d1d5db'),borderRadius:6,textAlign:'center',fontWeight:700,fontSize:14,background:d?'#1c1f2a':'white',color:d?'#f3f4f6':'#1c1f2a'}}
                               />
-                              <div style={{fontSize:11,color:'#9a93b5',whiteSpace:'nowrap'}}>зөв={ans} ({pts}о)</div>
+                              <div style={{fontSize:11,color:'#9ca3af',whiteSpace:'nowrap'}}>зөв={ans} ({pts}о)</div>
                             </div>
                           );
                         })}
@@ -2590,11 +2590,11 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
             )}
 
             {editErr && <div style={{marginTop:10,padding:10,background:'#fdecec',color:'#b3261e',borderRadius:8,fontSize:13}}>{editErr}</div>}
-            <div style={{display:'flex',gap:8,marginTop:18,position:'sticky',bottom:0,background:d?'#1a1030':'white',padding:'10px 0 0'}}>
+            <div style={{display:'flex',gap:8,marginTop:18,position:'sticky',bottom:0,background:d?'#1c1f2a':'white',padding:'10px 0 0'}}>
               <button onClick={saveEdit} disabled={editBusy} style={{flex:1,padding:'12px 18px',background:'#16a34a',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:editBusy?'wait':'pointer',opacity:editBusy?0.6:1}}>
                 {editBusy?'Хадгалж байна...':'Хадгалах'}
               </button>
-              <button onClick={()=>setEditStu(null)} disabled={editBusy} style={{padding:'12px 18px',background:'#e7ddff',color:'#4a4366',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
+              <button onClick={()=>setEditStu(null)} disabled={editBusy} style={{padding:'12px 18px',background:'#e5e7eb',color:'#4b5563',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
                 Цуцлах
               </button>
             </div>
@@ -2610,7 +2610,7 @@ function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
   const [filterClass, setFilterClass] = useState('');
   const allClasses = [...new Set(students.map(s=>s.class||'').filter(Boolean))].sort((a,b)=>a.localeCompare(b,'mn'));
   const filtered = filterClass ? students.filter(s=>(s.class||'')===filterClass) : students;
-  if (!exam||!students.length) return <div style={{textAlign:'center',padding:80,color:'#9a93b5',fontWeight:600}}>Дүн шинжилгээнд хангалттай өгөгдөл байхгүй</div>;
+  if (!exam||!students.length) return <div style={{textAlign:'center',padding:80,color:'#9ca3af',fontWeight:600}}>Дүн шинжилгээнд хангалттай өгөгдөл байхгүй</div>;
   const n=filtered.length||1, ss=filtered.map(s=>s.scaled);
   const avg=(ss.reduce((a,b)=>a+b,0)/n).toFixed(1);
   const pass=filtered.filter(s=>s.scaled>=60).length;
@@ -2636,9 +2636,9 @@ function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
         <h1 style={{margin:0,fontSize:22,fontWeight:800}}>Дүн Шинжилгээ</h1>
         <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
           <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-            <button onClick={()=>setFilterClass('')} style={{padding:'6px 12px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:filterClass===''?'#7B52EE':'#f1eef8',color:filterClass===''?'white':'#2e2748'}}>Бүгд</button>
+            <button onClick={()=>setFilterClass('')} style={{padding:'6px 12px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:filterClass===''?'#7B52EE':'#f3f4f6',color:filterClass===''?'white':'#374151'}}>Бүгд</button>
             {allClasses.map(c=>(
-              <button key={c} onClick={()=>setFilterClass(c)} style={{padding:'6px 12px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:filterClass===c?'#7B52EE':'#f1eef8',color:filterClass===c?'white':'#2e2748'}}>{c}</button>
+              <button key={c} onClick={()=>setFilterClass(c)} style={{padding:'6px 12px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:filterClass===c?'#7B52EE':'#f3f4f6',color:filterClass===c?'white':'#374151'}}>{c}</button>
             ))}
           </div>
           <button onClick={()=>onExportAnalytics(exam,filtered)} style={{padding:'10px 14px',background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
@@ -2647,15 +2647,15 @@ function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
         </div>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12,marginBottom:20}}>
-        {[['Нийт сурагч',filtered.length,'#7B52EE'],['Дундаж ЭЕШ',avg,eyeshGrade(pf(avg)).c],['Медиан',median,'#7c3aed'],['Тэнцсэн',pass+'/'+filtered.length,'#16a34a'],['Тэнцэх %',filtered.length?+(pass/filtered.length*100).toFixed(1):0,'#f97316']].map(([l,v,c])=>(
-          <div key={l} style={{background:'white',borderRadius:12,padding:'16px 18px',boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+        {[['Нийт сурагч',filtered.length,'#7B52EE'],['Дундаж ЭЕШ',avg,eyeshGrade(pf(avg)).c],['Медиан',median,'#7B52EE'],['Тэнцсэн',pass+'/'+filtered.length,'#16a34a'],['Тэнцэх %',filtered.length?+(pass/filtered.length*100).toFixed(1):0,'#f97316']].map(([l,v,c])=>(
+          <div key={l} style={{background:'white',borderRadius:12,padding:'16px 18px',boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
             <div style={{fontSize:26,fontWeight:900,color:c}}>{v}</div>
-            <div style={{fontSize:12,color:'#9a93b5',marginTop:4}}>{l}</div>
+            <div style={{fontSize:12,color:'#9ca3af',marginTop:4}}>{l}</div>
           </div>
         ))}
       </div>
       <div className="cm-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
-        <div style={{background:'white',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+        <div style={{background:'white',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Зэрэглэлийн тархалт</div>
           {grades.map((g,i)=>{
             const cnt=gradeCounts[i];
@@ -2664,16 +2664,16 @@ function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
               <div key={g} style={{marginBottom:8}}>
                 <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}>
                   <span style={{fontWeight:600}}>{g} — {gradeLabels[i]}</span>
-                  <span style={{color:'#7c7596'}}>{cnt} ({pct}%)</span>
+                  <span style={{color:'#6b7280'}}>{cnt} ({pct}%)</span>
                 </div>
-                <div style={{height:8,background:'#f1eef8',borderRadius:4,overflow:'hidden'}}>
+                <div style={{height:8,background:'#f3f4f6',borderRadius:4,overflow:'hidden'}}>
                   <div style={{height:'100%',background:gradeColors[i],width:pct+'%',borderRadius:4,transition:'width .3s'}} />
                 </div>
               </div>
             );
           })}
         </div>
-        <div style={{background:'white',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+        <div style={{background:'white',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Сэдвийн амжилт</div>
           {Object.entries(topicMap).map(([t,d])=>{
             const pct=d.total?+(d.correct/d.total*100).toFixed(1):0;
@@ -2682,9 +2682,9 @@ function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
               <div key={t} style={{marginBottom:8}}>
                 <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}>
                   <span style={{fontWeight:600}}>{t}</span>
-                  <span style={{color:'#7c7596'}}>{pct}%</span>
+                  <span style={{color:'#6b7280'}}>{pct}%</span>
                 </div>
-                <div style={{height:8,background:'#f1eef8',borderRadius:4,overflow:'hidden'}}>
+                <div style={{height:8,background:'#f3f4f6',borderRadius:4,overflow:'hidden'}}>
                   <div style={{height:'100%',background:TOPIC_COLORS[ci>=0?ci%8:7],width:pct+'%',borderRadius:4}} />
                 </div>
               </div>
@@ -2744,20 +2744,20 @@ function MaterialPage({onPrefill}) {
 
   return (
     <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px'}}>
-      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(90,50,214,.10)',marginBottom:16}}>
-        <div style={{fontWeight:800,fontSize:16,color:'#1a1030',marginBottom:16}}>1. Шалгалтын тохиргоо</div>
+      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+        <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>1. Шалгалтын тохиргоо</div>
         <div className="cm-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr auto',gap:12,alignItems:'end'}}>
           <div>
             <label style={{fontSize:13,fontWeight:600,display:'block',marginBottom:4}}>Хичээл</label>
             <select value={subject} onChange={e=>setSubject(e.target.value)}
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e7ddff',borderRadius:10,fontSize:14,outline:'none'}}>
+              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none'}}>
               {SUBJECTS.map(s=><option key={s}>{s}</option>)}
             </select>
           </div>
           <div>
             <label style={{fontSize:13,fontWeight:600,display:'block',marginBottom:4}}>1-р хэсэг дасгал</label>
             <input type="number" min={1} max={200} value={cnt} onChange={e=>setCnt(parseInt(e.target.value)||1)}
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e7ddff',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
+              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
           </div>
           <div style={{paddingBottom:2}}>
             <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:14,fontWeight:600}}>
@@ -2768,8 +2768,8 @@ function MaterialPage({onPrefill}) {
         </div>
       </div>
 
-      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(90,50,214,.10)',marginBottom:16}}>
-        <div style={{fontWeight:800,fontSize:16,color:'#1a1030',marginBottom:16}}>2. Материалын файл оруулах</div>
+      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+        <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>2. Материалын файл оруулах</div>
         {fileData?(
           <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:10,padding:'12px 16px',display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
             <div style={{flex:1}}>
@@ -2781,7 +2781,7 @@ function MaterialPage({onPrefill}) {
           </div>
         ):(
           <div onClick={()=>fileRef.current.click()} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();loadFile(e.dataTransfer.files[0]);}}
-            style={{border:'2px dashed #e7ddff',borderRadius:12,padding:'40px 20px',textAlign:'center',cursor:'pointer',color:'#9a93b5',marginBottom:12}}>
+            style={{border:'2px dashed #e5e7eb',borderRadius:12,padding:'40px 20px',textAlign:'center',cursor:'pointer',color:'#9ca3af',marginBottom:12}}>
             <div style={{fontSize:14,fontWeight:600}}>PDF эсвэл зураг чирж тавих</div>
             <input ref={fileRef} type="file" accept=".pdf,image/*" style={{display:'none'}} onChange={e=>loadFile(e.target.files[0])} />
           </div>
@@ -2790,21 +2790,21 @@ function MaterialPage({onPrefill}) {
           <pre style={{margin:0,whiteSpace:'pre-wrap',wordBreak:'break-all',fontSize:11}}>{err}</pre>
         </div>}
         <button onClick={handleAnalyze} disabled={!fileData||analyzing}
-          style={{width:'100%',padding:'13px',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',border:'none',borderRadius:12,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,opacity:(!fileData||analyzing)?.6:1}}>
+          style={{width:'100%',padding:'13px',background:'#7B52EE',color:'white',border:'none',borderRadius:12,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,opacity:(!fileData||analyzing)?.6:1}}>
           {analyzing&&<Spinner/>} AI-аар Хариулт Бодох
         </button>
       </div>
 
       {result&&(
-        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontWeight:800,fontSize:16,marginBottom:16}}>Хариулт — {result.versions_found?.join(', ')}</div>
           {result.versions_found?.map(v=>(
             <div key={v} style={{marginBottom:20}}>
-              <div style={{fontWeight:700,fontSize:14,color:'#7c3aed',marginBottom:8}}>Хувилбар {v}</div>
+              <div style={{fontWeight:700,fontSize:14,color:'#7B52EE',marginBottom:8}}>Хувилбар {v}</div>
               <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:8}}>
                 {(result.section1?.[v]||[]).map(q=>(
-                  <div key={q.q} style={{background:q.confidence>=80?'#f0fdf4':q.confidence>=60?'#fef3c7':'#f7f4ff',border:'1px solid #e7ddff',borderRadius:6,padding:'3px 8px',fontSize:12}}>
-                    <span style={{color:'#9a93b5'}}>D{q.q}</span> <span style={{fontWeight:700}}>{q.answer}</span>
+                  <div key={q.q} style={{background:q.confidence>=80?'#f0fdf4':q.confidence>=60?'#fef3c7':'#f9fafb',border:'1px solid #e5e7eb',borderRadius:6,padding:'3px 8px',fontSize:12}}>
+                    <span style={{color:'#9ca3af'}}>D{q.q}</span> <span style={{fontWeight:700}}>{q.answer}</span>
                   </div>
                 ))}
               </div>
@@ -2897,32 +2897,32 @@ function StudentAccountsPage({dark:d=false}) {
 
   return (
     <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px'}}>
-      <div style={{fontWeight:800,fontSize:20,color:'#1a1030',marginBottom:20}}>Сурагчийн бүртгэл</div>
+      <div style={{fontWeight:800,fontSize:20,color:'#1c1f2a',marginBottom:20}}>Сурагчийн бүртгэл</div>
       <div style={{background:'#dbeafe',border:'1px solid #93c5fd',borderRadius:12,padding:'12px 16px',marginBottom:16,fontSize:13,color:'#1d4ed8'}}>
         Сурагчид <strong>/student</strong> хуудсаар орж кодоороо нэвтэрч шалгалтаа өгнө.
       </div>
 
       <div className="cm-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
-        <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+        <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>Нэг сурагч нэмэх</div>
           <input value={singleName} onChange={e=>setSingleName(e.target.value)} placeholder="Нэр (заавал биш)"
-            style={{width:'100%',padding:'9px 12px',border:'2px solid #e7ddff',borderRadius:8,fontSize:14,outline:'none',marginBottom:8,boxSizing:'border-box'}} />
+            style={{width:'100%',padding:'9px 12px',border:'2px solid #e5e7eb',borderRadius:8,fontSize:14,outline:'none',marginBottom:8,boxSizing:'border-box'}} />
           <input value={singleClass} onChange={e=>setSingleClass(e.target.value)} placeholder="Анги (заавал биш)"
-            style={{width:'100%',padding:'9px 12px',border:'2px solid #e7ddff',borderRadius:8,fontSize:14,outline:'none',marginBottom:10,boxSizing:'border-box'}} />
+            style={{width:'100%',padding:'9px 12px',border:'2px solid #e5e7eb',borderRadius:8,fontSize:14,outline:'none',marginBottom:10,boxSizing:'border-box'}} />
           <button onClick={handleSingleAdd} disabled={adding}
             style={{width:'100%',padding:'10px',background:'#7B52EE',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
             Нэмэх
           </button>
         </div>
 
-        <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+        <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Олноор нэмэх</div>
-          <div style={{fontSize:12,color:'#9a93b5',marginBottom:8}}>Нэг мөрт нэг сурагч: нэр, анги (код хоосон бол автоматаар үүснэ)</div>
+          <div style={{fontSize:12,color:'#9ca3af',marginBottom:8}}>Нэг мөрт нэг сурагч: нэр, анги (код хоосон бол автоматаар үүснэ)</div>
           <textarea value={bulkText} onChange={e=>setBulkText(e.target.value)}
             placeholder={"Болд, 12А\nНомун, 12Б\nДорж, 12А"}
-            style={{width:'100%',height:100,padding:'9px 12px',border:'2px solid #e7ddff',borderRadius:8,fontSize:13,outline:'none',resize:'vertical',marginBottom:10,boxSizing:'border-box'}} />
+            style={{width:'100%',height:100,padding:'9px 12px',border:'2px solid #e5e7eb',borderRadius:8,fontSize:13,outline:'none',resize:'vertical',marginBottom:10,boxSizing:'border-box'}} />
           <button onClick={handleBulkAdd} disabled={adding}
-            style={{width:'100%',padding:'10px',background:'#7c3aed',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
+            style={{width:'100%',padding:'10px',background:'#7B52EE',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
             {adding?'Нэмж байна...':'Бүгдийг нэмэх'}
           </button>
         </div>
@@ -2930,33 +2930,33 @@ function StudentAccountsPage({dark:d=false}) {
 
       {msg && <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:8,padding:'10px 14px',marginBottom:12,fontSize:13,color:'#15803d'}}>{msg}</div>}
 
-      <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
-        <div style={{padding:'14px 18px',borderBottom:'1px solid #f1eef8',fontWeight:700,fontSize:14,display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8,alignItems:'center'}}>
+      <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
+        <div style={{padding:'14px 18px',borderBottom:'1px solid #f3f4f6',fontWeight:700,fontSize:14,display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8,alignItems:'center'}}>
           <span>Нийт: {accounts.length} сурагч</span>
           <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
             {[...new Set(accounts.map(a=>a.class||'').filter(Boolean))].sort().map(cls=>(
               <button key={cls} onClick={()=>setFilterCls(f=>f===cls?'':cls)}
                 style={{padding:'4px 10px',borderRadius:6,border:'none',fontWeight:700,fontSize:11,cursor:'pointer',
-                  background:filterCls===cls?'#7B52EE':'#f1eef8',color:filterCls===cls?'white':'#2e2748'}}>{cls}</button>
+                  background:filterCls===cls?'#7B52EE':'#f3f4f6',color:filterCls===cls?'white':'#374151'}}>{cls}</button>
             ))}
-            {filterCls&&<button onClick={()=>setFilterCls('')} style={{padding:'4px 10px',borderRadius:6,border:'none',fontWeight:700,fontSize:11,cursor:'pointer',background:'#f1eef8',color:'#7c7596'}}>× Цэвэрлэх</button>}
+            {filterCls&&<button onClick={()=>setFilterCls('')} style={{padding:'4px 10px',borderRadius:6,border:'none',fontWeight:700,fontSize:11,cursor:'pointer',background:'#f3f4f6',color:'#6b7280'}}>× Цэвэрлэх</button>}
           </div>
         </div>
         {loading ? <div style={{padding:40,textAlign:'center'}}><Spinner/></div> :
-        accounts.length===0 ? <div style={{padding:40,textAlign:'center',color:'#9a93b5'}}>Бүртгэлтэй сурагч байхгүй</div> : (
+        accounts.length===0 ? <div style={{padding:40,textAlign:'center',color:'#9ca3af'}}>Бүртгэлтэй сурагч байхгүй</div> : (
           <table style={{width:'100%',borderCollapse:'collapse'}}>
             <thead>
-              <tr style={{background:'#faf8ff'}}>
-                {['#','Код','Нэр','Анги',''].map(h=><th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:12,fontWeight:700,color:'#7c7596'}}>{h}</th>)}
+              <tr style={{background:'#f9fafb'}}>
+                {['#','Код','Нэр','Анги',''].map(h=><th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:12,fontWeight:700,color:'#6b7280'}}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
               {accounts.filter(a=>!filterCls||a.class===filterCls).map((a,i)=>(
-                <tr key={a.id} style={{borderTop:'1px solid #f1eef8'}}>
-                  <td style={{padding:'10px 14px',fontSize:13,color:'#9a93b5'}}>{i+1}</td>
+                <tr key={a.id} style={{borderTop:'1px solid #f3f4f6'}}>
+                  <td style={{padding:'10px 14px',fontSize:13,color:'#9ca3af'}}>{i+1}</td>
                   <td style={{padding:'10px 14px',fontWeight:800,fontSize:14,color:'#7B52EE'}}>{a.code}</td>
                   <td style={{padding:'10px 14px',fontSize:14}}>{a.name||'—'}</td>
-                  <td style={{padding:'10px 14px',fontSize:13,color:'#7c7596'}}>{a.class||'—'}</td>
+                  <td style={{padding:'10px 14px',fontSize:13,color:'#6b7280'}}>{a.class||'—'}</td>
                   <td style={{padding:'10px 14px'}}>
                     <button onClick={()=>handleDelete(a.id)}
                       style={{padding:'3px 10px',background:'#fdecec',border:'none',borderRadius:6,fontSize:11,color:'#b3261e',cursor:'pointer'}}>Устгах</button>
@@ -3067,15 +3067,15 @@ function StudentPortal({student, onLogout}) {
 
   // Result screen
   if (submitted && scored) return (
-    <div style={{minHeight:'100vh',background:'#f1eef8',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
+    <div style={{minHeight:'100vh',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
       <div style={{background:'white',borderRadius:20,padding:'36px 28px',maxWidth:400,width:'100%',textAlign:'center',boxShadow:'0 4px 24px rgba(0,0,0,.1)'}}>
         <div style={{display:'flex',justifyContent:'center',marginBottom:16}}><div style={{background:'#dcfce7',borderRadius:20,padding:16}}><Ico d='M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z' size={56} color='#16a34a' sw={1}/></div></div>
         <div style={{fontSize:20,fontWeight:900,color:'#15803d',marginBottom:16}}>{t.submitted}</div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:20}}>
           {[[t.performance,scored.scaled+'%',scored.grade?.c],[t.correct,scored.correct,'#16a34a'],[t.wrong,scored.wrong,'#dc2626']].map(([l,v,c])=>(
-            <div key={l} style={{background:'#faf8ff',borderRadius:10,padding:'12px 8px'}}>
+            <div key={l} style={{background:'#f9fafb',borderRadius:10,padding:'12px 8px'}}>
               <div style={{fontSize:20,fontWeight:900,color:c}}>{v}</div>
-              <div style={{fontSize:10,color:'#9a93b5'}}>{l}</div>
+              <div style={{fontSize:10,color:'#9ca3af'}}>{l}</div>
             </div>
           ))}
         </div>
@@ -3083,7 +3083,7 @@ function StudentPortal({student, onLogout}) {
           style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer',marginBottom:8}}>
           {t.back}
         </button>
-        <button onClick={onLogout} style={{width:'100%',padding:12,background:'#f1eef8',color:'#7c7596',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>
+        <button onClick={onLogout} style={{width:'100%',padding:12,background:'#f3f4f6',color:'#6b7280',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>
           {t.logout}
         </button>
       </div>
@@ -3092,23 +3092,23 @@ function StudentPortal({student, onLogout}) {
 
   // Exam list
   if (!selectedExam) return (
-    <div style={{minHeight:'100vh',background:'#f1eef8'}}>
-      <header style={{background:'white',borderBottom:'1px solid #e7ddff',padding:'14px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+    <div style={{minHeight:'100vh',background:'#f3f4f6'}}>
+      <header style={{background:'white',borderBottom:'1px solid #e5e7eb',padding:'14px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <div>
           <div style={{fontWeight:800,fontSize:16}}>{t.hello} {student.name||student.code}!</div>
-          <div style={{fontSize:12,color:'#7c7596'}}>{t.code}: {student.code}</div>
+          <div style={{fontSize:12,color:'#6b7280'}}>{t.code}: {student.code}</div>
         </div>
-        <div style={{display:'flex',gap:8,alignItems:'center'}}><button onClick={toggleLang} style={{padding:'6px 10px',background:'#f1eef8',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>{lang==='mn'?'EN':'МН'}</button><button onClick={onLogout} style={{padding:'6px 14px',background:'#f3eeff',border:'none',borderRadius:8,fontSize:13,color:'#7B52EE',fontWeight:700,cursor:'pointer'}}>{t.logout}</button></div>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}><button onClick={toggleLang} style={{padding:'6px 10px',background:'#f3f4f6',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>{lang==='mn'?'EN':'МН'}</button><button onClick={onLogout} style={{padding:'6px 14px',background:'#f3eeff',border:'none',borderRadius:8,fontSize:13,color:'#7B52EE',fontWeight:700,cursor:'pointer'}}>{t.logout}</button></div>
       </header>
       <div style={{maxWidth:600,margin:'0 auto',padding:'24px 16px'}}>
-        <div style={{fontWeight:800,fontSize:18,color:'#1a1030',marginBottom:16}}>{t.selectExam}</div>
+        <div style={{fontWeight:800,fontSize:18,color:'#1c1f2a',marginBottom:16}}>{t.selectExam}</div>
         {exams.length===0
-          ? <div style={{background:'white',borderRadius:12,padding:40,textAlign:'center',color:'#9a93b5'}}>{t.noExams}</div>
+          ? <div style={{background:'white',borderRadius:12,padding:40,textAlign:'center',color:'#9ca3af'}}>{t.noExams}</div>
           : exams.map(exam=>(
             <div key={exam.id} onClick={()=>selectExam(exam)}
-              style={{background:'white',borderRadius:12,padding:18,marginBottom:10,cursor:'pointer',border:'2px solid #e7ddff',boxShadow:'0 1px 4px rgba(90,50,214,.08)'}}>
-              <div style={{fontWeight:800,fontSize:16,color:'#1a1030'}}>{exam.title}</div>
-              <div style={{fontSize:13,color:'#7c7596',marginTop:4}}>{exam.subject} · {exam.sec1Count} дасгал{exam.useSec2?' · 2-р хэсэг':''}</div>
+              style={{background:'white',borderRadius:12,padding:18,marginBottom:10,cursor:'pointer',border:'2px solid #e5e7eb',boxShadow:'0 1px 4px rgba(17,24,39,.05)'}}>
+              <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a'}}>{exam.title}</div>
+              <div style={{fontSize:13,color:'#6b7280',marginTop:4}}>{exam.subject} · {exam.sec1Count} дасгал{exam.useSec2?' · 2-р хэсэг':''}</div>
             </div>
           ))
         }
@@ -3119,33 +3119,33 @@ function StudentPortal({student, onLogout}) {
   // Answer entry
   const enabledSec2Subs = SEC2_SUBS.filter(s=>selectedExam.sec2Config?.[s]?._enabled);
   return (
-    <div style={{minHeight:'100vh',background:'#f1eef8'}}>
-      <header style={{background:'white',borderBottom:'1px solid #e7ddff',padding:'14px 20px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
-        <button onClick={()=>setSelectedExam(null)} style={{padding:'6px 12px',background:'#f1eef8',border:'none',borderRadius:8,cursor:'pointer',fontWeight:700}}>{t.back}</button>
+    <div style={{minHeight:'100vh',background:'#f3f4f6'}}>
+      <header style={{background:'white',borderBottom:'1px solid #e5e7eb',padding:'14px 20px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+        <button onClick={()=>setSelectedExam(null)} style={{padding:'6px 12px',background:'#f3f4f6',border:'none',borderRadius:8,cursor:'pointer',fontWeight:700}}>{t.back}</button>
         <div>
           <div style={{fontWeight:800,fontSize:15}}>{selectedExam.title}</div>
-          <div style={{fontSize:12,color:'#7c7596'}}>{selectedExam.subject}</div>
+          <div style={{fontSize:12,color:'#6b7280'}}>{selectedExam.subject}</div>
         </div>
         <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8}}>
-          <button onClick={toggleLang} style={{padding:'6px 10px',background:'#f1eef8',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>{lang==='mn'?'EN':'МН'}</button>
+          <button onClick={toggleLang} style={{padding:'6px 10px',background:'#f3f4f6',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>{lang==='mn'?'EN':'МН'}</button>
           <button onClick={onLogout} style={{padding:'6px 14px',background:'#f3eeff',border:'none',borderRadius:8,fontSize:13,color:'#7B52EE',fontWeight:700,cursor:'pointer'}}>{t.logout}</button>
         </div>
       </header>
       <div style={{maxWidth:700,margin:'0 auto',padding:'20px 16px'}}>
 
         {/* Section 1 */}
-        <div style={{background:'white',borderRadius:16,padding:20,marginBottom:12,boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+        <div style={{background:'white',borderRadius:16,padding:20,marginBottom:12,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontWeight:800,fontSize:15,marginBottom:14}}>{t.section1} — {selectedExam.sec1Count} дасгал</div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:6}}>
             {Array.from({length:selectedExam.sec1Count},(_,i)=>(
-              <div key={i} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 10px',background:'#faf8ff',borderRadius:8,border:'1px solid #e7ddff'}}>
-                <span style={{fontSize:11,fontWeight:700,color:'#9a93b5',minWidth:26,textAlign:'right'}}>D{i+1}</span>
+              <div key={i} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 10px',background:'#f9fafb',borderRadius:8,border:'1px solid #e5e7eb'}}>
+                <span style={{fontSize:11,fontWeight:700,color:'#9ca3af',minWidth:26,textAlign:'right'}}>D{i+1}</span>
                 <div style={{display:'flex',gap:3}}>
                   {SEC1_CHOICES.map(c=>(
                     <button key={c} onClick={()=>setSec1Sel(s=>{const n=[...s];n[i]=c;return n;})}
                       style={{width:30,height:30,borderRadius:6,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',
-                        background:sec1Sel[i]===c?'#7B52EE':'#e7ddff',
-                        color:sec1Sel[i]===c?'white':'#7c7596'}}>{c}</button>
+                        background:sec1Sel[i]===c?'#7B52EE':'#e5e7eb',
+                        color:sec1Sel[i]===c?'white':'#6b7280'}}>{c}</button>
                   ))}
                   {sec1Sel[i]&&<button onClick={()=>setSec1Sel(s=>{const n=[...s];n[i]='';return n;})}
                     style={{width:24,height:30,borderRadius:6,border:'none',fontSize:11,cursor:'pointer',background:'#fdecec',color:'#b3261e',fontWeight:700}}>✕</button>}
@@ -3157,23 +3157,23 @@ function StudentPortal({student, onLogout}) {
 
         {/* Section 2 */}
         {enabledSec2Subs.length>0&&(
-          <div style={{background:'white',borderRadius:16,padding:20,marginBottom:12,boxShadow:'0 1px 4px rgba(90,50,214,.10)'}}>
+          <div style={{background:'white',borderRadius:16,padding:20,marginBottom:12,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
             <div style={{fontWeight:800,fontSize:15,marginBottom:14}}>{t.section2}</div>
             <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
               {enabledSec2Subs.map(sub=>{
                 const rows=Object.keys(sec2Sel[sub]||{});
                 return (
-                  <div key={sub} style={{background:'#faf8ff',borderRadius:10,padding:'12px 16px'}}>
-                    <div style={{fontWeight:700,fontSize:13,color:'#7c3aed',marginBottom:8}}>{sub}</div>
+                  <div key={sub} style={{background:'#f9fafb',borderRadius:10,padding:'12px 16px'}}>
+                    <div style={{fontWeight:700,fontSize:13,color:'#7B52EE',marginBottom:8}}>{sub}</div>
                     {rows.map(row=>(
                       <div key={row} style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
-                        <span style={{fontSize:11,color:'#9a93b5',minWidth:14}}>{row}</span>
+                        <span style={{fontSize:11,color:'#9ca3af',minWidth:14}}>{row}</span>
                         <div style={{display:'flex',gap:2,flexWrap:'wrap'}}>
                           {['0','1','2','3','4','5','6','7','8','9'].map(d=>(
                             <button key={d} onClick={()=>setSec2Sel(s=>({...s,[sub]:{...s[sub],[row]:d}}))}
                               style={{width:26,height:26,borderRadius:5,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',
-                                background:sec2Sel[sub]?.[row]===d?'#7c3aed':'#e7ddff',
-                                color:sec2Sel[sub]?.[row]===d?'white':'#7c7596'}}>{d}</button>
+                                background:sec2Sel[sub]?.[row]===d?'#7B52EE':'#e5e7eb',
+                                color:sec2Sel[sub]?.[row]===d?'white':'#6b7280'}}>{d}</button>
                           ))}
                           {sec2Sel[sub]?.[row]&&<button onClick={()=>setSec2Sel(s=>({...s,[sub]:{...s[sub],[row]:''}}))} style={{width:22,height:26,borderRadius:5,border:'none',fontSize:10,cursor:'pointer',background:'#fdecec',color:'#b3261e',fontWeight:700}}>✕</button>}
                         </div>
@@ -3189,7 +3189,7 @@ function StudentPortal({student, onLogout}) {
         {err&&<div style={{color:'#b3261e',fontSize:13,background:'#fdecec',padding:'10px 14px',borderRadius:8,border:'1px solid #f6c9c9',marginBottom:12}}>{err}</div>}
 
         <button id='student-submit-btn' onClick={handleSubmit} disabled={submitting}
-          style={{width:'100%',padding:16,background:'linear-gradient(135deg,#7B52EE,#A855F7)',color:'white',border:'none',borderRadius:14,fontSize:16,fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          style={{width:'100%',padding:16,background:'#7B52EE',color:'white',border:'none',borderRadius:14,fontSize:16,fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
           {submitting&&<Spinner/>} {submitting?t.submitting:t.submit}
         </button>
       </div>

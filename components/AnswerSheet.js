@@ -168,7 +168,7 @@ export function AnswerSheetSVG({ exam, student, className, style }) {
       ))}
 
       <text x={20} y={270.5} fontSize={3.4} fontWeight={900} fill="#7B52EE">CyberMath</text>
-      <text x={20} y={274.6} fontSize={2.2} fontWeight={700} fill="#7c7596">ЭЕШ шалгагч · eyeshcheck.com · Дасгалын төв</text>
+      <text x={20} y={274.6} fontSize={2.2} fontWeight={700} fill="#6b7280">ЭЕШ шалгагч · eyeshcheck.com · Дасгалын төв</text>
     </svg>
   );
 }
