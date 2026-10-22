@@ -37,10 +37,7 @@ function getTopics(subject) {
   return TOPICS_BY_SUBJECT[subject] || TOPICS_BY_SUBJECT['Математик'];
 }
 const TOPIC_COLORS = ['#3b82f6','#8b5cf6','#f59e0b','#06b6d4','#10b981','#ef4444','#f97316','#6366f1'];
-// Legacy fallback
-const TOPICS = TOPICS_BY_SUBJECT['Математик'];
-const PAGE_IDS = ['home','scan','board','analytics','rating','create','sheets','upload','material','students','admin'];
-const MORE_IDS = ['create','sheets','upload','rating','material','students','admin'];   // утасны «Цэс»
+const PAGE_IDS = ['home','scan','board','analytics','rating','create','sheets','students','admin'];   // ☰ цэсний дараалал
 const NAV_ICON = {
   home:'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   board:['M8 6h13','M8 12h13','M8 18h13','M3.5 6h.01','M3.5 12h.01','M3.5 18h.01'],
@@ -49,8 +46,8 @@ const NAV_ICON = {
   scan:['M3 7V5a2 2 0 0 1 2-2h2','M17 3h2a2 2 0 0 1 2 2v2','M21 17v2a2 2 0 0 1-2 2h-2','M7 21H5a2 2 0 0 1-2-2v-2','M7 12h10'],
   create:['M12 5v14','M5 12h14'],
   sheets:['M6 9V2h12v7','M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2','M6 14h12v8H6z'],
-  upload:['M12 16V4','M7 9l5-5 5 5','M4 20h16'],
-  material:'M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z',
+  menu:['M4 6h16','M4 12h16','M4 18h16'],
+  close:['M6 6l12 12','M18 6 6 18'],
   rating:['M8 21h8','M12 17v4','M7 4h10v5a5 5 0 0 1-10 0z','M17 5h3v2a3 3 0 0 1-3 3','M7 5H4v2a3 3 0 0 0 3 3'],
   students:['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2','M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z','M22 21v-2a4 4 0 0 0-3-3.87','M16 3.13a4 4 0 0 1 0 7.75'],
   admin:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
@@ -80,7 +77,7 @@ const T = {
     timeUp:'Хугацаа дууссан! Хариулт автоматаар илгээгдлээ.',
     section1:'1-р хэсэг', section2:'2-р хэсэг',
     hello:'Сайн байна уу,',
-    nav:{home:'Нүүр',scan:'Шалгах',sheets:'Хуудас хэвлэх',create:'Шалгалт үүсгэх',edit:'Шалгалт засах',material:'AI материал',upload:'Зураг / гараар',board:'Жагсаалт',analytics:'Анализ',rating:'Рейтинг',students:'Сурагчид',admin:'Admin'},
+    nav:{home:'Нүүр',scan:'Шалгах',sheets:'Хуудас хэвлэх',create:'Шалгалт үүсгэх',edit:'Шалгалт засах',board:'Жагсаалт',analytics:'Анализ',rating:'Рейтинг',students:'Сурагчид',admin:'Admin'},
     more:'Цэс',
   },
   en: {
@@ -100,7 +97,7 @@ const T = {
     timeUp:'Time is up! Your answers have been submitted.',
     section1:'Section 1', section2:'Section 2',
     hello:'Hello,',
-    nav:{home:'Home',scan:'Scan',sheets:'Print sheets',create:'Create Exam',edit:'Edit Exam',material:'AI material',upload:'Photo / manual',board:'Results',analytics:'Analytics',rating:'Ranking',students:'Students',admin:'Admin'},
+    nav:{home:'Home',scan:'Scan',sheets:'Print sheets',create:'Create Exam',edit:'Edit Exam',board:'Results',analytics:'Analytics',rating:'Ranking',students:'Students',admin:'Admin'},
     more:'More',
   }
 };
@@ -137,98 +134,6 @@ function hexToRgb(hex) {
   const n=parseInt(h.slice(0,6),16);
   return [(n>>16)&255,(n>>8)&255,n&255];
 }
-
-// ── Anthropic API (direct from browser) ──────────────────
-async function callAI(payload) {
-  // Backend proxy ашиглана — API key сервер талд хадгалагдана
-  const r = await fetch('/api/ai', {
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      ...(getToken()?{Authorization:'Bearer '+getToken()}:{}),
-    },
-    body: JSON.stringify(payload),
-  });
-  const rawBody = await r.text();
-  if (!r.ok) { const errMsg = rawBody.includes("credit") || rawBody.includes("too low") ? "AI шинжилгээ түр хугацаанд ажиллахгүй байна. Та шалгалт үүсгэх цэс рүү орж өөрөө шалгалтаа үүсгээрэй." : "AI API "+r.status+": "+rawBody.slice(0,200); throw new Error(errMsg); }
-  const d = JSON.parse(rawBody);
-  if (d.error) throw new Error(d.error.message+' ('+d.error.type+')');
-  if (d.stop_reason==='max_tokens') throw new Error('max_tokens хэтэрлээ');
-  const txt = (d.content||[]).find(b=>b.type==='text')?.text||'';
-  if (!txt) throw new Error('AI хоосон хариулт');
-  return txt;
-}
-
-async function analyzeSheet(b64, mime, cfg) {
-  const {n, useSec2, enabledSubs=[]} = cfg;
-  const sec2Part = useSec2 && enabledSubs.length > 0
-    ? `- 2-Р ХЭСЭГ (right side): ${enabledSubs.length} sub-sections labeled ${enabledSubs.join(', ')}. Each sub-section has rows a,b,c,d,e,f,g,h. Each row has digit bubbles 0-9. Detect which digit is filled for each row.`
-    : `- 2-Р ХЭСЭГ: NOT used in this exam, skip it.`;
-  const prompt = `You are an expert OMR (Optical Mark Recognition) system for Mongolian EYESH exam answer sheets.
-
-SHEET LAYOUT:
-- Top right corner: ХУВИЛБАР (version) column — one bubble A through J is filled = exam version
-- Left side — 1-Р ХЭСЭГ: questions 1 to ${n}. Each row = one question. Bubbles: A B C D E. Detect which bubble is filled (darkened).
-${sec2Part}
-- Far right — ХЯНАЛТЫН ХЭСЭГ: ignore completely.
-
-IMPORTANT RULES:
-- A filled bubble = darkened/shaded circle. Empty = light/unfilled.
-- If no bubble filled for a question → "BLANK"
-- For version: Mongolian letters А=A, Б=B, В=C, Г=D, Д=E, Е=F, Ж=G etc.
-${useSec2 ? `- For section 2 digits: look carefully at each row in each sub-section. Report digit 0-9 or "BLANK".` : ''}
-
-Return ONLY valid JSON, no extra text:
-{
-  "version": "A",
-  "section1": [{"q":1,"selected":"A","confidence":95}, ...for all ${n} questions],
-  "section2": ${useSec2 ? `{"${enabledSubs[0]||'2.1'}":{"a":{"digit":"3","confidence":90},"b":{"digit":"BLANK","confidence":85},...},...for all enabled subs}` : '{}'}
-}`;
-  const txt = await callAI({
-    model:'claude-sonnet-4-20250514',
-    max_tokens: useSec2 ? 6000 : 4000,
-    messages:[{role:'user',content:[
-      {type:'image',source:{type:'base64',media_type:mime,data:b64}},
-      {type:'text',text:prompt}
-    ]}]
-  });
-  try {
-    const cleaned = txt.replace(/```json|```/g,'').trim();
-    const fi=cleaned.indexOf('{'), li=cleaned.lastIndexOf('}');
-    return JSON.parse(cleaned.slice(fi,li+1));
-  } catch { throw new Error('Parse алдаа: '+txt.slice(0,300)); }
-}
-
-async function analyzeMaterial(fileData, fileType, cfg) {
-  const isPdf = fileType==='application/pdf';
-  const contentBlock = isPdf
-    ? {type:'document',source:{type:'base64',media_type:'application/pdf',data:fileData}}
-    : {type:'image',source:{type:'base64',media_type:fileType,data:fileData}};
-  const {n,subject,useSec2,sec2subs,sec2rows} = cfg;
-  const enabledSubs = SEC2_SUBS.filter((_,i)=>sec2subs?.[i]);
-  const prompt = `You are an expert in Mongolian EYESH exam materials. Analyze the provided exam material.
-Subject: ${subject}, Section 1 questions: ${n}, Section 2: ${useSec2?'enabled ('+enabledSubs.join(',')+')':'disabled'}
-
-PART A — Extract from the document:
-1. versions_found: list of exam versions (e.g. ["А","Б","В","Г"])
-2. scores: per-question score AND topic: [{"q":1,"score":2,"topic":"Алгебр"},...]
-   - Topics MUST be one of: ${TOPICS.join(', ')}
-3. sec2_score_per_row: default per-row score in section 2 if uniform (usually 1)
-
-PART B — Solve ALL questions for ALL versions:
-- section1: {"А":[{"q":1,"answer":"B","confidence":90,"reasoning":"brief"},...],...}
-- section2: {"А":{"2.1":{"a":{"digit":"3","confidence":90},...},...},...}
-
-Return ONLY valid JSON:
-{"versions_found":["А","Б"],"subject":"${subject}","scores":[{"q":1,"score":2,"topic":"Алгебр"}],"sec2_score_per_row":1,"section1":{"А":[{"q":1,"answer":"B","confidence":90,"reasoning":""}]},"section2":{},"notes":""}`;
-  const rawTxt = await callAI({model:'claude-sonnet-4-20250514',max_tokens:16000,messages:[{role:'user',content:[contentBlock,{type:'text',text:prompt}]}]});
-  const cleaned = rawTxt.replace(/```json/g,'').replace(/```/g,'').trim();
-  const fb=cleaned.indexOf('{'), lb=cleaned.lastIndexOf('}');
-  if(fb===-1||lb===-1) throw new Error('JSON олдсонгүй: '+rawTxt.slice(0,200));
-  try { return JSON.parse(cleaned.slice(fb,lb+1)); }
-  catch(e) { throw new Error('JSON parse: '+e.message+' | '+rawTxt.slice(0,200)); }
-}
-
 
 // ── Excel Export ──────────────────────────────────────────
 function exportExcel(exam, students) {
@@ -372,226 +277,6 @@ function Badge({children, color='#7B52EE'}) {
 }
 
 
-
-// ── Scored Panel (editable results) ──────────────────────
-function ScoredPanel({scored, exam, onSave, onUpdateScored, onReset}) {
-  const [editIdx, setEditIdx] = useState(null); // which sec1 question editing
-  const [editSec2, setEditSec2] = useState(null); // {sub, row}
-
-  function pct() {
-    if (!scored.rawMax) return 0;
-    return Math.round(scored.rawEarned / scored.rawMax * 1000) / 10;
-  }
-
-  function updateSel(qIdx, newSel) {
-    const results = [...(scored.sec1Results||[])];
-    const r = {...results[qIdx]};
-    const key = exam?.sec1Key?.[qIdx]||'';
-    const pts = exam?.sec1Scores?.[qIdx]||1;
-    const oldPts = r.st==='ok'?pts:0;
-    r.sel = newSel;
-    if (newSel==='BLANK') r.st='blank';
-    else if (newSel===key) r.st='ok';
-    else r.st='ng';
-    const newPts = r.st==='ok'?pts:0;
-    results[qIdx] = r;
-    // recalc totals
-    let correct=0,wrong=0,blank=0,rawEarned=scored.rawEarned - oldPts + newPts;
-    results.forEach(x=>{ if(x.st==='ok')correct++; else if(x.st==='blank')blank++; else wrong++; });
-    const sec2earned = Object.values(scored.sec2Results||{}).flatMap(rows=>Object.values(rows)).reduce((s,x)=>s+(x.pts||0),0);
-    const totalEarned = results.reduce((s,x)=>s+(x.pts||0),0) + sec2earned;
-    const scaled = scored.rawMax>0?Math.round(totalEarned/scored.rawMax*1000)/10:0;
-    onUpdateScored({...scored, sec1Results:results, correct, wrong, blank, rawEarned:totalEarned, scaled, grade:eyeshGrade(scaled)});
-    setEditIdx(null);
-  }
-
-  function updateSec2(sub, row, newDigit) {
-    const sec2Results = JSON.parse(JSON.stringify(scored.sec2Results||{}));
-    const r = sec2Results[sub]?.[row];
-    if (!r) return;
-    const key = r.key;
-    const pts = r.max;
-    const oldPts = r.pts||0;
-    r.sel = newDigit;
-    if (newDigit==='BLANK') { r.st='blank'; r.pts=0; }
-    else if (String(newDigit)===String(key)) { r.st='ok'; r.pts=pts; }
-    else { r.st='ng'; r.pts=0; }
-    const newPts = r.pts;
-    const sec1earned = (scored.sec1Results||[]).reduce((s,x)=>s+(x.pts||0),0);
-    const sec2earned = Object.values(sec2Results).flatMap(rows=>Object.values(rows)).reduce((s,x)=>s+(x.pts||0),0);
-    const totalEarned = sec1earned + sec2earned;
-    const scaled = scored.rawMax>0?Math.round(totalEarned/scored.rawMax*1000)/10:0;
-    let correct=0,wrong=0,blank=0;
-    [...(scored.sec1Results||[]),...Object.values(sec2Results).flatMap(rows=>Object.values(rows))].forEach(x=>{ if(x.st==='ok')correct++; else if(x.st==='blank')blank++; else wrong++; });
-    onUpdateScored({...scored, sec2Results, correct, wrong, blank, rawEarned:totalEarned, scaled, grade:eyeshGrade(scaled)});
-    setEditSec2(null);
-  }
-
-  const p = pct();
-  const grade = eyeshGrade(p);
-
-  return (
-    <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
-      <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>Дүн</div>
-
-      {/* Summary stats */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:10,marginBottom:20}}>
-        {[
-          ['Гүйцэтгэл',p+'%',grade.c],
-          ['Зөв',scored.correct,'#16a34a'],
-          ['Буруу (хоосон орно)',scored.wrong,'#dc2626'],
-          ['Хоосон',scored.blank,'#9ca3af'],
-        ].map(([l,v,c])=>(
-          <div key={l} style={{background:'#f9fafb',borderRadius:10,padding:'12px 16px'}}>
-            <div style={{fontSize:20,fontWeight:800,color:c}}>{v}</div>
-            <div style={{fontSize:11,color:'#9ca3af'}}>{l}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Section 1 — editable */}
-      <div style={{marginBottom:20}}>
-        <div style={{fontWeight:700,fontSize:14,color:'#374151',marginBottom:6}}>1-р хэсэг — дасгал бүрийн хариулт <span style={{fontSize:11,color:'#9ca3af',fontWeight:400}}>(дарж засварлах)</span></div>
-        <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
-          {(scored.sec1Results||[]).map((r,i)=>{
-            const bg = r.st==='ok'?'#16a34a':r.st==='blank'?'#9ca3af':'#dc2626';
-            const key = exam?.sec1Key?.[i]||'?';
-            const isEditing = editIdx===i;
-            return (
-              <div key={i} style={{position:'relative'}}>
-                <div onClick={()=>setEditIdx(isEditing?null:i)}
-                  style={{width:38,height:46,borderRadius:6,background:bg,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',cursor:'pointer',boxShadow:isEditing?'0 0 0 2px #f59e0b':'0 1px 3px rgba(0,0,0,.15)',transition:'box-shadow .15s'}}>
-                  <div style={{fontSize:8,color:'rgba(255,255,255,.7)',lineHeight:1}}>D{i+1}</div>
-                  <div style={{fontSize:14,fontWeight:900,color:'white',lineHeight:1.2}}>{r.sel==='BLANK'?'—':r.sel}</div>
-                  {r.st==='ng'&&<div style={{fontSize:8,color:'rgba(255,255,255,.85)',lineHeight:1}}>{key}</div>}
-                </div>
-                {isEditing&&(
-                  <div style={{position:'absolute',top:50,left:0,zIndex:50,background:'white',borderRadius:8,boxShadow:'0 4px 20px rgba(0,0,0,.2)',padding:6,display:'flex',gap:4,flexWrap:'nowrap'}}>
-                    {['A','B','C','D','E','BLANK'].map(ch=>(
-                      <button key={ch} onClick={()=>updateSel(i,ch)}
-                        style={{padding:'4px 7px',border:'none',borderRadius:5,fontWeight:700,fontSize:12,cursor:'pointer',
-                          background:ch===r.sel?'#1c1f2a':ch===key?'#dcfce7':'#f3f4f6',
-                          color:ch===r.sel?'white':ch===key?'#16a34a':'#374151'}}>
-                        {ch==='BLANK'?'—':ch}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <div style={{display:'flex',gap:16,marginTop:8,fontSize:11,color:'#6b7280',flexWrap:'wrap'}}>
-          <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:10,height:10,borderRadius:2,background:'#16a34a',display:'inline-block'}}></span>Зөв</span>
-          <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:10,height:10,borderRadius:2,background:'#dc2626',display:'inline-block'}}></span>Буруу (жижигээр=зөв)</span>
-          <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:10,height:10,borderRadius:2,background:'#9ca3af',display:'inline-block'}}></span>Хоосон</span>
-        </div>
-      </div>
-
-      {/* Section 2 — editable */}
-      {exam?.useSec2&&scored.sec2Results&&Object.keys(scored.sec2Results).length>0&&(
-        <div style={{marginBottom:20}}>
-          <div style={{fontWeight:700,fontSize:14,color:'#374151',marginBottom:8}}>2-р хэсэг <span style={{fontSize:11,color:'#9ca3af',fontWeight:400}}>(дарж засварлах)</span></div>
-          <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
-            {Object.entries(scored.sec2Results).map(([sub,rows])=>(
-              <div key={sub} style={{background:'#f9fafb',borderRadius:10,padding:'10px 14px'}}>
-                <div style={{fontWeight:700,fontSize:12,color:'#7B52EE',marginBottom:6}}>{sub}</div>
-                <div style={{display:'flex',flexDirection:'column',gap:4}}>
-                  {Object.entries(rows).map(([row,r])=>{
-                    const isEd = editSec2?.sub===sub&&editSec2?.row===row;
-                    return (
-                      <div key={row} style={{position:'relative',display:'flex',alignItems:'center',gap:6}}>
-                        <span style={{fontSize:11,color:'#9ca3af',minWidth:12}}>{row}</span>
-                        <div onClick={()=>setEditSec2(isEd?null:{sub,row})}
-                          style={{padding:'3px 10px',borderRadius:5,fontSize:13,fontWeight:700,cursor:'pointer',
-                            background:r.st==='ok'?'#16a34a':r.st==='blank'?'#9ca3af':'#dc2626',
-                            color:'white',minWidth:30,textAlign:'center',
-                            boxShadow:isEd?'0 0 0 2px #f59e0b':'none'}}>
-                          {r.sel==='BLANK'?'—':r.sel}
-                        </div>
-                        {r.st==='ng'&&<span style={{fontSize:10,color:'#dc2626'}}>→{r.key}</span>}
-                        {isEd&&(
-                          <div style={{position:'absolute',left:60,top:0,zIndex:50,background:'white',borderRadius:8,boxShadow:'0 4px 20px rgba(0,0,0,.2)',padding:6,display:'flex',gap:3,flexWrap:'nowrap'}}>
-                            {['0','1','2','3','4','5','6','7','8','9','BLANK'].map(d=>(
-                              <button key={d} onClick={()=>updateSec2(sub,row,d==='BLANK'?'BLANK':d)}
-                                style={{padding:'4px 7px',border:'none',borderRadius:5,fontWeight:700,fontSize:12,cursor:'pointer',
-                                  background:d===String(r.sel)?'#1c1f2a':d===String(r.key)?'#dcfce7':'#f3f4f6',
-                                  color:d===String(r.sel)?'white':d===String(r.key)?'#16a34a':'#374151'}}>
-                                {d==='BLANK'?'—':d}
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      <div style={{display:'flex',gap:8}}>
-        {onReset&&<button onClick={onReset}
-          style={{padding:'14px 20px',background:'#f3f4f6',color:'#6b7280',border:'none',borderRadius:12,fontSize:14,fontWeight:700,cursor:'pointer'}}>
-          ← Дахин
-        </button>}
-        <button onClick={onSave} style={{flex:1,padding:14,background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',border:'none',borderRadius:12,fontSize:15,fontWeight:800,cursor:'pointer'}}>
-          Хадгалах
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ── Camera Component ──────────────────────────────────────
-function CameraCapture({onCapture, onClose}) {
-  const videoRef = useRef();
-  const [camStream, setCamStream] = useState(null);
-  const [camErr, setCamErr] = useState('');
-
-  useEffect(() => {
-    navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
-      .then(s=>{setCamStream(s);if(videoRef.current)videoRef.current.srcObject=s;})
-      .catch(()=>setCamErr('Camera нэвтрэх боломжгүй'));
-    return ()=>{ };
-  }, []);
-
-  function capture() {
-    const canvas=document.createElement('canvas');
-    canvas.width=videoRef.current.videoWidth;
-    canvas.height=videoRef.current.videoHeight;
-    canvas.getContext('2d').drawImage(videoRef.current,0,0);
-    canvas.toBlob(blob=>{
-      const reader=new FileReader();
-      reader.onload=e=>onCapture(e.target.result.split(',')[1],'image/jpeg');
-      reader.readAsDataURL(blob);
-      camStream?.getTracks().forEach(t=>t.stop());
-    },'image/jpeg',0.95);
-  }
-
-  function close() { camStream?.getTracks().forEach(t=>t.stop()); onClose(); }
-
-  return (
-    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.95)',zIndex:1000,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:16}}>
-      {camErr ? (
-        <div style={{color:'white',textAlign:'center'}}>
-          <div style={{fontSize:16,marginBottom:12}}>{camErr}</div>
-          <button onClick={close} style={{padding:'10px 24px',background:'#7B52EE',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>Буцах</button>
-        </div>
-      ) : (
-        <>
-          <video ref={videoRef} autoPlay playsInline style={{width:'100%',maxWidth:500,borderRadius:12,marginBottom:16}} />
-          <div style={{display:'flex',gap:12}}>
-            <button onClick={capture} style={{padding:'14px 32px',background:'#7B52EE',color:'white',border:'none',borderRadius:12,fontWeight:800,fontSize:16,cursor:'pointer'}}>Зураг авах</button>
-            <button onClick={close} style={{padding:'14px 24px',background:'#374151',color:'white',border:'none',borderRadius:12,fontWeight:700,cursor:'pointer'}}>Болих</button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
 
 // ── Landing Page ──────────────────────────────────────────
 function LandingPage({onEnter}) {
@@ -1490,307 +1175,6 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
     </div>
   );
 }
-
-// ── Upload Page ───────────────────────────────────────────
-
-// ── Bubble Overlay ────────────────────────────────────────
-// Зураг дээр sec1 хариулт бүрийн байрлалд ногоон/улаан тойрог харуулна
-// AI буцаасан detected positions ашиглана, байхгүй бол grid байрлал ашиглана
-function BubbleOverlay({scored, det}) {
-  const containerRef = useRef();
-  const [size, setSize] = useState({w:0,h:0});
-
-  useEffect(()=>{
-    if(!containerRef.current) return;
-    const img = containerRef.current.previousElementSibling;
-    if(!img) return;
-    function measure() {
-      setSize({w:img.offsetWidth, h:img.offsetHeight});
-    }
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(img);
-    return ()=>ro.disconnect();
-  },[]);
-
-  if(!size.w||!size.h) return null;
-
-  const results = scored?.sec1Results||[];
-  const total = results.length;
-  if(!total) return null;
-
-  // Grid layout: estimate bubble positions
-  // Assume ~4 columns layout on the sheet
-  const cols = total <= 20 ? 2 : total <= 40 ? 2 : 2;
-  const rows = Math.ceil(total / cols);
-  const padX = size.w * 0.08;
-  const padY = size.h * 0.10;
-  const cellW = (size.w - padX*2) / cols;
-  const cellH = (size.h - padY*2) / rows;
-
-  // Each question row: label + 5 bubbles (A-E)
-  // Bubbles are at ~40-90% of cellW
-  const choices = SEC1_CHOICES; // A B C D E
-
-  return (
-    <div ref={containerRef} style={{position:'absolute',inset:0,pointerEvents:'none'}}>
-      {results.map((r,i)=>{
-        const col = i % cols;
-        const row = Math.floor(i / cols);
-        const baseX = padX + col * cellW;
-        const baseY = padY + row * cellH + cellH*0.5;
-
-        const choiceW = cellW * 0.52 / choices.length;
-        const choiceStartX = baseX + cellW * 0.32;
-
-        return choices.map((c,ci)=>{
-          const cx = choiceStartX + ci * choiceW + choiceW*0.5;
-          const cy = baseY;
-          const isSel = r.sel === c;
-          const isKey = r.key === c;
-          const r2 = Math.min(choiceW, cellH) * 0.38;
-
-          if(!isSel && !isKey) return null;
-
-          let bg, border, opacity;
-          if(isSel && r.st==='ok') { bg='rgba(22,163,74,0.55)'; border='#15803d'; opacity=1; }
-          else if(isSel && r.st==='ng') { bg='rgba(220,38,38,0.55)'; border='#b91c1c'; opacity=1; }
-          else if(isSel && r.st==='blank') return null;
-          else return null;
-
-          return (
-            <div key={c} style={{
-              position:'absolute',
-              left: cx - r2,
-              top: cy - r2,
-              width: r2*2,
-              height: r2*2,
-              borderRadius:'50%',
-              background: bg,
-              border: `2.5px solid ${border}`,
-              opacity,
-              display:'flex',alignItems:'center',justifyContent:'center',
-              fontSize: r2*0.9,
-              fontWeight:900,
-              color:'white',
-            }}>
-              {r.st==='ok'?'✓':'✗'}
-            </div>
-          );
-        });
-      })}
-    </div>
-  );
-}
-
-
-function UploadPage({exam, students, onAddStudent, onNavigate}) {
-  const [name,setName]=useState('');
-  const [code,setCode]=useState('');
-  const [mode,setMode]=useState(null); // null | 'ai' | 'manual'
-  const [imgData,setImgData]=useState(null);
-  const [imgMime,setImgMime]=useState(null);
-  const [analyzing,setAnalyzing]=useState(false);
-  const [err,setErr]=useState('');
-  const [det,setDet]=useState(null);
-  const [scored,setScored]=useState(null);
-  const [showCamera,setShowCamera]=useState(false);
-  const [showOverlay,setShowOverlay]=useState(false);
-  const fileRef=useRef();
-
-  if (!exam) return (
-    <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px',textAlign:'center',color:'#9ca3af',paddingTop:80}}>
-      <div style={{fontSize:16,fontWeight:600}}>Эхлээд шалгалт сонгоно уу</div>
-    </div>
-  );
-
-  function handleFile(file) {
-    if (!file||!file.type.startsWith('image/')) return;
-    setImgMime(file.type);
-    const r=new FileReader();
-    r.onload=e=>{ setImgData(e.target.result.split(',')[1]); setDet(null); setScored(null); setErr(''); };
-    r.readAsDataURL(file);
-  }
-
-  async function handleAnalyze() {
-    if (!imgData) return;
-    setAnalyzing(true); setErr('');
-    try {
-      const sec2en={};
-      SEC2_SUBS.forEach((s)=>{ sec2en[s]=exam.sec2Config?.[s]?._enabled||false; });
-      const enabledSubs = SEC2_SUBS.filter(s=>sec2en[s]);
-      const d = await analyzeSheet(imgData, imgMime, {
-        n: exam.sec1Count,
-        useSec2: exam.useSec2 && enabledSubs.length > 0,
-        enabledSubs,
-      });
-      setDet(d);
-      const vExam = { ...exam, sec2Config: exam.sec2Config||{}, sec2Enabled: sec2en };
-      setScored(calcScore(d, vExam));
-    } catch(e) { setErr(e.message); }
-    setAnalyzing(false);
-  }
-
-  // Build empty manual scored from exam key
-  function startManual() {
-    const sec2en={};
-    SEC2_SUBS.forEach(s=>{ sec2en[s]=exam.sec2Config?.[s]?._enabled||false; });
-    const sec1Results = (exam.sec1Key||[]).map((key,i)=>({q:i+1,sel:'BLANK',key,st:'blank',pts:0,max:exam.sec1Scores?.[i]||1}));
-    const sec2Results={};
-    SEC2_SUBS.forEach(sub=>{
-      if(!sec2en[sub]) return;
-      sec2Results[sub]={};
-      SEC2_ROWS.forEach(row=>{
-        const rowData=exam.sec2Config?.[sub]?.[row];
-        if(rowData===undefined||rowData===null||rowData==='') return;
-        const kv=typeof rowData==='object'?(rowData.ans!==undefined?String(rowData.ans):undefined):rowData;
-        if(kv===undefined||kv===null||kv==='') return;
-        // Default 1 (per row) — exam.sec2Score-г string-format-д л хэрэглэнэ
-        const rowPts=typeof rowData==='object'
-          ?(rowData.score!=null?parseFloat(rowData.score):1)
-          :(parseFloat(exam.sec2Score)||1);
-        sec2Results[sub][row]={sel:'BLANK',key:kv,st:'blank',pts:0,max:rowPts};
-      });
-    });
-    const rawMax=(exam.sec1Scores||[]).reduce((s,v)=>s+v,0)+
-      Object.values(sec2Results).flatMap(r=>Object.values(r)).reduce((s,r)=>s+r.max,0);
-    setScored({correct:0,wrong:0,blank:exam.sec1Count,rawEarned:0,rawMax,scaled:0,grade:eyeshGrade(0),sec1Results,sec2Results,needsReview:false});
-    setMode('manual');
-  }
-
-  async function handleSave() {
-    if (!scored||!name.trim()) return alert('Нэр оруулна уу');
-    const student = {
-      id:uid(), examId:exam.id, name:name.trim(), code:code.trim(),
-      version:det?.version||'—', ...scored,
-      submittedAt:new Date().toISOString()
-    };
-    await onAddStudent(student);
-    setName(''); setCode(''); setImgData(null); setDet(null); setScored(null); setMode(null);
-  }
-
-  return (
-    <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px'}}>
-      {/* Student info */}
-      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
-        <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>Сурагчийн мэдээлэл</div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
-          <div>
-            <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>Нэр</label>
-            <input value={name} onChange={e=>setName(e.target.value)} placeholder="Сурагчийн нэр"
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
-          </div>
-          <div>
-            <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>Код / ID</label>
-            <input value={code} onChange={e=>setCode(e.target.value)} placeholder="Сурагчийн код"
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
-          </div>
-        </div>
-      </div>
-
-      {/* Mode selector */}
-      {!scored&&(
-        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
-          <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>Хариулт оруулах арга</div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
-            <button onClick={()=>setMode('ai')}
-              style={{padding:'22px 16px',background:mode==='ai'?'#7B52EE':'#f9fafb',
-                color:mode==='ai'?'white':'#374151',border:'2px solid '+(mode==='ai'?'#7B52EE':'#e5e7eb'),
-                borderRadius:14,fontWeight:700,fontSize:15,cursor:'pointer',textAlign:'center'}}>
-              <div style={{display:'flex',justifyContent:'center',marginBottom:6}}><Ico d='M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z' size={28} color='#7B52EE'/></div>
-              AI шинжлэх
-              <div style={{fontSize:12,fontWeight:400,marginTop:4,opacity:.8}}>Бүтэн хуудас нэг зураг</div>
-            </button>
-            <button onClick={()=>onNavigate&&onNavigate('scan')}
-              style={{padding:'22px 16px',background:'linear-gradient(135deg,#FFD966,#FFC93C)',color:'#5a2b00',border:'2px solid #FFC113',
-                borderRadius:14,fontWeight:800,fontSize:15,cursor:'pointer',textAlign:'center'}}>
-              <div style={{display:'flex',justifyContent:'center',marginBottom:6}}><Ico d={['M3 7V5a2 2 0 0 1 2-2h2','M17 3h2a2 2 0 0 1 2 2v2','M21 17v2a2 2 0 0 1-2 2h-2','M7 21H5a2 2 0 0 1-2-2v-2','M7 12h10']} size={28} color='#5a2b00' sw={2}/></div>
-              Камераар (OMR)
-              <div style={{fontSize:12,fontWeight:500,marginTop:4,opacity:.85}}>CyberMath хуудсыг AI-гүй, шууд уншина</div>
-            </button>
-            <button onClick={startManual}
-              style={{padding:'22px 16px',background:mode==='manual'?'linear-gradient(135deg,#0369a1,#0ea5e9)':'#f9fafb',
-                color:mode==='manual'?'white':'#374151',border:'2px solid '+(mode==='manual'?'#0369a1':'#e5e7eb'),
-                borderRadius:14,fontWeight:700,fontSize:15,cursor:'pointer',textAlign:'center'}}>
-              <div style={{display:'flex',justifyContent:'center',marginBottom:6}}><Ico d='M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10' size={28} color='#f97316'/></div>
-              Гараар оруулах
-              <div style={{fontSize:12,fontWeight:400,marginTop:4,opacity:.8}}>Дасгал бүрийн хариулт сонгоно</div>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* AI mode — image upload */}
-      {mode==='ai'&&!scored&&(
-        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
-          <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:8}}>Хариулт хуудасны зураг</div>
-          <div style={{fontSize:12.5,color:'#7a4b00',background:'#fff7e0',border:'1px solid #fde68a',borderRadius:10,padding:'8px 12px',marginBottom:14}}>
-            AI уншилт алдаа гаргаж болзошгүй тул дасгал бүрийг шалгаж баталгаажуулна уу. 100% найдвартай уншихын тулд «Хуудас хэвлэх»-ээр CyberMath хуудас хэвлээд «Камераар (OMR)» ашиглана уу.
-          </div>
-          {showCamera&&<CameraCapture onCapture={(data,mime)=>{setImgData(data);setImgMime(mime);setShowCamera(false);setDet(null);setScored(null);}} onClose={()=>setShowCamera(false)}/>}
-          {!imgData?(
-            <div>
-              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
-                <button onClick={()=>setShowCamera(true)}
-                  style={{padding:'18px',background:'#7B52EE',color:'white',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>
-                  📷 Camera
-                </button>
-                <button onClick={()=>fileRef.current.click()}
-                  style={{padding:'18px',background:'linear-gradient(135deg,#0369a1,#0ea5e9)',color:'white',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>
-                  🖼️ Файл сонгох
-                </button>
-              </div>
-              <input ref={fileRef} type="file" accept="image/*" style={{display:'none'}} onChange={e=>handleFile(e.target.files[0])} />
-            </div>
-          ):(
-            <div>
-              {/* Image with overlay toggle */}
-              <div style={{position:'relative',marginBottom:12}}>
-                <img src={`data:${imgMime};base64,${imgData}`} style={{width:'100%',maxHeight:500,objectFit:'contain',borderRadius:8,display:'block'}} />
-                {scored&&showOverlay&&det&&(
-                  <BubbleOverlay scored={scored} det={det} />
-                )}
-              </div>
-              {scored&&(
-                <button onClick={()=>setShowOverlay(v=>!v)}
-                  style={{width:'100%',marginBottom:8,padding:'10px',background:showOverlay?'#dcfce7':'#f3f4f6',border:`2px solid ${showOverlay?'#16a34a':'#e5e7eb'}`,borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer',color:showOverlay?'#16a34a':'#6b7280'}}>
-                  {showOverlay?'Overlay харуулж байна — нуух':'Зураг дээр overlay харах'}
-                </button>
-              )}
-              {!scored&&<div style={{display:'flex',gap:8}}>
-                <button onClick={handleAnalyze} disabled={analyzing}
-                  style={{flex:1,padding:'12px',background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontWeight:700,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-                  {analyzing&&<Spinner/>} AI-аар Шинжлэх
-                </button>
-                <button onClick={()=>{setImgData(null);setDet(null);setScored(null);}}
-                  style={{padding:'12px 20px',background:'#fdecec',color:'#b3261e',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Устгах</button>
-              </div>}
-              {scored&&<div style={{display:'flex',gap:8}}>
-                <button onClick={()=>{setImgData(null);setDet(null);setScored(null);setShowOverlay(false);}}
-                  style={{padding:'12px 20px',background:'#fdecec',color:'#b3261e',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Зураг устгах</button>
-              </div>}
-            </div>
-          )}
-          {err&&<div style={{color:'#b3261e',fontSize:13,background:'#fdecec',padding:'10px 14px',borderRadius:8,border:'1px solid #f6c9c9',marginTop:10}}>
-            <pre style={{margin:0,whiteSpace:'pre-wrap',wordBreak:'break-all'}}>{err}</pre>
-          </div>}
-        </div>
-      )}
-
-      {/* Results panel */}
-      {scored&&(
-        <ScoredPanel
-          scored={scored}
-          exam={exam}
-          onSave={handleSave}
-          onUpdateScored={setScored}
-          onReset={()=>{setScored(null);setImgData(null);setDet(null);setMode(null);}}
-        />
-      )}
-    </div>
-  );
-}
-
 
 // ── Rating Page ───────────────────────────────────────────
 function RatingPage({exams, students, dark:d=false}) {
@@ -2696,131 +2080,6 @@ function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
   );
 }
 
-// ── Material Page ─────────────────────────────────────────
-function MaterialPage({onPrefill}) {
-  const [subject,setSubject]=useState(SUBJECTS[0]);
-  const [cnt,setCnt]=useState(36);
-  const [useSec2,setUseSec2]=useState(false);
-  const [fileData,setFileData]=useState(null);
-  const [fileType,setFileType]=useState(null);
-  const [fileName,setFileName]=useState('');
-  const [analyzing,setAnalyzing]=useState(false);
-  const [err,setErr]=useState('');
-  const [result,setResult]=useState(null);
-  const fileRef=useRef();
-
-  function loadFile(file) {
-    if (!file) return;
-    const isPdf=file.name.toLowerCase().endsWith('.pdf')||file.type==='application/pdf';
-    const ft=isPdf?'application/pdf':file.type;
-    setFileType(ft); setFileName(file.name);
-    const r=new FileReader();
-    r.onload=e=>{ setFileData(e.target.result.split(',')[1]); setErr(''); setResult(null); };
-    r.readAsDataURL(file);
-  }
-
-  async function handleAnalyze() {
-    if (!fileData) return;
-    setAnalyzing(true); setErr('');
-    try {
-      const res = await analyzeMaterial(fileData, fileType, {n:cnt,subject,useSec2,sec2subs:[true,true,true,true],sec2rows:SEC2_ROWS});
-      setResult(res);
-    } catch(e) { setErr(e.message); }
-    setAnalyzing(false);
-  }
-
-  function handleUsePrefill(version) {
-    if (!result) return;
-    const sec1 = result.section1?.[version]||[];
-    const keys = Array.from({length:cnt},(_,i)=>sec1.find(q=>q.q===i+1)?.answer||'A');
-    const prefill = {
-      sec1Key:keys, sec1Count:cnt, subject,
-      useSec2, sec2Score:result.sec2_score_per_row||1,
-      sec1Scores:Array.from({length:cnt},(_,i)=>{const s=result.scores?.find(s=>s.q===i+1);return s?.score||2;}),
-      topics:Array.from({length:cnt},(_,i)=>{const s=result.scores?.find(s=>s.q===i+1);const tl=getTopics(subject);return tl.includes(s?.topic)?s.topic:tl[0];}),
-    };
-    onPrefill(prefill);
-  }
-
-  return (
-    <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px'}}>
-      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
-        <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>1. Шалгалтын тохиргоо</div>
-        <div className="cm-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr auto',gap:12,alignItems:'end'}}>
-          <div>
-            <label style={{fontSize:13,fontWeight:600,display:'block',marginBottom:4}}>Хичээл</label>
-            <select value={subject} onChange={e=>setSubject(e.target.value)}
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none'}}>
-              {SUBJECTS.map(s=><option key={s}>{s}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{fontSize:13,fontWeight:600,display:'block',marginBottom:4}}>1-р хэсэг дасгал</label>
-            <input type="number" min={1} max={200} value={cnt} onChange={e=>setCnt(parseInt(e.target.value)||1)}
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
-          </div>
-          <div style={{paddingBottom:2}}>
-            <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:14,fontWeight:600}}>
-              <input type="checkbox" checked={useSec2} onChange={e=>setUseSec2(e.target.checked)} style={{width:16,height:16}} />
-              2-р хэсэг
-            </label>
-          </div>
-        </div>
-      </div>
-
-      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
-        <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>2. Материалын файл оруулах</div>
-        {fileData?(
-          <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:10,padding:'12px 16px',display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
-            <div style={{flex:1}}>
-              <div style={{fontWeight:700,color:'#15803d'}}>{fileName}</div>
-              <div style={{fontSize:12,color:'#16a34a'}}>{fileType==='application/pdf'?'PDF':'Зураг'}</div>
-            </div>
-            <button onClick={()=>{setFileData(null);setFileType(null);setFileName('');setResult(null);}}
-              style={{padding:'4px 12px',background:'#fdecec',border:'none',borderRadius:6,fontSize:12,color:'#b3261e',cursor:'pointer'}}>Устгах</button>
-          </div>
-        ):(
-          <div onClick={()=>fileRef.current.click()} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();loadFile(e.dataTransfer.files[0]);}}
-            style={{border:'2px dashed #e5e7eb',borderRadius:12,padding:'40px 20px',textAlign:'center',cursor:'pointer',color:'#9ca3af',marginBottom:12}}>
-            <div style={{fontSize:14,fontWeight:600}}>PDF эсвэл зураг чирж тавих</div>
-            <input ref={fileRef} type="file" accept=".pdf,image/*" style={{display:'none'}} onChange={e=>loadFile(e.target.files[0])} />
-          </div>
-        )}
-        {err&&<div style={{color:'#b3261e',fontSize:13,background:'#fdecec',padding:'10px 14px',borderRadius:8,border:'1px solid #f6c9c9',marginBottom:12}}>
-          <pre style={{margin:0,whiteSpace:'pre-wrap',wordBreak:'break-all',fontSize:11}}>{err}</pre>
-        </div>}
-        <button onClick={handleAnalyze} disabled={!fileData||analyzing}
-          style={{width:'100%',padding:'13px',background:'#7B52EE',color:'white',border:'none',borderRadius:12,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,opacity:(!fileData||analyzing)?.6:1}}>
-          {analyzing&&<Spinner/>} AI-аар Хариулт Бодох
-        </button>
-      </div>
-
-      {result&&(
-        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
-          <div style={{fontWeight:800,fontSize:16,marginBottom:16}}>Хариулт — {result.versions_found?.join(', ')}</div>
-          {result.versions_found?.map(v=>(
-            <div key={v} style={{marginBottom:20}}>
-              <div style={{fontWeight:700,fontSize:14,color:'#7B52EE',marginBottom:8}}>Хувилбар {v}</div>
-              <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:8}}>
-                {(result.section1?.[v]||[]).map(q=>(
-                  <div key={q.q} style={{background:q.confidence>=80?'#f0fdf4':q.confidence>=60?'#fef3c7':'#f9fafb',border:'1px solid #e5e7eb',borderRadius:6,padding:'3px 8px',fontSize:12}}>
-                    <span style={{color:'#9ca3af'}}>D{q.q}</span> <span style={{fontWeight:700}}>{q.answer}</span>
-                  </div>
-                ))}
-              </div>
-              <button onClick={()=>handleUsePrefill(v)}
-                style={{padding:'8px 20px',background:'#7B52EE',color:'white',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer'}}>
-                Хувилбар {v} ашиглан шалгалт үүсгэх
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-
 // ── Student Accounts Page ─────────────────────────────────
 function StudentAccountsPage({dark:d=false}) {
   const [accounts, setAccounts] = useState([]);
@@ -3216,9 +2475,17 @@ export default function App() {
   const [students, setStudents] = useState([]);
   const [currentExam, setCurrentExam] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [prefill, setPrefill] = useState(null);
   const [editingExam, setEditingExam] = useState(null);
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  // ☰ цэс нээлттэй үед: Esc-ээр хаах, ард нь гүйлгэхгүй
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = e => { if (e.key === 'Escape') setMenuOpen(false); };
+    document.addEventListener('keydown', onKey);
+    document.body.classList.add('cm-lock');
+    return () => { document.removeEventListener('keydown', onKey); document.body.classList.remove('cm-lock'); };
+  }, [menuOpen]);
 
   useEffect(() => { document.body.classList.toggle('dark', dark); }, [dark]);
 
@@ -3278,7 +2545,6 @@ export default function App() {
     setExams(ex=>[created,...ex]);
     setCurrentExam(created);
     setPage('home');
-    setPrefill(null);
   }
 
   async function handleUpdateExam(exam) {
@@ -3304,11 +2570,6 @@ export default function App() {
   async function handleDeleteStudent(id) {
     await apiFetch('/api/students/'+id, {method:'DELETE'});
     setStudents(st=>st.filter(s=>s.id!==id));
-  }
-
-  function handlePrefill(p) {
-    setPrefill(p);
-    setPage('create');
   }
 
   const [demoSecsLeft, setDemoSecsLeft] = useState(null);
@@ -3351,11 +2612,10 @@ export default function App() {
 
   const examStudents = students.filter(s=>s.examId===currentExam?.id);
   const navIds = PAGE_IDS.filter(id => id!=='admin' || teacher?.isAdmin);
-  const moreIds = MORE_IDS.filter(id => id!=='admin' || teacher?.isAdmin);
-  function go(id) { setPage(id); setMoreOpen(false); if (typeof window!=='undefined') window.scrollTo(0,0); }
-  function logout() { localStorage.removeItem('eyesh_token');localStorage.removeItem('eyesh_teacher');setAuthed(false);setTeacher(null);setMoreOpen(false); }
+  function go(id) { setPage(id); setMenuOpen(false); if (typeof window!=='undefined') window.scrollTo(0,0); }
+  function logout() { localStorage.removeItem('eyesh_token');localStorage.removeItem('eyesh_teacher');setAuthed(false);setTeacher(null);setMenuOpen(false); }
   const tab = (id, label) => (
-    <button key={id} className={'cm-tab'+((id==='more'?moreIds.includes(page):page===id)?' on':'')} onClick={()=>id==='more'?setMoreOpen(true):go(id)}>
+    <button key={id} className={'cm-tab'+(page===id?' on':'')} onClick={()=>go(id)}>
       <Ico d={NAV_ICON[id]} size={23} sw={2}/>{label}
     </button>
   );
@@ -3371,20 +2631,14 @@ export default function App() {
             <img src="/chick.svg" alt="" className="cm-chick" />
             <span><b>ЭЕШ шалгагч</b><small>CyberMath</small></span>
           </button>
-          <nav className="cm-nav">
-            {navIds.map(id=>(
-              <button key={id} className={page===id||(id==='create'&&page==='edit')?'on':''} onClick={()=>go(id)}>{t.nav[id]||id}</button>
-            ))}
-          </nav>
           <div className="cm-actions">
             {demoSecsLeft!==null && teacher?.email==='demo@eyeshcheck.com' &&(
               <span className="cm-timer">⏱ {Math.floor(demoSecsLeft/60)}:{String(demoSecsLeft%60).padStart(2,'0')}</span>
             )}
             {currentExam&&<button className="cm-exam" onClick={()=>go('home')} title="Идэвхтэй шалгалт">{currentExam.title}</button>}
-            <a className="cm-back cm-desk" href={PRACTICE_URL}>← Дасгалын төв</a>
-            <button className="cm-ibtn cm-desk" onClick={toggleDark} title={d?'Цайвар':'Бараан'}><Ico d={d?NAV_ICON.sun:NAV_ICON.moon} size={18} sw={2}/></button>
-            <button className="cm-ibtn cm-desk" onClick={toggleLang} style={{fontSize:11,fontWeight:900}}>{lang==='mn'?'EN':'МН'}</button>
-            <button className="cm-ibtn cm-desk" onClick={logout} title={t.logout}><Ico d={NAV_ICON.logout} size={18} sw={2}/></button>
+            <button className="cm-burger" onClick={()=>setMenuOpen(true)} aria-label={t.more} aria-expanded={menuOpen}>
+              <Ico d={NAV_ICON.menu} size={22} sw={2.2}/>
+            </button>
           </div>
         </div>
       </header>
@@ -3392,10 +2646,8 @@ export default function App() {
         {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={go} onEditExam={e=>{setEditingExam(e);go('edit');}} dark={d} />}
         {page==='scan'&&<ScanPage exam={currentExam} exams={exams} students={examStudents} onSelectExam={setCurrentExam} onAddStudent={handleAddStudent} onNavigate={go} />}
         {page==='sheets'&&<SheetsPage exam={currentExam} onNavigate={go} dark={d} />}
-        {page==='create'&&<CreatePage onCreated={handleAddExam} prefill={prefill} dark={d} />}
+        {page==='create'&&<CreatePage onCreated={handleAddExam} dark={d} />}
         {page==='edit'&&<CreatePage onCreated={handleUpdateExam} prefill={editingExam} isEdit={true} dark={d} />}
-        {page==='material'&&<MaterialPage onPrefill={handlePrefill} dark={d} />}
-        {page==='upload'&&<UploadPage exam={currentExam} students={examStudents} onAddStudent={handleAddStudent} onNavigate={go} dark={d} />}
         {page==='board'&&<BoardPage exam={currentExam} students={examStudents} onDeleteStudent={handleDeleteStudent} onExportExcel={exportExcel} onReload={loadData} dark={d} />}
         {page==='analytics'&&<AnalyticsPage exam={currentExam} students={examStudents} onExportAnalytics={exportAnalytics} dark={d} />}
         {page==='rating'&&<RatingPage exams={exams} students={students} dark={d} />}
@@ -3410,26 +2662,30 @@ export default function App() {
         {tab('board', t.nav.board)}
         <button className="cm-fab" onClick={()=>go('scan')}><span><Ico d={NAV_ICON.scan} size={26} sw={2.2}/></span>{t.nav.scan}</button>
         {tab('analytics', t.nav.analytics)}
-        {tab('more', t.more)}
+        {tab('rating', t.nav.rating)}
       </nav>
-      {moreOpen&&(
-        <div className="cm-sheet-bg no-print" onClick={()=>setMoreOpen(false)}>
-          <div className="cm-sheet" onClick={e=>e.stopPropagation()}>
-            <div className="cm-sheet-grab"/>
-            <div className="cm-sheet-grid">
-              {moreIds.map(id=>(
-                <button key={id} className={page===id?'on':''} onClick={()=>go(id)}>
-                  <span className="ic"><Ico d={NAV_ICON[id]} size={21} sw={2}/></span>{t.nav[id]}
+      {menuOpen&&(
+        <div className="cm-drawer-bg no-print" onClick={()=>setMenuOpen(false)}>
+          <aside className="cm-drawer" role="dialog" aria-label={t.more} onClick={e=>e.stopPropagation()}>
+            <div className="cm-drawer-h">
+              <div className="cm-brand"><img src="/chick.svg" alt="" className="cm-chick" /><span><b>ЭЕШ шалгагч</b><small>CyberMath</small></span></div>
+              <button className="cm-ibtn" onClick={()=>setMenuOpen(false)} aria-label="Хаах"><Ico d={NAV_ICON.close} size={20} sw={2.2}/></button>
+            </div>
+            {teacher&&<div className="cm-drawer-user"><b>{teacher.name||'Багш'}</b><span>{teacher.email}</span></div>}
+            <nav className="cm-drawer-nav">
+              {navIds.map(id=>(
+                <button key={id} className={page===id||(id==='create'&&page==='edit')?'on':''} onClick={()=>go(id)}>
+                  <Ico d={NAV_ICON[id]} size={21} sw={2}/>{t.nav[id]}
                 </button>
               ))}
-              <a href={PRACTICE_URL}><span className="ic"><Ico d={NAV_ICON.book} size={21} sw={2}/></span>Дасгалын төв</a>
+              <a href={PRACTICE_URL}><Ico d={NAV_ICON.book} size={21} sw={2}/>Дасгалын төв<i>↗</i></a>
+            </nav>
+            <div className="cm-drawer-foot">
+              <button onClick={toggleDark}><Ico d={d?NAV_ICON.sun:NAV_ICON.moon} size={19} sw={2}/>{d?'Цайвар горим':'Бараан горим'}</button>
+              <button onClick={toggleLang}><span className="cm-lang">{lang==='mn'?'EN':'МН'}</span>{lang==='mn'?'English':'Монгол'}</button>
+              <button className="danger" onClick={logout}><Ico d={NAV_ICON.logout} size={19} sw={2}/>{t.logout}</button>
             </div>
-            <div className="cm-sheet-row">
-              <button onClick={toggleDark}>{d?'☀️ Цайвар':'🌙 Бараан'}</button>
-              <button onClick={toggleLang}>{lang==='mn'?'English':'Монгол'}</button>
-              <button className="danger" onClick={logout}>{t.logout}</button>
-            </div>
-          </div>
+          </aside>
         </div>
       )}
     </>
