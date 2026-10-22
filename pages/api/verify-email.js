@@ -57,7 +57,7 @@ export default async function handler(req, res) {
         to: 'bymbaamedehgui@gmail.com',
         subject: 'EYESH Checker — Шинэ бүртгэлийн хүсэлт (email баталгаажсан)',
         html: `<div style="font-family:Arial,sans-serif;padding:24px">
-          <h2 style="color:#dc2626">🎯 EYESH Checker</h2>
+          <h2 style="color:#7B52EE">🎯 EYESH Checker</h2>
           <p><b>Нэр:</b> ${v.name||'—'}</p>
           <p><b>Email:</b> ${email.toLowerCase()}</p>
           <p><b>Утас:</b> ${v.phone||'—'}</p>

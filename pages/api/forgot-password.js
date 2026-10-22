@@ -37,7 +37,7 @@ export default async function handler(req, res) {
         from: 'EYESH Checker <noreply@eyeshcheck.com>',
         to: email.toLowerCase(),
         subject: 'EYESH Checker — Нууц үг сэргээх код',
-        html: '<div style="font-family:Arial,sans-serif;max-width:420px;margin:0 auto;padding:32px;background:#f8fafc;border-radius:12px"><h2 style="color:#dc2626">EYESH Checker</h2><p>Нууц үг сэргээх код:</p><div style="font-size:40px;font-weight:900;letter-spacing:8px;color:#1e293b;background:white;padding:24px;border-radius:10px;text-align:center;margin:20px 0;border:2px solid #e2e8f0">'+code+'</div><p style="color:#64748b;font-size:13px">Код 10 минут хүчинтэй. Хэрэв та хүсэлт илгээгээгүй бол үл тооно уу.</p></div>'
+        html: '<div style="font-family:Arial,sans-serif;max-width:420px;margin:0 auto;padding:32px;background:#faf8ff;border-radius:12px"><h2 style="color:#7B52EE">EYESH Checker</h2><p>Нууц үг сэргээх код:</p><div style="font-size:40px;font-weight:900;letter-spacing:8px;color:#1a1030;background:white;padding:24px;border-radius:10px;text-align:center;margin:20px 0;border:2px solid #e7ddff">'+code+'</div><p style="color:#7c7596;font-size:13px">Код 10 минут хүчинтэй. Хэрэв та хүсэлт илгээгээгүй бол үл тооно уу.</p></div>'
       })
     });
     if (!r.ok) return res.status(500).json({ error: 'Email илгээхэд алдаа гарлаа' });

@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
+import { SEC1_CHOICES, SEC2_ROWS, SEC2_SUBS, uid, pf, eyeshGrade, toScaled, getToken, apiFetch, calcScore } from '../lib/eyesh';
+import { ScanPage } from '../components/QuickScan';
+import { SheetsPage } from '../components/AnswerSheet';
 
-// ── Constants ────────────────────────────────────────────
-const SEC1_CHOICES = ['A','B','C','D','E'];
-const SEC2_ROWS = ['a','b','c','d','e','f','g','h'];
-const SEC2_SUBS = ['2.1','2.2','2.3','2.4'];
+const PRACTICE_URL = 'https://cyber-math.com/worksheets.html';
 
 // ── Global SVG Icon ───────────────────────────────────────
 function Ico({d, size=20, color='currentColor', sw=1.5, fill='none'}) {
@@ -39,7 +39,26 @@ function getTopics(subject) {
 const TOPIC_COLORS = ['#3b82f6','#8b5cf6','#f59e0b','#06b6d4','#10b981','#ef4444','#f97316','#6366f1'];
 // Legacy fallback
 const TOPICS = TOPICS_BY_SUBJECT['Математик'];
-const PAGE_IDS = ['home','create','material','upload','board','analytics','rating','students','admin'];
+const PAGE_IDS = ['home','scan','board','analytics','rating','create','sheets','upload','material','students','admin'];
+const MORE_IDS = ['create','sheets','upload','rating','material','students','admin'];   // утасны «Цэс»
+const NAV_ICON = {
+  home:'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
+  board:['M8 6h13','M8 12h13','M8 18h13','M3.5 6h.01','M3.5 12h.01','M3.5 18h.01'],
+  analytics:['M4 20V10','M10 20V4','M16 20v-7','M22 20H2'],
+  more:['M4 4h6v6H4z','M14 4h6v6h-6z','M4 14h6v6H4z','M14 14h6v6h-6z'],
+  scan:['M3 7V5a2 2 0 0 1 2-2h2','M17 3h2a2 2 0 0 1 2 2v2','M21 17v2a2 2 0 0 1-2 2h-2','M7 21H5a2 2 0 0 1-2-2v-2','M7 12h10'],
+  create:['M12 5v14','M5 12h14'],
+  sheets:['M6 9V2h12v7','M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2','M6 14h12v8H6z'],
+  upload:['M12 16V4','M7 9l5-5 5 5','M4 20h16'],
+  material:'M12 3l1.9 5.6L19.5 10l-5.6 1.9L12 17.5l-1.9-5.6L4.5 10l5.6-1.4z',
+  rating:['M8 21h8','M12 17v4','M7 4h10v5a5 5 0 0 1-10 0z','M17 5h3v2a3 3 0 0 1-3 3','M7 5H4v2a3 3 0 0 0 3 3'],
+  students:['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2','M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z','M22 21v-2a4 4 0 0 0-3-3.87','M16 3.13a4 4 0 0 1 0 7.75'],
+  admin:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
+  moon:'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
+  sun:['M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z','M12 1v2','M12 21v2','M4.2 4.2l1.4 1.4','M18.4 18.4l1.4 1.4','M1 12h2','M21 12h2','M4.2 19.8l1.4-1.4','M18.4 5.6l1.4-1.4'],
+  logout:['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4','M16 17l5-5-5-5','M21 12H9'],
+  book:['M4 19.5A2.5 2.5 0 0 1 6.5 17H20','M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'],
+};
 
 
 // ── Translations ─────────────────────────────────────────
@@ -61,7 +80,8 @@ const T = {
     timeUp:'Хугацаа дууссан! Хариулт автоматаар илгээгдлээ.',
     section1:'1-р хэсэг', section2:'2-р хэсэг',
     hello:'Сайн байна уу,',
-    nav:{home:'Нүүр',create:'Шалгалт үүсгэх',material:'Материал',upload:'Зураг оруулах',board:'Жагсаалт',analytics:'Анализ',rating:'Рейтинг',students:'Сурагчид',admin:'Admin'},
+    nav:{home:'Нүүр',scan:'Шалгах',sheets:'Хуудас хэвлэх',create:'Шалгалт үүсгэх',edit:'Шалгалт засах',material:'AI материал',upload:'Зураг / гараар',board:'Жагсаалт',analytics:'Анализ',rating:'Рейтинг',students:'Сурагчид',admin:'Admin'},
+    more:'Цэс',
   },
   en: {
     appName:'EYESH Checker',
@@ -80,7 +100,8 @@ const T = {
     timeUp:'Time is up! Your answers have been submitted.',
     section1:'Section 1', section2:'Section 2',
     hello:'Hello,',
-    nav:{home:'Home',create:'Create Exam',material:'Material',upload:'Upload',board:'Results',analytics:'Analytics',rating:'Ranking',students:'Students',admin:'Admin'},
+    nav:{home:'Home',scan:'Scan',sheets:'Print sheets',create:'Create Exam',edit:'Edit Exam',material:'AI material',upload:'Photo / manual',board:'Results',analytics:'Analytics',rating:'Ranking',students:'Students',admin:'Admin'},
+    more:'More',
   }
 };
 
@@ -110,41 +131,11 @@ function useDark() {
   return [dark, toggleDark];
 }
 
-function uid() { return Math.random().toString(36).slice(2)+Date.now().toString(36); }
-function pf(v) { const n=parseFloat(v); return isNaN(n)?0:n; }
 function hexToRgb(hex) {
   const h=(hex||'#888').replace('#','');
   if(h.length<6) return [128,128,128];
   const n=parseInt(h.slice(0,6),16);
   return [(n>>16)&255,(n>>8)&255,n&255];
-}
-function eyeshGrade(sc) {
-  if(sc>=90) return {g:'A',l:'Онц',c:'#15803d'};
-  if(sc>=80) return {g:'B',l:'Сайн',c:'#1d4ed8'};
-  if(sc>=70) return {g:'C',l:'Дунд сайн',c:'#0369a1'};
-  if(sc>=60) return {g:'D',l:'Хангалттай',c:'#d97706'};
-  if(sc>=50) return {g:'E',l:'Хангалтгүй',c:'#ea580c'};
-  return {g:'F',l:'Тэнцээгүй',c:'#dc2626'};
-}
-function toScaled(earned,max){ return max>0?Math.round(earned/max*1000)/10:0; }
-
-// ── API helpers ───────────────────────────────────────────
-function getToken() { return typeof window!=='undefined'?localStorage.getItem('eyesh_token'):null; }
-
-async function apiFetch(path, opts={}) {
-  const token = getToken();
-  const res = await fetch(path, {
-    ...opts,
-    headers: {
-      'Content-Type':'application/json',
-      ...(token?{Authorization:`Bearer ${token}`}:{}),
-      ...(opts.headers||{}),
-    },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  });
-  if (res.status===401) { localStorage.removeItem('eyesh_token'); window.location.reload(); }
-  if (!res.ok) { const e=await res.json().catch(()=>({error:'Network error'})); throw new Error(e.error||'API error'); }
-  return res.json();
 }
 
 // ── Anthropic API (direct from browser) ──────────────────
@@ -238,48 +229,6 @@ Return ONLY valid JSON:
   catch(e) { throw new Error('JSON parse: '+e.message+' | '+rawTxt.slice(0,200)); }
 }
 
-// ── Scoring ───────────────────────────────────────────────
-function calcScore(det, exam) {
-  const {sec1Key,sec1Scores,sec2Config,sec2Enabled,sec2Score,useSec2} = exam;
-  let correct=0,wrong=0,blank=0,rawEarned=0,rawMax=0;
-  const sec1Results=[];
-  sec1Key.forEach((key,i)=>{
-    const a=det.section1?.[i];
-    const sel=a?.selected||'BLANK';
-    const pts=sec1Scores?.[i]||1;
-    rawMax+=pts;
-    if(sel==='BLANK'){wrong++;blank++;sec1Results.push({q:i+1,sel,key,st:'blank',pts:0,max:pts,conf:a?.confidence||0});}
-    else if(sel===key){correct++;rawEarned+=pts;sec1Results.push({q:i+1,sel,key,st:'ok',pts,max:pts,conf:a?.confidence||0});}
-    else{wrong++;sec1Results.push({q:i+1,sel,key,st:'ng',pts:0,max:pts,conf:a?.confidence||0});}
-  });
-  const sec2Results={};
-  if(useSec2&&sec2Config){
-    SEC2_SUBS.forEach(sub=>{
-      const isEnabled = sec2Enabled?.[sub] ?? sec2Config?.[sub]?._enabled;
-      if(!isEnabled) return;
-      sec2Results[sub]={};
-      SEC2_ROWS.forEach(row=>{
-        const rowData=sec2Config?.[sub]?.[row];
-      const kv=typeof rowData==='object'?(rowData.ans!==undefined?String(rowData.ans):undefined):rowData;
-        if(kv===undefined||kv===null||kv==='') return;
-        // Default 1 (per row) — sec2Score хэрэглэхгүй (хуучин буруу 5 default-аас зайлсхийнэ)
-        const pts=typeof rowData==='object'
-          ?(rowData.score!=null?parseFloat(rowData.score):(typeof rowData==='string'?(parseFloat(sec2Score)||1):1))
-          :(parseFloat(sec2Score)||1);
-        rawMax+=pts;
-        const dv=det.section2?.[sub]?.[row]?.digit||'BLANK';
-        const conf=det.section2?.[sub]?.[row]?.confidence||0;
-        if(dv==='BLANK'){wrong++;blank++;sec2Results[sub][row]={sel:dv,key:kv,st:'blank',pts:0,max:pts,conf};}
-        else if(String(dv)===String(kv)){correct++;rawEarned+=pts;sec2Results[sub][row]={sel:dv,key:kv,st:'ok',pts,max:pts,conf};}
-        else{wrong++;sec2Results[sub][row]={sel:dv,key:kv,st:'ng',pts:0,max:pts,conf};}
-      });
-    });
-  }
-  const scaled=toScaled(rawEarned,rawMax);
-  const grade=eyeshGrade(scaled);
-  const needsReview=(det.section1||[]).some(a=>(a.confidence??100)<70);
-  return{correct,wrong,blank,rawEarned,rawMax,scaled,grade,sec1Results,sec2Results,needsReview};
-}
 
 // ── Excel Export ──────────────────────────────────────────
 function exportExcel(exam, students) {
@@ -415,10 +364,10 @@ function exportAnalytics(exam, students) {
 // ─────────────────────────────────────────────────────────
 
 function Spinner() {
-  return <div style={{width:20,height:20,border:'3px solid #e2e8f0',borderTopColor:'#dc2626',borderRadius:'50%',animation:'spin 0.8s linear infinite',display:'inline-block'}} />;
+  return <div style={{width:20,height:20,border:'3px solid #e5e7eb',borderTopColor:'#7B52EE',borderRadius:'50%',animation:'spin 0.8s linear infinite',display:'inline-block'}} />;
 }
 
-function Badge({children, color='#dc2626'}) {
+function Badge({children, color='#7B52EE'}) {
   return <span style={{fontSize:11,fontWeight:700,color:'white',background:color,padding:'2px 8px',borderRadius:20}}>{children}</span>;
 }
 
@@ -482,8 +431,8 @@ function ScoredPanel({scored, exam, onSave, onUpdateScored, onReset}) {
   const grade = eyeshGrade(p);
 
   return (
-    <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.08)',marginBottom:16}}>
-      <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:16}}>Дүн</div>
+    <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+      <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>Дүн</div>
 
       {/* Summary stats */}
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))',gap:10,marginBottom:20}}>
@@ -491,21 +440,21 @@ function ScoredPanel({scored, exam, onSave, onUpdateScored, onReset}) {
           ['Гүйцэтгэл',p+'%',grade.c],
           ['Зөв',scored.correct,'#16a34a'],
           ['Буруу (хоосон орно)',scored.wrong,'#dc2626'],
-          ['Хоосон',scored.blank,'#94a3b8'],
+          ['Хоосон',scored.blank,'#9ca3af'],
         ].map(([l,v,c])=>(
-          <div key={l} style={{background:'#f8fafc',borderRadius:10,padding:'12px 16px'}}>
+          <div key={l} style={{background:'#f9fafb',borderRadius:10,padding:'12px 16px'}}>
             <div style={{fontSize:20,fontWeight:800,color:c}}>{v}</div>
-            <div style={{fontSize:11,color:'#94a3b8'}}>{l}</div>
+            <div style={{fontSize:11,color:'#9ca3af'}}>{l}</div>
           </div>
         ))}
       </div>
 
       {/* Section 1 — editable */}
       <div style={{marginBottom:20}}>
-        <div style={{fontWeight:700,fontSize:14,color:'#374151',marginBottom:6}}>1-р хэсэг — дасгал бүрийн хариулт <span style={{fontSize:11,color:'#94a3b8',fontWeight:400}}>(дарж засварлах)</span></div>
+        <div style={{fontWeight:700,fontSize:14,color:'#374151',marginBottom:6}}>1-р хэсэг — дасгал бүрийн хариулт <span style={{fontSize:11,color:'#9ca3af',fontWeight:400}}>(дарж засварлах)</span></div>
         <div style={{display:'flex',flexWrap:'wrap',gap:4}}>
           {(scored.sec1Results||[]).map((r,i)=>{
-            const bg = r.st==='ok'?'#16a34a':r.st==='blank'?'#94a3b8':'#dc2626';
+            const bg = r.st==='ok'?'#16a34a':r.st==='blank'?'#9ca3af':'#dc2626';
             const key = exam?.sec1Key?.[i]||'?';
             const isEditing = editIdx===i;
             return (
@@ -521,7 +470,7 @@ function ScoredPanel({scored, exam, onSave, onUpdateScored, onReset}) {
                     {['A','B','C','D','E','BLANK'].map(ch=>(
                       <button key={ch} onClick={()=>updateSel(i,ch)}
                         style={{padding:'4px 7px',border:'none',borderRadius:5,fontWeight:700,fontSize:12,cursor:'pointer',
-                          background:ch===r.sel?'#1e293b':ch===key?'#dcfce7':'#f1f5f9',
+                          background:ch===r.sel?'#1c1f2a':ch===key?'#dcfce7':'#f3f4f6',
                           color:ch===r.sel?'white':ch===key?'#16a34a':'#374151'}}>
                         {ch==='BLANK'?'—':ch}
                       </button>
@@ -532,30 +481,30 @@ function ScoredPanel({scored, exam, onSave, onUpdateScored, onReset}) {
             );
           })}
         </div>
-        <div style={{display:'flex',gap:16,marginTop:8,fontSize:11,color:'#64748b',flexWrap:'wrap'}}>
+        <div style={{display:'flex',gap:16,marginTop:8,fontSize:11,color:'#6b7280',flexWrap:'wrap'}}>
           <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:10,height:10,borderRadius:2,background:'#16a34a',display:'inline-block'}}></span>Зөв</span>
           <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:10,height:10,borderRadius:2,background:'#dc2626',display:'inline-block'}}></span>Буруу (жижигээр=зөв)</span>
-          <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:10,height:10,borderRadius:2,background:'#94a3b8',display:'inline-block'}}></span>Хоосон</span>
+          <span style={{display:'flex',alignItems:'center',gap:4}}><span style={{width:10,height:10,borderRadius:2,background:'#9ca3af',display:'inline-block'}}></span>Хоосон</span>
         </div>
       </div>
 
       {/* Section 2 — editable */}
       {exam?.useSec2&&scored.sec2Results&&Object.keys(scored.sec2Results).length>0&&(
         <div style={{marginBottom:20}}>
-          <div style={{fontWeight:700,fontSize:14,color:'#374151',marginBottom:8}}>2-р хэсэг <span style={{fontSize:11,color:'#94a3b8',fontWeight:400}}>(дарж засварлах)</span></div>
+          <div style={{fontWeight:700,fontSize:14,color:'#374151',marginBottom:8}}>2-р хэсэг <span style={{fontSize:11,color:'#9ca3af',fontWeight:400}}>(дарж засварлах)</span></div>
           <div style={{display:'flex',gap:10,flexWrap:'wrap'}}>
             {Object.entries(scored.sec2Results).map(([sub,rows])=>(
-              <div key={sub} style={{background:'#f8fafc',borderRadius:10,padding:'10px 14px'}}>
-                <div style={{fontWeight:700,fontSize:12,color:'#7c3aed',marginBottom:6}}>{sub}</div>
+              <div key={sub} style={{background:'#f9fafb',borderRadius:10,padding:'10px 14px'}}>
+                <div style={{fontWeight:700,fontSize:12,color:'#7B52EE',marginBottom:6}}>{sub}</div>
                 <div style={{display:'flex',flexDirection:'column',gap:4}}>
                   {Object.entries(rows).map(([row,r])=>{
                     const isEd = editSec2?.sub===sub&&editSec2?.row===row;
                     return (
                       <div key={row} style={{position:'relative',display:'flex',alignItems:'center',gap:6}}>
-                        <span style={{fontSize:11,color:'#94a3b8',minWidth:12}}>{row}</span>
+                        <span style={{fontSize:11,color:'#9ca3af',minWidth:12}}>{row}</span>
                         <div onClick={()=>setEditSec2(isEd?null:{sub,row})}
                           style={{padding:'3px 10px',borderRadius:5,fontSize:13,fontWeight:700,cursor:'pointer',
-                            background:r.st==='ok'?'#16a34a':r.st==='blank'?'#94a3b8':'#dc2626',
+                            background:r.st==='ok'?'#16a34a':r.st==='blank'?'#9ca3af':'#dc2626',
                             color:'white',minWidth:30,textAlign:'center',
                             boxShadow:isEd?'0 0 0 2px #f59e0b':'none'}}>
                           {r.sel==='BLANK'?'—':r.sel}
@@ -566,7 +515,7 @@ function ScoredPanel({scored, exam, onSave, onUpdateScored, onReset}) {
                             {['0','1','2','3','4','5','6','7','8','9','BLANK'].map(d=>(
                               <button key={d} onClick={()=>updateSec2(sub,row,d==='BLANK'?'BLANK':d)}
                                 style={{padding:'4px 7px',border:'none',borderRadius:5,fontWeight:700,fontSize:12,cursor:'pointer',
-                                  background:d===String(r.sel)?'#1e293b':d===String(r.key)?'#dcfce7':'#f1f5f9',
+                                  background:d===String(r.sel)?'#1c1f2a':d===String(r.key)?'#dcfce7':'#f3f4f6',
                                   color:d===String(r.sel)?'white':d===String(r.key)?'#16a34a':'#374151'}}>
                                 {d==='BLANK'?'—':d}
                               </button>
@@ -585,7 +534,7 @@ function ScoredPanel({scored, exam, onSave, onUpdateScored, onReset}) {
 
       <div style={{display:'flex',gap:8}}>
         {onReset&&<button onClick={onReset}
-          style={{padding:'14px 20px',background:'#f1f5f9',color:'#64748b',border:'none',borderRadius:12,fontSize:14,fontWeight:700,cursor:'pointer'}}>
+          style={{padding:'14px 20px',background:'#f3f4f6',color:'#6b7280',border:'none',borderRadius:12,fontSize:14,fontWeight:700,cursor:'pointer'}}>
           ← Дахин
         </button>}
         <button onClick={onSave} style={{flex:1,padding:14,background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',border:'none',borderRadius:12,fontSize:15,fontWeight:800,cursor:'pointer'}}>
@@ -629,13 +578,13 @@ function CameraCapture({onCapture, onClose}) {
       {camErr ? (
         <div style={{color:'white',textAlign:'center'}}>
           <div style={{fontSize:16,marginBottom:12}}>{camErr}</div>
-          <button onClick={close} style={{padding:'10px 24px',background:'#dc2626',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>Буцах</button>
+          <button onClick={close} style={{padding:'10px 24px',background:'#7B52EE',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>Буцах</button>
         </div>
       ) : (
         <>
           <video ref={videoRef} autoPlay playsInline style={{width:'100%',maxWidth:500,borderRadius:12,marginBottom:16}} />
           <div style={{display:'flex',gap:12}}>
-            <button onClick={capture} style={{padding:'14px 32px',background:'#dc2626',color:'white',border:'none',borderRadius:12,fontWeight:800,fontSize:16,cursor:'pointer'}}>Зураг авах</button>
+            <button onClick={capture} style={{padding:'14px 32px',background:'#7B52EE',color:'white',border:'none',borderRadius:12,fontWeight:800,fontSize:16,cursor:'pointer'}}>Зураг авах</button>
             <button onClick={close} style={{padding:'14px 24px',background:'#374151',color:'white',border:'none',borderRadius:12,fontWeight:700,cursor:'pointer'}}>Болих</button>
           </div>
         </>
@@ -646,150 +595,123 @@ function CameraCapture({onCapture, onClose}) {
 
 // ── Landing Page ──────────────────────────────────────────
 function LandingPage({onEnter}) {
-  const YOUTUBE_ID = 'aUggJeMlQ8E';
-
-  // Clean SVG icon component
-  function Icon({d, size=24, color='currentColor', strokeWidth=1.5}) {
-    return (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round">
-        {Array.isArray(d) ? d.map((p,i)=><path key={i} d={p}/>) : <path d={d}/>}
-      </svg>
-    );
-  }
+  // Хуучин (улаан) загварыг харуулдаг тул шинэ видео бичих хүртэл нуув. Буцаах: 'aUggJeMlQ8E'
+  const YOUTUBE_ID = '';
 
   const features = [
-    { icon: ['M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.3 24.3 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1 1 .03 2.798-1.348 2.798H4.346c-1.378 0-2.348-1.798-1.348-2.798L4.45 15.3', 'M12 3v4'], title:'AI Bubble Detection', desc:'Сурагчдын хариулт хуудсыг зураг авч, AI автоматаар уншина.' },
-    { icon: 'M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z', title:'Дэлгэрэнгүй анализ', desc:'Дасгал бүрийн амжилт, сурагч бүрийн гүйцэтгэл, ангийн рейтинг.' },
-    { icon: ['M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z'], title:'PDF & Excel экспорт', desc:'Сурагч бүрийн PDF тайлан, ангийн Excel жагсаалт нэг товчлуураар.' },
-    { icon: 'M16.5 18.75h-9m9 0a3 3 0 013 3h-15a3 3 0 013-3m9 0v-3.375c0-.621-.503-1.125-1.125-1.125h-.871M7.5 18.75v-3.375c0-.621.504-1.125 1.125-1.125h.872m5.007 0H9.497m5.007 0a7.454 7.454 0 01-.982-3.172M9.497 14.25a7.454 7.454 0 00.981-3.172M5.25 4.236c-.982.143-1.954.317-2.916.52A6.003 6.003 0 007.73 9.728M5.25 4.236V4.5c0 2.108.966 3.99 2.48 5.228M5.25 4.236V2.721C7.456 2.41 9.71 2.25 12 2.25c2.291 0 4.545.16 6.75.47v1.516M7.73 9.728a6.726 6.726 0 002.748 1.35m8.272-6.842V4.5c0 2.108-.966 3.99-2.48 5.228m2.48-5.492a46.32 46.32 0 012.916.52 6.003 6.003 0 01-5.395 4.972m0 0a6.726 6.726 0 01-2.749 1.35m0 0a6.772 6.772 0 01-3.044 0', title:'ЭЕШ хэмжээст оноо', desc:'Raw оноог ЭЕШ-ийн 100 оноот системд автоматаар хөрвүүлнэ.' },
-    { icon: ['M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z'], title:'Олон багш', desc:'Багш бүр өөрийн шалгалт, сурагчдаа тусдаа удирдана.' },
-    { icon: ['M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 8.25h3m-3 3h3m-6 3h.008v.008H7.5V15.75zm0-3h.008v.008H7.5v-.008z'], title:'Сурагчийн портал', desc:'Сурагч кодоороо нэвтэрч өөрийн үр дүнг харна.' },
+    { icon: ['M3 7V5a2 2 0 0 1 2-2h2','M17 3h2a2 2 0 0 1 2 2v2','M21 17v2a2 2 0 0 1-2 2h-2','M7 21H5a2 2 0 0 1-2-2v-2','M7 12h10'], title:'Камераар шуурхай шалгах', desc:'Хуудсаа утасны камерт барихад автоматаар уншиж, оноог шууд гаргана. Дараагийн хуудас руу шууд шилжинэ.' },
+    { icon: 'M20 6 9 17l-5-5', title:'AI-гүй, давтагдах уншилт', desc:'Хуудасны тэмдгээр байрлалыг тогтоож пикселээр уншдаг. Эргэлзээтэй мөрийг танаас асууна.' },
+    { icon: ['M6 9V2h12v7','M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2','M6 14h12v8H6z'], title:'ЭЕШ загварын хуудас', desc:'Шалгалт бүрийн хуудсыг хэвлэнэ. Ангиар нэрлэж хэвлэвэл сурагчийг автоматаар таньна.' },
+    { icon: ['M4 20V10','M10 20V4','M16 20v-7','M22 20H2'], title:'Дэлгэрэнгүй анализ', desc:'Дасгал бүрийн амжилт, сурагчийн гүйцэтгэл, ангийн рейтинг.' },
+    { icon: ['M12 16V4','M7 9l5-5 5 5','M4 20h16'], title:'PDF & Excel экспорт', desc:'Сурагч бүрийн PDF тайлан, ангийн Excel жагсаалт нэг товчоор.' },
+    { icon: ['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2','M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z','M22 21v-2a4 4 0 0 0-3-3.87'], title:'Сурагчийн портал', desc:'Сурагч кодоороо нэвтэрч өөрийн үр дүнг харна.' },
   ];
-
   const steps = [
-    { n:'1', icon:'M12 4.5v15m7.5-7.5h-15', title:'Шалгалт үүсгэх', desc:'Хичээл, дасгалын тоо, зөв хариулт, оноог тохируулна.' },
-    { n:'2', icon:'M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5', title:'Зураг оруулах', desc:'Сурагчдын хариулт хуудсыг зураглаж системд оруулна.' },
-    { n:'3', icon:'M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z', title:'AI шалгана', desc:'Хиймэл оюун bubble-уудыг таньж оноо тооцоолно.' },
-    { n:'4', icon:'M2.036 12.322a1.012 1.012 0 010-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178z M15 12a3 3 0 11-6 0 3 3 0 016 0z', title:'Үр дүн харах', desc:'Тайлан, рейтинг, анализыг шууд харж экспортлоно.' },
+    { n:'1', title:'Шалгалт үүсгэх', desc:'Дасгалын тоо, зөв хариулт, оноог тохируулна.' },
+    { n:'2', title:'Хуудас хэвлэх', desc:'ЭЕШ загварын хариултын хуудсыг хэвлэнэ.' },
+    { n:'3', title:'Камераар уншуулах', desc:'Хуудас бүрийг камерт барихад оноо шууд гарна.' },
+    { n:'4', title:'Үр дүн', desc:'Тайлан, рейтинг, анализаа экспортлоно.' },
   ];
-
-  const IC = '#dc2626'; // icon accent color
+  const sec = {margin:'44px 0'};
+  const h2 = {fontSize:22,fontWeight:900,marginBottom:4,textAlign:'center',letterSpacing:'-.3px'};
+  const sub = {fontSize:14,color:'var(--soft)',marginBottom:22,textAlign:'center'};
 
   return (
-    <div style={{minHeight:'100vh',background:'#0f172a',color:'white',fontFamily:'system-ui,sans-serif'}}>
-      {/* Hero */}
-      <div style={{background:'linear-gradient(135deg,#7f1d1d,#dc2626)',padding:'60px 20px 80px',textAlign:'center'}}>
-        <div style={{display:'flex',justifyContent:'center',marginBottom:16}}>
-          <div style={{background:'rgba(255,255,255,0.15)',borderRadius:20,padding:16}}>
-            <Icon d={['M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z']} size={48} color="white" strokeWidth={1.5}/>
+    <div style={{minHeight:'100vh'}}>
+      <div className="cm-top">
+        <div className="cm-top-in">
+          <div className="cm-brand"><img src="/chick.svg" alt="" className="cm-chick" /><span><b>ЭЕШ шалгагч</b><small>CyberMath</small></span></div>
+          <div className="cm-actions">
+            <a className="cm-back cm-xs-hide" href={PRACTICE_URL}>← Дасгалын төв</a>
+            <button className="cm-btn" style={{padding:'.5rem 1rem',fontSize:13}} onClick={onEnter}>Нэвтрэх</button>
           </div>
-        </div>
-        <div style={{fontSize:42,fontWeight:900,marginBottom:12,lineHeight:1.1}}>EYESH Checker</div>
-        <div style={{fontSize:18,opacity:.85,maxWidth:560,margin:'0 auto 32px',lineHeight:1.6}}>
-          ЭЕШ-ийн хариулт хуудас шалгах, оноо тооцоолох, анализ хийх бүрэн системийн шийдэл
-        </div>
-        <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
-          <button onClick={onEnter}
-            style={{padding:'14px 36px',background:'white',color:'#dc2626',border:'none',borderRadius:12,fontSize:17,fontWeight:900,cursor:'pointer'}}>
-            Нэвтрэх / Бүртгүүлэх →
-          </button>
-          <button onClick={()=>document.getElementById('demo-section').scrollIntoView({behavior:'smooth'})}
-            style={{padding:'14px 36px',background:'rgba(255,255,255,0.15)',color:'white',border:'2px solid rgba(255,255,255,0.4)',borderRadius:12,fontSize:17,fontWeight:700,cursor:'pointer'}}>
-            Live Demo үзэх
-          </button>
         </div>
       </div>
-
-      <div style={{maxWidth:900,margin:'0 auto',padding:'0 20px'}}>
-
-        {/* Video */}
-        <div style={{margin:'60px 0',textAlign:'center'}}>
-          <div style={{fontSize:22,fontWeight:800,marginBottom:6}}>Танилцуулга видео</div>
-          <div style={{fontSize:14,color:'#94a3b8',marginBottom:20}}>Системийг хэрхэн ашиглах тайлбар</div>
-          {YOUTUBE_ID ? (
-            <div style={{position:'relative',paddingBottom:'56.25%',borderRadius:16,overflow:'hidden',boxShadow:'0 20px 60px rgba(0,0,0,.5)'}}>
-              <iframe
-                src={`https://www.youtube.com/embed/${YOUTUBE_ID}`}
-                style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',border:'none'}}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-              />
-            </div>
-          ) : null}
+      <div style={{maxWidth:980,margin:'0 auto',padding:'18px 16px 40px'}}>
+        <div className="cm-hero" style={{padding:'30px 22px',textAlign:'center'}}>
+          <img src="/chick.svg" alt="" style={{width:104,height:104,filter:'drop-shadow(0 10px 16px rgba(0,0,0,.25))',animation:'bob 3.4s ease-in-out infinite',position:'relative',zIndex:1}} />
+          <div className="cm-hero-t" style={{marginTop:10}}>
+            <span className="cm-eyebrow">CyberMath · Дасгалын төвийн хэрэгсэл</span>
+            <h1 style={{fontSize:30}}>ЭЕШ хариултын хуудас шалгагч</h1>
+            <p style={{maxWidth:520,margin:'8px auto 0',fontSize:15}}>Хариултын хуудсыг утасны камераар уншуулж, оноо, анализ, рейтингийг хэдхэн секундэд гаргана.</p>
+          </div>
+          <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap',position:'relative',zIndex:1}}>
+            <button className="cm-btn amber" style={{padding:'.85rem 1.6rem',fontSize:16}} onClick={onEnter}>Нэвтрэх / Бүртгүүлэх →</button>
+            <button className="cm-btn ghost" style={{padding:'.85rem 1.6rem',fontSize:16}} onClick={()=>document.getElementById('demo-section').scrollIntoView({behavior:'smooth'})}>Demo үзэх</button>
+          </div>
         </div>
 
-        {/* Features */}
-        <div style={{margin:'60px 0'}}>
-          <div style={{fontSize:22,fontWeight:800,marginBottom:6,textAlign:'center'}}>Боломжууд</div>
-          <div style={{fontSize:14,color:'#94a3b8',marginBottom:28,textAlign:'center'}}>Системийн гол онцлогууд</div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(260px,1fr))',gap:16}}>
+        <div style={sec}>
+          <div style={h2}>Боломжууд</div>
+          <div style={sub}>Багшийн цагийг хэмнэх гол онцлогууд</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(250px,1fr))',gap:12}}>
             {features.map(f=>(
-              <div key={f.title} style={{background:'#1e293b',borderRadius:14,padding:'20px',border:'1px solid #334155'}}>
-                <div style={{width:44,height:44,borderRadius:10,background:'#7f1d1d22',border:'1px solid #7f1d1d44',display:'flex',alignItems:'center',justifyContent:'center',marginBottom:12}}>
-                  <Icon d={f.icon} size={22} color="#ef4444" strokeWidth={1.5}/>
+              <div key={f.title} className="cm-card" style={{marginBottom:0}}>
+                <div style={{width:42,height:42,borderRadius:12,background:'var(--chip)',color:'var(--purple-d)',display:'grid',placeItems:'center',marginBottom:10}}>
+                  <Ico d={f.icon} size={22} sw={2}/>
                 </div>
-                <div style={{fontWeight:800,fontSize:15,marginBottom:6}}>{f.title}</div>
-                <div style={{fontSize:13,color:'#94a3b8',lineHeight:1.6}}>{f.desc}</div>
+                <div style={{fontWeight:900,fontSize:15,marginBottom:4}}>{f.title}</div>
+                <div style={{fontSize:13,color:'var(--soft)',lineHeight:1.55}}>{f.desc}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* How it works */}
-        <div style={{margin:'60px 0'}}>
-          <div style={{fontSize:22,fontWeight:800,marginBottom:6,textAlign:'center'}}>Хэрхэн ашиглах вэ?</div>
-          <div style={{fontSize:14,color:'#94a3b8',marginBottom:28,textAlign:'center'}}>4 алхамд шалгалтаа шалгаарай</div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:16}}>
+        <div style={sec}>
+          <div style={h2}>Хэрхэн ашиглах вэ?</div>
+          <div style={sub}>4 алхамд шалгалтаа дуусгана</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:12}}>
             {steps.map(s=>(
-              <div key={s.n} style={{background:'#1e293b',borderRadius:14,padding:'20px',border:'1px solid #334155',textAlign:'center'}}>
-                <div style={{width:44,height:44,borderRadius:'50%',background:'linear-gradient(135deg,#7f1d1d,#dc2626)',display:'flex',alignItems:'center',justifyContent:'center',margin:'0 auto 12px'}}>
-                  <span style={{color:'white',fontWeight:900,fontSize:18}}>{s.n}</span>
-                </div>
-                <div style={{fontWeight:800,fontSize:14,marginBottom:6}}>{s.title}</div>
-                <div style={{fontSize:12,color:'#94a3b8',lineHeight:1.6}}>{s.desc}</div>
+              <div key={s.n} className="cm-card" style={{marginBottom:0,textAlign:'center'}}>
+                <div style={{width:42,height:42,borderRadius:999,background:'linear-gradient(135deg,var(--purple),var(--purple2))',color:'#fff',fontWeight:900,fontSize:18,display:'grid',placeItems:'center',margin:'0 auto 10px'}}>{s.n}</div>
+                <div style={{fontWeight:900,fontSize:14,marginBottom:4}}>{s.title}</div>
+                <div style={{fontSize:12.5,color:'var(--soft)',lineHeight:1.55}}>{s.desc}</div>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Pricing */}
-        <div style={{margin:'60px 0',textAlign:'center'}}>
-          <div style={{background:'linear-gradient(135deg,#7f1d1d,#dc2626)',borderRadius:20,padding:'40px 32px',display:'inline-block',minWidth:300}}>
-            <div style={{fontSize:14,opacity:.8,marginBottom:8,letterSpacing:2}}>ҮНЭ</div>
-            <div style={{fontSize:48,fontWeight:900,marginBottom:4}}>9,900₮</div>
-            <div style={{fontSize:15,opacity:.8,marginBottom:20}}>нэг сарын хязгааргүй ашиглалт</div>
-            <button onClick={onEnter}
-              style={{padding:'12px 32px',background:'white',color:'#dc2626',border:'none',borderRadius:10,fontSize:15,fontWeight:800,cursor:'pointer'}}>
-              Бүртгүүлэх →
-            </button>
-          </div>
-        </div>
-
-        {/* Live Demo */}
-        <div id="demo-section" style={{margin:'60px 0'}}>
-          <div style={{fontSize:22,fontWeight:800,marginBottom:6,textAlign:'center'}}>Live Demo</div>
-          <div style={{fontSize:14,color:'#94a3b8',marginBottom:24,textAlign:'center'}}>Нэвтрэлтгүйгээр системийг туршиж үзэх</div>
-          <div style={{background:'#1e293b',borderRadius:16,padding:'32px',border:'1px solid #334155',textAlign:'center'}}>
-            <div style={{fontSize:16,color:'#e2e8f0',marginBottom:20,lineHeight:1.7}}>
-              Demo хэрэглэгчээр нэвтэрч системийг туршиж үзнэ үү.<br/>
-              <span style={{color:'#94a3b8',fontSize:13}}>Email: demo@eyeshcheck.com · Нууц үг: demo1234</span>
+        {YOUTUBE_ID && (
+          <div style={sec}>
+            <div style={h2}>Танилцуулга видео</div>
+            <div style={sub}>Системийг хэрхэн ашиглах тайлбар</div>
+            <div style={{position:'relative',paddingBottom:'56.25%',borderRadius:18,overflow:'hidden',boxShadow:'0 20px 50px -24px rgba(60,30,120,.6)'}}>
+              <iframe src={`https://www.youtube.com/embed/${YOUTUBE_ID}`} title="Танилцуулга"
+                style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',border:'none'}}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
             </div>
-            <button onClick={onEnter}
-              style={{padding:'12px 32px',background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:15,fontWeight:800,cursor:'pointer'}}>
-              Demo-оор нэвтрэх →
-            </button>
+          </div>
+        )}
+
+        <div style={{...sec,textAlign:'center'}}>
+          <div className="cm-hero" style={{display:'inline-block',minWidth:290,padding:'30px 34px',marginBottom:0}}>
+            <div className="cm-hero-t" style={{marginBottom:12}}>
+              <span className="cm-eyebrow">ҮНЭ</span>
+              <div style={{fontSize:44,fontWeight:900,lineHeight:1}}>9,900₮</div>
+              <p>нэг сарын хязгааргүй ашиглалт</p>
+            </div>
+            <button className="cm-btn amber" onClick={onEnter}>Бүртгүүлэх →</button>
           </div>
         </div>
 
-        {/* FAQ */}
-        <div style={{margin:'60px 0'}}>
-          <div style={{fontSize:22,fontWeight:800,marginBottom:6,textAlign:'center'}}>Түгээмэл асуулт</div>
-          <div style={{fontSize:14,color:'#94a3b8',marginBottom:28,textAlign:'center'}}>Хамгийн их асуудаг асуултууд</div>
+        <div id="demo-section" style={sec}>
+          <div style={h2}>Live Demo</div>
+          <div style={sub}>Бүртгэлгүйгээр системийг туршиж үзэх</div>
+          <div className="cm-card" style={{textAlign:'center',padding:26}}>
+            <div style={{fontSize:15,marginBottom:6}}>Demo хэрэглэгчээр нэвтэрч системийг туршина уу.</div>
+            <div style={{color:'var(--soft)',fontSize:13,marginBottom:16}}>Email: demo@eyeshcheck.com · Нууц үг: demo1234</div>
+            <button className="cm-btn" onClick={onEnter}>Demo-оор нэвтрэх →</button>
+          </div>
+        </div>
+
+        <div style={sec}>
+          <div style={h2}>Түгээмэл асуулт</div>
+          <div style={sub}>Хамгийн их асуудаг асуултууд</div>
           {[
-            {q:'Ямар төхөөрөмжид ажилладаг вэ?', a:'Интернет холбоотой ямар ч төхөөрөмж дээр browser-ээр ажиллана. Суулгах шаардлагагүй.'},
+            {q:'Ямар төхөөрөмжид ажилладаг вэ?', a:'Утас, таблет, компьютерийн хөтөч дээр ажиллана. Суулгах шаардлагагүй — утсан дээрээ «Нүүр дэлгэцэнд нэмэх»-ээр апп шиг ашиглаж болно.'},
+            {q:'Камераар уншихад хэр найдвартай вэ?', a:'CyberMath-ийн хэвлэсэн хуудсыг AI-гүй, тэмдгээр нь байрлалыг тогтоож пикселээр уншдаг тул нэг хуудсыг хэдэн удаа уншуулсан ч ижил үр дүн гарна. Олон будсан, бүдэг, арилгасан мөрийг таньж танаас баталгаажуулалт авна.'},
             {q:'Нэг сард хэдэн шалгалт шалгаж болох вэ?', a:'9,900₮-ийн тарифт хязгааргүй шалгалт шалгах боломжтой.'},
-            {q:'AI bubble detection хэр нарийвчлалтай вэ?', a:'Anthropic-ийн Claude AI ашиглан 90%+ нарийвчлалтайгаар таньдаг. Тодорхойгүй тохиолдолд гараар засах боломжтой.'},
-            {q:'Өгөгдөл хаана хадгалагддаг вэ?', a:'Бүх өгөгдөл Neon cloud database-д найдвартай хадгалагдана. Өгөгдлийг гуравдагч этгээдэд дамжуулахгүй.'},
+            {q:'Өгөгдөл хаана хадгалагддаг вэ?', a:'Бүх өгөгдөл Neon cloud database-д хадгалагдана. Өгөгдлийг гуравдагч этгээдэд дамжуулахгүй.'},
             {q:'Олон багш нэг платформ ашиглаж болох уу?', a:'Тийм. Багш бүр өөрийн бүртгэлтэй бөгөөд зөвхөн өөрийн шалгалт, сурагчдаа харна.'},
             {q:'Төлбөрийг хэрхэн төлөх вэ?', a:'Хаан банкны 5542136007 дансруу "Нэр, утасны дугаар" гүйлгээний утгатай шилжүүлнэ. Admin 24 цагийн дотор эрхийг нээнэ.'},
           ].map((item,i)=>(
@@ -797,44 +719,25 @@ function LandingPage({onEnter}) {
           ))}
         </div>
 
-        {/* Contact */}
-        <div style={{margin:'60px 0',textAlign:'center'}}>
-          <div style={{fontSize:22,fontWeight:800,marginBottom:6}}>Холбоо барих</div>
-          <div style={{fontSize:14,color:'#94a3b8',marginBottom:28}}>Асуулт байвал холбогдоорой</div>
-          <div style={{display:'flex',gap:16,justifyContent:'center',flexWrap:'wrap'}}>
-            <a href="tel:+97688449307" style={{textDecoration:'none'}}>
-              <div style={{background:'#1e293b',borderRadius:14,padding:'20px 28px',border:'1px solid #334155',textAlign:'center',minWidth:160}}>
-                <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
-                  <Icon d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" size={28} color="#ef4444"/>
-                </div>
-                <div style={{fontWeight:700,fontSize:14,color:'white',marginBottom:4}}>Утас</div>
-                <div style={{fontSize:13,color:'#94a3b8'}}>88449307</div>
-              </div>
-            </a>
-            <a href="mailto:bymbaamedehgui@gmail.com" style={{textDecoration:'none'}}>
-              <div style={{background:'#1e293b',borderRadius:14,padding:'20px 28px',border:'1px solid #334155',textAlign:'center',minWidth:160}}>
-                <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
-                  <Icon d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" size={28} color="#ef4444"/>
-                </div>
-                <div style={{fontWeight:700,fontSize:14,color:'white',marginBottom:4}}>Email</div>
-                <div style={{fontSize:13,color:'#94a3b8'}}>bymbaamedehgui@gmail.com</div>
-              </div>
-            </a>
-            <a href="https://facebook.com" target="_blank" rel="noreferrer" style={{textDecoration:'none'}}>
-              <div style={{background:'#1e293b',borderRadius:14,padding:'20px 28px',border:'1px solid #334155',textAlign:'center',minWidth:160}}>
-                <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
-                  <svg width={28} height={28} viewBox="0 0 24 24" fill="#ef4444"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-                </div>
-                <div style={{fontWeight:700,fontSize:14,color:'white',marginBottom:4}}>Facebook</div>
-                <div style={{fontSize:13,color:'#94a3b8'}}>EYESH Checker</div>
-              </div>
-            </a>
+        <div style={{...sec,textAlign:'center'}}>
+          <div style={h2}>Холбоо барих</div>
+          <div style={sub}>Асуулт байвал холбогдоорой</div>
+          <div style={{display:'flex',gap:12,justifyContent:'center',flexWrap:'wrap'}}>
+            {[['tel:+97688449307','Утас','88449307','M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 01-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z'],
+              ['mailto:bymbaamedehgui@gmail.com','Email','bymbaamedehgui@gmail.com','M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75'],
+              [PRACTICE_URL,'CyberMath','Дасгалын төв','M4 19.5A2.5 2.5 0 0 1 6.5 17H20M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'],
+            ].map(([href,label,val,icon])=>(
+              <a key={label} href={href} className="cm-card" style={{textDecoration:'none',color:'var(--ink)',minWidth:170,marginBottom:0,textAlign:'center'}}>
+                <div style={{display:'flex',justifyContent:'center',marginBottom:8,color:'var(--purple)'}}><Ico d={icon} size={26} sw={1.8}/></div>
+                <div style={{fontWeight:900,fontSize:14}}>{label}</div>
+                <div style={{fontSize:12.5,color:'var(--soft)'}}>{val}</div>
+              </a>
+            ))}
           </div>
         </div>
 
-        {/* Footer */}
-        <div style={{textAlign:'center',padding:'32px 0',borderTop:'1px solid #1e293b',color:'#475569',fontSize:13,marginTop:20}}>
-          EYESH Checker © 2025 · eyeshcheck.com
+        <div style={{textAlign:'center',padding:'24px 0 0',color:'var(--soft)',fontSize:12.5}}>
+          CyberMath · ЭЕШ шалгагч © 2026 · eyeshcheck.com
         </div>
       </div>
     </div>
@@ -844,14 +747,14 @@ function LandingPage({onEnter}) {
 function FAQItem({q, a}) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{background:'#1e293b',borderRadius:12,marginBottom:8,border:'1px solid #334155',overflow:'hidden'}}>
+    <div className="cm-card" style={{padding:0,marginBottom:8,overflow:'hidden'}}>
       <button onClick={()=>setOpen(o=>!o)}
-        style={{width:'100%',padding:'16px 20px',background:'none',border:'none',color:'white',textAlign:'left',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:14,fontWeight:600}}>
+        style={{width:'100%',padding:'15px 18px',background:'none',border:'none',color:'var(--ink)',textAlign:'left',display:'flex',justifyContent:'space-between',alignItems:'center',fontSize:14,fontWeight:800}}>
         {q}
-        <span style={{flexShrink:0,marginLeft:12,fontSize:18,color:'#94a3b8'}}>{open?'−':'+'}</span>
+        <span style={{flexShrink:0,marginLeft:12,fontSize:20,color:'var(--purple)'}}>{open?'−':'+'}</span>
       </button>
       {open&&(
-        <div style={{padding:'0 20px 16px',fontSize:13,color:'#94a3b8',lineHeight:1.7,borderTop:'1px solid #334155',paddingTop:12}}>
+        <div style={{padding:'0 18px 15px',fontSize:13.5,color:'var(--soft)',lineHeight:1.65}}>
           {a}
         </div>
       )}
@@ -996,104 +899,105 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
     setLoading(false);
   }
 
-  const inp = {width:'100%',padding:'12px 14px',border:'2px solid #e2e8f0',borderRadius:10,fontSize:15,outline:'none',marginBottom:10,boxSizing:'border-box'};
+  const inp = {width:'100%',padding:'12px 14px',border:'1.6px solid #e5e7eb',borderRadius:12,fontSize:16,outline:'none',marginBottom:10,boxSizing:'border-box',background:'#fff',color:'#1c1f2a'};
 
   return (
-    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'linear-gradient(135deg,#7f1d1d,#dc2626)',padding:20}}>
-      <div style={{background:'white',borderRadius:20,padding:'36px 32px',width:'100%',maxWidth:420,boxShadow:'0 20px 60px rgba(0,0,0,.3)'}}>
+    <div style={{minHeight:'100vh',display:'flex',alignItems:'center',justifyContent:'center',background:'radial-gradient(900px 420px at 100% -10%,#fff2cf 0,rgba(255,242,207,0) 60%),#f5f6f8',padding:'20px 16px'}}>
+      <div style={{background:'white',borderRadius:24,padding:'26px 22px',width:'100%',maxWidth:420,border:'1px solid #e5e7eb',boxShadow:'0 24px 60px -30px rgba(17,24,39,.35)'}}>
         <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:8}}>
           {onBack
-            ? <button onClick={onBack} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:13,padding:0}}>← Буцах</button>
+            ? <button onClick={onBack} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:13,padding:0}}>← Буцах</button>
             : <span/>
           }
-          <button onClick={toggleLang} style={{padding:'4px 12px',background:'#f1f5f9',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer',color:'#374151'}}>
+          <button onClick={toggleLang} style={{padding:'4px 12px',background:'#f3f4f6',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer',color:'#374151'}}>
             {lang==='mn'?'EN':'МН'}
           </button>
         </div>
         <div style={{textAlign:'center',marginBottom:24}}>
-          <div style={{display:'flex',justifyContent:'center',marginBottom:12}}><div style={{background:'rgba(220,38,38,0.12)',borderRadius:16,padding:14}}><Ico d={['M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z']} size={44} color='#dc2626'/></div></div>
-          <div style={{fontSize:22,fontWeight:900,color:'#1e293b'}}>EYESH Checker</div>
-          <div style={{fontSize:13,color:'#94a3b8',marginTop:4}}>{t.selectRole}</div>
+          <img src="/chick.svg" alt="" style={{width:76,height:76,display:'block',margin:'0 auto 8px',animation:'bob 3.4s ease-in-out infinite'}} />
+          <div style={{fontSize:22,fontWeight:900,color:'#1c1f2a',letterSpacing:'-.3px'}}>ЭЕШ шалгагч</div>
+          <div style={{fontSize:12,fontWeight:800,color:'#7B52EE'}}>CyberMath</div>
+          <div style={{fontSize:13,color:'#9ca3af',marginTop:4}}>{t.selectRole}</div>
         </div>
 
         {!role&&(
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
             <button onClick={()=>{setRole('teacher');setErr('');setTab('login');}}
-              style={{padding:'24px 16px',background:'#f8fafc',border:'2px solid #e2e8f0',borderRadius:14,cursor:'pointer',textAlign:'center'}}>
-              <div style={{display:'flex',justifyContent:'center',marginBottom:8}}><div style={{background:'#fee2e2',borderRadius:12,padding:10}}><Ico d={['M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z']} size={32} color='#dc2626'/></div></div>
-              <div style={{fontWeight:800,fontSize:15,color:'#1e293b'}}>Багш</div>
-              <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>Нэвтрэх / Бүртгүүлэх</div>
+              style={{padding:'24px 16px',background:'#f9fafb',border:'2px solid #e5e7eb',borderRadius:14,cursor:'pointer',textAlign:'center'}}>
+              <div style={{display:'flex',justifyContent:'center',marginBottom:8}}><div style={{background:'#f3eeff',borderRadius:12,padding:10}}><Ico d={['M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z']} size={32} color='#7B52EE'/></div></div>
+              <div style={{fontWeight:800,fontSize:15,color:'#1c1f2a'}}>Багш</div>
+              <div style={{fontSize:11,color:'#9ca3af',marginTop:4}}>Нэвтрэх / Бүртгүүлэх</div>
             </button>
             <button onClick={()=>{setRole('student');setErr('');}}
-              style={{padding:'24px 16px',background:'#f8fafc',border:'2px solid #e2e8f0',borderRadius:14,cursor:'pointer',textAlign:'center'}}>
-              <div style={{display:'flex',justifyContent:'center',marginBottom:8}}><div style={{background:'#fee2e2',borderRadius:12,padding:10}}><Ico d='M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5' size={32} color='#dc2626'/></div></div>
-              <div style={{fontWeight:800,fontSize:15,color:'#1e293b'}}>Сурагч</div>
-              <div style={{fontSize:11,color:'#94a3b8',marginTop:4}}>Кодоор нэвтрэх</div>
+              style={{padding:'24px 16px',background:'#f9fafb',border:'2px solid #e5e7eb',borderRadius:14,cursor:'pointer',textAlign:'center'}}>
+              <div style={{display:'flex',justifyContent:'center',marginBottom:8}}><div style={{background:'#f3eeff',borderRadius:12,padding:10}}><Ico d='M4.26 10.147a60.438 60.438 0 00-.491 6.347A48.627 48.627 0 0112 20.904a48.627 48.627 0 018.232-4.41 60.46 60.46 0 00-.491-6.347m-15.482 0a50.57 50.57 0 00-2.658-.813A59.905 59.905 0 0112 3.493a59.902 59.902 0 0110.399 5.84c-.896.248-1.783.52-2.658.814m-15.482 0A50.697 50.697 0 0112 13.489a50.702 50.702 0 017.74-3.342M6.75 15a.75.75 0 100-1.5.75.75 0 000 1.5zm0 0v-3.675A55.378 55.378 0 0112 8.443m-7.007 11.55A5.981 5.981 0 006.75 15.75v-1.5' size={32} color='#7B52EE'/></div></div>
+              <div style={{fontWeight:800,fontSize:15,color:'#1c1f2a'}}>Сурагч</div>
+              <div style={{fontSize:11,color:'#9ca3af',marginTop:4}}>Кодоор нэвтрэх</div>
             </button>
           </div>
         )}
 
         {role==='teacher'&&(
           <>
-            <button onClick={()=>{setRole(null);setErr('');setRegistered(false);}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:13,marginBottom:14,padding:0}}>← Буцах</button>
+            <button onClick={()=>{setRole(null);setErr('');setRegistered(false);}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:13,marginBottom:14,padding:0}}>← Буцах</button>
             {verifying ? (
               <div style={{textAlign:'center',padding:'8px 0'}}>
                 <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
-                  <div style={{background:'#fee2e2',borderRadius:14,padding:12}}>
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#dc2626" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
+                  <div style={{background:'#f3eeff',borderRadius:14,padding:12}}>
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#7B52EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
                   </div>
                 </div>
-                <div style={{fontWeight:800,fontSize:15,color:'#1e293b',marginBottom:4}}>Email шалгана уу!</div>
-                <div style={{fontSize:12,color:'#64748b',marginBottom:8}}><b>{verifyEmail}</b> руу 6 оронтой код илгээлээ</div>
-                <div style={{fontSize:11,color:'#64748b',marginBottom:16,background:'#fef9c3',padding:'6px 10px',borderRadius:6,border:'1px solid #fde68a'}}>Хэрэв ирэхгүй бол spam/junk фолдероо шалгана уу</div>
-                {verifyErr && <div style={{color:'#dc2626',fontSize:12,background:'#fef2f2',padding:'6px 10px',borderRadius:6,marginBottom:10,textAlign:'center'}}>{verifyErr}</div>}
+                <div style={{fontWeight:800,fontSize:15,color:'#1c1f2a',marginBottom:4}}>Email шалгана уу!</div>
+                <div style={{fontSize:12,color:'#6b7280',marginBottom:8}}><b>{verifyEmail}</b> руу 6 оронтой код илгээлээ</div>
+                <div style={{fontSize:11,color:'#6b7280',marginBottom:16,background:'#fef9c3',padding:'6px 10px',borderRadius:6,border:'1px solid #fde68a'}}>Хэрэв ирэхгүй бол spam/junk фолдероо шалгана уу</div>
+                {verifyErr && <div style={{color:'#b3261e',fontSize:12,background:'#fdecec',padding:'6px 10px',borderRadius:6,marginBottom:10,textAlign:'center'}}>{verifyErr}</div>}
                 <input value={verifyCode} onChange={e=>setVerifyCode(e.target.value.replace(/\D/g,'').slice(0,6))}
                   onKeyDown={e=>e.key==='Enter'&&handleVerify()}
                   placeholder="000000" maxLength={6}
                   style={{...inp,fontSize:22,textAlign:'center',letterSpacing:10,fontWeight:900,marginBottom:12}} />
                 <button onClick={handleVerify} disabled={verifyLoading||verifyCode.length!==6}
-                  style={{width:'100%',padding:12,background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8,opacity:verifyCode.length!==6?0.6:1}}>
+                  style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8,opacity:verifyCode.length!==6?0.6:1}}>
                   {verifyLoading&&<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>} Баталгаажуулах
                 </button>
-                <button onClick={()=>{setVerifying(false);setVerifyCode('');setVerifyErr('');}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:12}}>← Буцах</button>
+                <button onClick={()=>{setVerifying(false);setVerifyCode('');setVerifyErr('');}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12}}>← Буцах</button>
               </div>
             ) : registered ? (
               <div style={{padding:'8px 0'}}>
                 <div style={{textAlign:'center',marginBottom:16}}>
                   <div style={{display:'flex',justifyContent:'center',marginBottom:10}}><div style={{background:'#fef3c7',borderRadius:14,padding:12}}><Ico d='M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z' size={40} color='#d97706'/></div></div>
-                  <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:6}}>Хүсэлт илгээгдлээ!</div>
-                  <div style={{fontSize:12,color:'#64748b',lineHeight:1.6}}>Admin таны төлбөрийг баталгаажуулсны дараа нэвтэрч болно.</div>
+                  <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:6}}>Хүсэлт илгээгдлээ!</div>
+                  <div style={{fontSize:12,color:'#6b7280',lineHeight:1.6}}>Admin таны төлбөрийг баталгаажуулсны дараа нэвтэрч болно.</div>
                 </div>
                 {/* Payment info */}
-                <div style={{background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:12,padding:'16px',marginBottom:14}}>
-                  <div style={{fontWeight:800,fontSize:13,color:'#1e293b',marginBottom:10,textAlign:'center'}}>💳 Төлбөрийн мэдээлэл</div>
+                <div style={{background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:12,padding:'16px',marginBottom:14}}>
+                  <div style={{fontWeight:800,fontSize:13,color:'#1c1f2a',marginBottom:10,textAlign:'center'}}>💳 Төлбөрийн мэдээлэл</div>
                   <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:'6px 12px',fontSize:12}}>
-                    <span style={{color:'#64748b',fontWeight:600}}>Банк:</span>
-                    <span style={{color:'#1e293b',fontWeight:700}}>Хаан банк</span>
-                    <span style={{color:'#64748b',fontWeight:600}}>Данс:</span>
-                    <span style={{color:'#1e293b',fontWeight:700,letterSpacing:1}}>5542136007</span>
-                    <span style={{color:'#64748b',fontWeight:600}}>IBAN:</span>
-                    <span style={{color:'#1e293b',fontWeight:700}}>34000500</span>
-                    <span style={{color:'#64748b',fontWeight:600}}>Эзэмшигч:</span>
-                    <span style={{color:'#1e293b',fontWeight:700}}>М.Бямбадорж</span>
-                    <span style={{color:'#64748b',fontWeight:600}}>Дүн:</span>
-                    <span style={{color:'#dc2626',fontWeight:900,fontSize:14}}>9,900 ₮ / сар</span>
-                    <span style={{color:'#64748b',fontWeight:600}}>Утга:</span>
-                    <span style={{color:'#1e293b',fontWeight:700}}>Бүртгүүлсэн нэр, утасны дугаар</span>
+                    <span style={{color:'#6b7280',fontWeight:600}}>Банк:</span>
+                    <span style={{color:'#1c1f2a',fontWeight:700}}>Хаан банк</span>
+                    <span style={{color:'#6b7280',fontWeight:600}}>Данс:</span>
+                    <span style={{color:'#1c1f2a',fontWeight:700,letterSpacing:1}}>5542136007</span>
+                    <span style={{color:'#6b7280',fontWeight:600}}>IBAN:</span>
+                    <span style={{color:'#1c1f2a',fontWeight:700}}>34000500</span>
+                    <span style={{color:'#6b7280',fontWeight:600}}>Эзэмшигч:</span>
+                    <span style={{color:'#1c1f2a',fontWeight:700}}>М.Бямбадорж</span>
+                    <span style={{color:'#6b7280',fontWeight:600}}>Дүн:</span>
+                    <span style={{color:'#7B52EE',fontWeight:900,fontSize:14}}>9,900 ₮ / сар</span>
+                    <span style={{color:'#6b7280',fontWeight:600}}>Утга:</span>
+                    <span style={{color:'#1c1f2a',fontWeight:700}}>Бүртгүүлсэн нэр, утасны дугаар</span>
                   </div>
                 </div>
                 <div style={{background:'#fef9c3',border:'1px solid #fde68a',borderRadius:8,padding:'8px 12px',fontSize:11,color:'#92400e',marginBottom:12,textAlign:'center'}}>
                   Төлбөр хийсний дараа admin эрхийг нээнэ
                 </div>
-                <button onClick={()=>{setRegistered(false);setTab('login');}} style={{width:'100%',padding:'8px',background:'#f1f5f9',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer'}}>Нэвтрэх хуудас руу</button>
+                <button onClick={()=>{setRegistered(false);setTab('login');}} style={{width:'100%',padding:'8px',background:'#f3f4f6',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer'}}>Нэвтрэх хуудас руу</button>
               </div>
             ) : (
               <>
-              <div style={{display:'flex',background:'#f1f5f9',borderRadius:10,padding:3,marginBottom:18}}>
+              <div style={{display:'flex',background:'#f3f4f6',borderRadius:10,padding:3,marginBottom:18}}>
               {['login','register'].map(tb=>(
                 <button key={tb} onClick={()=>{setTab(tb);setErr('');}}
                   style={{flex:1,padding:'8px',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer',
-                    background:tab===tb?'white':'transparent',color:tab===tb?'#1e293b':'#94a3b8',
+                    background:tab===tb?'white':'transparent',color:tab===tb?'#1c1f2a':'#9ca3af',
                     boxShadow:tab===tb?'0 1px 4px rgba(0,0,0,.1)':'none'}}>
                   {tb==='login'?'Нэвтрэх':'Бүртгүүлэх'}
                 </button>
@@ -1106,42 +1010,42 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{display:'block',margin:'0 auto 12px'}}><path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     <div style={{fontWeight:800,fontSize:15,marginBottom:4}}>Нууц үг амжилттай солигдлоо!</div>
                     <button onClick={()=>{setForgotMode(false);setForgotStep(1);setForgotDone(false);setForgotEmail('');setForgotCode('');setForgotNewPass('');setTab('login');}}
-                      style={{width:'100%',padding:12,background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginTop:8}}>
+                      style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginTop:8}}>
                       Нэвтрэх
                     </button>
                   </div>
                 ) : forgotStep===1 ? (
                   <div>
                     <div style={{fontWeight:800,fontSize:15,marginBottom:4}}>Нууц үг сэргээх</div>
-                    <div style={{fontSize:12,color:'#64748b',marginBottom:12}}>Email хаягаа оруулна уу</div>
-                    {forgotErr&&<div style={{color:'#dc2626',fontSize:12,background:'#fef2f2',padding:'6px 10px',borderRadius:6,marginBottom:8}}>{forgotErr}</div>}
+                    <div style={{fontSize:12,color:'#6b7280',marginBottom:12}}>Email хаягаа оруулна уу</div>
+                    {forgotErr&&<div style={{color:'#b3261e',fontSize:12,background:'#fdecec',padding:'6px 10px',borderRadius:6,marginBottom:8}}>{forgotErr}</div>}
                     <input value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} placeholder="Email хаяг" type="email" style={inp}/>
                     <button onClick={handleForgotSend} disabled={forgotLoading}
-                      style={{width:'100%',padding:12,background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8}}>
+                      style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8}}>
                       {forgotLoading?'Илгээж байна...':'Код илгээх'}
                     </button>
-                    <button onClick={()=>{setForgotMode(false);setForgotErr('');}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:12,width:'100%'}}>← Буцах</button>
+                    <button onClick={()=>{setForgotMode(false);setForgotErr('');}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12,width:'100%'}}>← Буцах</button>
                   </div>
                 ) : (
                   <div>
                     <div style={{fontWeight:800,fontSize:15,marginBottom:4}}>Шинэ нууц үг тохируулах</div>
-                    <div style={{fontSize:12,color:'#64748b',marginBottom:12}}><b>{forgotEmail}</b> руу код илгээлээ. Spam шалгана уу.</div>
-                    {forgotErr&&<div style={{color:'#dc2626',fontSize:12,background:'#fef2f2',padding:'6px 10px',borderRadius:6,marginBottom:8}}>{forgotErr}</div>}
+                    <div style={{fontSize:12,color:'#6b7280',marginBottom:12}}><b>{forgotEmail}</b> руу код илгээлээ. Spam шалгана уу.</div>
+                    {forgotErr&&<div style={{color:'#b3261e',fontSize:12,background:'#fdecec',padding:'6px 10px',borderRadius:6,marginBottom:8}}>{forgotErr}</div>}
                     <input value={forgotCode} onChange={e=>setForgotCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="6 оронтой код" maxLength={6} style={inp}/>
                     <input value={forgotNewPass} onChange={e=>setForgotNewPass(e.target.value)} placeholder="Шинэ нууц үг" type="password" style={inp}/>
                     <button onClick={handleForgotReset} disabled={forgotLoading||forgotCode.length!==6||!forgotNewPass}
-                      style={{width:'100%',padding:12,background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8,opacity:(forgotCode.length!==6||!forgotNewPass)?0.6:1}}>
+                      style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8,opacity:(forgotCode.length!==6||!forgotNewPass)?0.6:1}}>
                       {forgotLoading?'Солиж байна...':'Нууц үг солих'}
                     </button>
-                    <button onClick={()=>{setForgotStep(1);setForgotErr('');}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:12,width:'100%'}}>← Буцах</button>
+                    <button onClick={()=>{setForgotStep(1);setForgotErr('');}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12,width:'100%'}}>← Буцах</button>
                   </div>
                 )}
               </div>
             ) : null}
-            {!forgotMode && err && <div style={{color:'#dc2626',fontSize:13,background:'#fef2f2',padding:'8px 12px',borderRadius:8,border:'1px solid #fecaca',marginBottom:12,textAlign:'center'}}>{err}</div>}
+            {!forgotMode && err && <div style={{color:'#b3261e',fontSize:13,background:'#fdecec',padding:'8px 12px',borderRadius:8,border:'1px solid #f6c9c9',marginBottom:12,textAlign:'center'}}>{err}</div>}
             {!forgotMode&&tab==='login'&&(
               <button onClick={()=>{setForgotMode(true);setForgotEmail(email);setForgotErr('');setForgotStep(1);setForgotDone(false);}}
-                style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:12,width:'100%',marginTop:4,textDecoration:'underline'}}>
+                style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12,width:'100%',marginTop:4,textDecoration:'underline'}}>
                 Нууц үгээ мартсан?
               </button>
             )}
@@ -1158,11 +1062,11 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
             <input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="Нууц үг" onKeyDown={e=>e.key==='Enter'&&(tab==='login'?handleTeacherLogin():handleRegister())}
               style={{...inp,marginBottom:16}} />
             <button onClick={tab==='login'?handleTeacherLogin:handleRegister} disabled={loading}
-              style={{width:'100%',padding:13,background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+              style={{width:'100%',padding:13,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
               {loading&&<Spinner/>} {tab==='login'?'Нэвтрэх':'Хүсэлт илгээх'}
             </button>
             {tab==='register'&&(
-              <div style={{fontSize:11,color:'#94a3b8',textAlign:'center',marginTop:10}}>
+              <div style={{fontSize:11,color:'#9ca3af',textAlign:'center',marginTop:10}}>
                 Бүртгүүлсний дараа admin зөвшөөрнө
               </div>
             )}
@@ -1174,13 +1078,13 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
         {/* Student login */}
         {role==='student'&&(
           <>
-            <button onClick={()=>{setRole(null);setErr('');}} style={{background:'none',border:'none',color:'#94a3b8',cursor:'pointer',fontSize:13,marginBottom:16,padding:0}}>← Буцах</button>
-            {err && <div style={{color:'#dc2626',fontSize:13,background:'#fef2f2',padding:'8px 12px',borderRadius:8,border:'1px solid #fecaca',marginBottom:14,textAlign:'center'}}>{err}</div>}
-            <div style={{fontSize:13,color:'#64748b',marginBottom:12,textAlign:'center'}}>Багшаас авсан кодоо оруулна уу</div>
+            <button onClick={()=>{setRole(null);setErr('');}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:13,marginBottom:16,padding:0}}>← Буцах</button>
+            {err && <div style={{color:'#b3261e',fontSize:13,background:'#fdecec',padding:'8px 12px',borderRadius:8,border:'1px solid #f6c9c9',marginBottom:14,textAlign:'center'}}>{err}</div>}
+            <div style={{fontSize:13,color:'#6b7280',marginBottom:12,textAlign:'center'}}>Багшаас авсан кодоо оруулна уу</div>
             <input value={code} onChange={e=>setCode(e.target.value)} placeholder="Кодоо оруулах" onKeyDown={e=>e.key==='Enter'&&handleStudentLogin()}
               style={{...inp,fontSize:20,textAlign:'center',letterSpacing:4,fontWeight:700,marginBottom:16}} />
             <button onClick={handleStudentLogin} disabled={loading}
-              style={{width:'100%',padding:13,background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+              style={{width:'100%',padding:13,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
               {loading&&<Spinner/>} Нэвтрэх
             </button>
           </>
@@ -1226,15 +1130,15 @@ function AdminPage({dark:d=false}) {
   const active   = teachers.filter(t => t.status==='active' && !t.is_admin);
   const disabled = teachers.filter(t => t.status==='disabled');
 
-  const bg   = d ? '#1e293b' : 'white';
-  const text = d ? '#f1f5f9' : '#1e293b';
-  const muted= d ? '#94a3b8' : '#64748b';
-  const border= d ? '#334155' : '#e2e8f0';
+  const bg   = d ? '#1c1f2a' : 'white';
+  const text = d ? '#f3f4f6' : '#1c1f2a';
+  const muted= d ? '#9ca3af' : '#6b7280';
+  const border= d ? '#2a2e38' : '#e5e7eb';
 
   function TeacherRow({t, actions}) {
     return (
       <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',borderBottom:'1px solid '+border}}>
-        <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#7f1d1d,#dc2626)',color:'white',fontWeight:900,fontSize:14,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+        <div style={{width:36,height:36,borderRadius:'50%',background:'#7B52EE',color:'white',fontWeight:900,fontSize:14,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
           {(t.name||t.email||'?')[0].toUpperCase()}
         </div>
         <div style={{flex:1,minWidth:0}}>
@@ -1254,18 +1158,18 @@ function AdminPage({dark:d=false}) {
   return (
     <div style={{maxWidth:800,margin:'0 auto',padding:'24px 20px'}}>
       {/* Header */}
-      <div style={{background:'linear-gradient(135deg,#1e293b,#334155)',borderRadius:20,padding:'24px 28px',color:'white',marginBottom:20}}>
-        <div style={{fontSize:11,letterSpacing:3,opacity:.7,marginBottom:4}}>EYESH CHECKER</div>
+      <div style={{background:'linear-gradient(135deg,#1c1f2a,#2a2e38)',borderRadius:20,padding:'24px 28px',color:'white',marginBottom:20}}>
+        <div style={{fontSize:11,letterSpacing:2,opacity:.7,marginBottom:4}}>CYBERMATH · ЭЕШ</div>
         <div style={{fontSize:26,fontWeight:900}}>Admin панель</div>
         <div style={{opacity:.8,fontSize:13,marginTop:4}}>Багш нарын хандалтыг удирдах</div>
       </div>
 
-      {err && <div style={{background:'#fef2f2',color:'#dc2626',padding:'10px 14px',borderRadius:10,marginBottom:16,fontSize:13}}>{err}</div>}
+      {err && <div style={{background:'#fdecec',color:'#b3261e',padding:'10px 14px',borderRadius:10,marginBottom:16,fontSize:13}}>{err}</div>}
       {loading && <div style={{textAlign:'center',padding:40,color:muted}}><Spinner/></div>}
 
       {/* Pending */}
       {pending.length>0 && (
-        <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.08)',marginBottom:16}}>
+        <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
           <div style={{padding:'12px 16px',background:'#fef9c3',borderBottom:'1px solid #fde68a',display:'flex',alignItems:'center',gap:8}}>
             <span style={{fontSize:16}}>⏳</span>
             <span style={{fontWeight:800,fontSize:14,color:'#92400e'}}>Хүлээгдэж буй хүсэлтүүд — {pending.length}</span>
@@ -1273,14 +1177,14 @@ function AdminPage({dark:d=false}) {
           {pending.map(t=>(
             <TeacherRow key={t.id} t={t} actions={<>
               <button style={btnStyle('#16a34a','white')} onClick={()=>updateStatus(t.id,'active')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z' size={14} color='white'/>Зөвшөөрөх</span></button>
-              <button style={btnStyle('#fee2e2','#dc2626')} onClick={()=>removeTeacher(t.id,t.email)}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z' size={14} color='#dc2626'/>Татгалзах</span></button>
+              <button style={btnStyle('#fdecec','#b3261e')} onClick={()=>removeTeacher(t.id,t.email)}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z' size={14} color='#b3261e'/>Татгалзах</span></button>
             </>}/>
           ))}
         </div>
       )}
 
       {/* Active */}
-      <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.08)',marginBottom:16}}>
+      <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
         <div style={{padding:'12px 16px',borderBottom:'1px solid '+border,display:'flex',alignItems:'center',gap:8}}>
           <span style={{fontSize:16}}>✅</span>
           <span style={{fontWeight:800,fontSize:14,color:text}}>Идэвхтэй багш нар — {active.length}</span>
@@ -1289,8 +1193,8 @@ function AdminPage({dark:d=false}) {
           ? <div style={{padding:'24px',textAlign:'center',color:muted,fontSize:13}}>Одоохондоо байхгүй</div>
           : active.map(t=>(
             <TeacherRow key={t.id} t={t} actions={<>
-              <button style={btnStyle('#f1f5f9','#374151')} onClick={()=>updateStatus(t.id,'disabled')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636' size={14} color='#374151'/>Хаах</span></button>
-              <button style={btnStyle('#fee2e2','#dc2626')} onClick={()=>removeTeacher(t.id,t.email)}><Ico d='M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0' size={14} color='#dc2626'/></button>
+              <button style={btnStyle('#f3f4f6','#374151')} onClick={()=>updateStatus(t.id,'disabled')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636' size={14} color='#374151'/>Хаах</span></button>
+              <button style={btnStyle('#fdecec','#b3261e')} onClick={()=>removeTeacher(t.id,t.email)}><Ico d='M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0' size={14} color='#b3261e'/></button>
             </>}/>
           ))
         }
@@ -1298,7 +1202,7 @@ function AdminPage({dark:d=false}) {
 
       {/* Disabled */}
       {disabled.length>0 && (
-        <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
+        <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{padding:'12px 16px',borderBottom:'1px solid '+border,display:'flex',alignItems:'center',gap:8}}>
             <span style={{fontSize:16}}>🚫</span>
             <span style={{fontWeight:800,fontSize:14,color:muted}}>Хаагдсан — {disabled.length}</span>
@@ -1306,7 +1210,7 @@ function AdminPage({dark:d=false}) {
           {disabled.map(t=>(
             <TeacherRow key={t.id} t={t} actions={<>
               <button style={btnStyle('#dcfce7','#16a34a')} onClick={()=>updateStatus(t.id,'active')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z' size={14} color='#16a34a'/>Нээх</span></button>
-              <button style={btnStyle('#fee2e2','#dc2626')} onClick={()=>removeTeacher(t.id,t.email)}><Ico d='M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0' size={14} color='#dc2626'/></button>
+              <button style={btnStyle('#fdecec','#b3261e')} onClick={()=>removeTeacher(t.id,t.email)}><Ico d='M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0' size={14} color='#b3261e'/></button>
             </>}/>
           ))}
         </div>
@@ -1328,8 +1232,8 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
   const avgScaled = examStudents.length ? (examStudents.reduce((a,b)=>a+b.scaled,0)/examStudents.length).toFixed(1) : '—';
   const passCount = examStudents.filter(s=>s.scaled>=60).length;
 
-  const bg = d?'#1e293b':'white';
-  const muted = d?'#94a3b8':'#64748b';
+  const bg = d?'#1c1f2a':'white';
+  const muted = d?'#9ca3af':'#6b7280';
 
   const stats = currentExam
     ? [
@@ -1339,7 +1243,7 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
         ['Тэнцэх %', examStudents.length ? (passCount/examStudents.length*100).toFixed(0)+'%' : '—', '#f97316'],
       ]
     : [
-        ['Нийт шалгалт',exams.length,'#dc2626'],
+        ['Нийт шалгалт',exams.length,'#7B52EE'],
         ['Нийт сурагч',students.length,'#8b5cf6'],
         ['Дундаж ЭЕШ',avgScaled,'#22c55e'],
         ['Шалгагдсан',students.length,'#f97316'],
@@ -1347,43 +1251,49 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
 
   return (
     <div style={{maxWidth:1200,margin:'0 auto',padding:'24px 20px'}}>
-      <div style={{background:'linear-gradient(135deg,#7f1d1d,#dc2626)',borderRadius:20,padding:'36px 32px',color:'white',marginBottom:24}}>
-        <div style={{fontSize:11,letterSpacing:3,opacity:.7,marginBottom:8}}>MONGOLIAN EYESH SYSTEM</div>
-        <div style={{fontSize:32,fontWeight:900,lineHeight:1.1,marginBottom:12}}>ХАРИУЛТ ХУУДАС ШАЛГАГЧ</div>
-        <div style={{opacity:.8,marginBottom:20}}>Дасгал тус бүрийн оноо тохируулах + ЭЕШ хэмжээст оноо тооцоолол + AI bubble detection.</div>
-        <button onClick={()=>onNavigate('create')} style={{background:'white',color:'#dc2626',border:'none',borderRadius:12,padding:'12px 28px',fontWeight:800,fontSize:14,cursor:'pointer'}}>+ Шалгалт Үүсгэх</button>
+      <div className="cm-hero" style={{display:'flex',alignItems:'center',gap:18,marginBottom:20}}>
+        <img src="/chick.svg" alt="" style={{width:86,height:86,flexShrink:0,filter:'drop-shadow(0 8px 14px rgba(0,0,0,.25))',animation:'bob 3.4s ease-in-out infinite',position:'relative',zIndex:1}} />
+        <div className="cm-hero-t" style={{marginBottom:0,flex:1,minWidth:0}}>
+          <span className="cm-eyebrow">CyberMath · ЭЕШ</span>
+          <h1>Хариултын хуудас шалгагч</h1>
+          <p>Хуудсаа хэвлээд утасны камераар уншуул — оноо, анализ, рейтинг шууд гарна.</p>
+          <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:14}}>
+            <button className="cm-btn amber" onClick={()=>onNavigate('scan')}>Камераар шалгах</button>
+            <button className="cm-btn ghost" onClick={()=>onNavigate('create')}>+ Шалгалт үүсгэх</button>
+          </div>
+        </div>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12,marginBottom:24}}>
+      <div className="cm-stats" style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:12,marginBottom:24}}>
         {currentExam && (
-          <div style={{gridColumn:'1/-1',background:'linear-gradient(135deg,#7c3aed18,#a855f718)',border:'1px solid #a855f730',borderRadius:10,padding:'8px 16px',display:'flex',alignItems:'center',gap:8}}>
-            <span style={{fontSize:13,fontWeight:700,color:'#7c3aed'}}>{currentExam.title}</span>
+          <div style={{gridColumn:'1/-1',background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:10,padding:'8px 16px',display:'flex',alignItems:'center',gap:8}}>
+            <span style={{fontSize:13,fontWeight:700,color:'#7B52EE'}}>{currentExam.title}</span>
             <span style={{fontSize:12,color:muted}}>{currentExam.subject}</span>
             <button onClick={()=>onSelectExam(null)} style={{marginLeft:'auto',background:'none',border:'none',color:muted,cursor:'pointer',fontSize:12}}>✕ Бүгдийг харах</button>
           </div>
         )}
         {stats.map(([label,val,c])=>(
-          <div key={label} style={{background:bg,borderRadius:12,padding:'16px 20px',boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
+          <div key={label} style={{background:bg,borderRadius:12,padding:'16px 20px',boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
             <div style={{fontSize:28,fontWeight:900,color:c}}>{val}</div>
             <div style={{fontSize:12,color:muted,marginTop:4}}>{label}</div>
           </div>
         ))}
       </div>
       {exams.length===0?(
-        <div style={{background:'white',borderRadius:12,padding:'44px',textAlign:'center',color:'#94a3b8'}}>
+        <div style={{background:'white',borderRadius:12,padding:'44px',textAlign:'center',color:'#9ca3af'}}>
           <div style={{fontSize:16,fontWeight:600,marginBottom:6}}>Шалгалт байхгүй байна</div>
-          <button onClick={()=>onNavigate('create')} style={{marginTop:12,padding:'10px 22px',background:'#dc2626',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>+ Шалгалт Үүсгэх</button>
+          <button onClick={()=>onNavigate('create')} style={{marginTop:12,padding:'10px 22px',background:'#7B52EE',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>+ Шалгалт Үүсгэх</button>
         </div>
       ):(<>
         {/* Subject filter tabs */}
         {examSubjects.length > 1 && (
-          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14,padding:'8px 4px',borderBottom:'1px solid '+(d?'#334155':'#e2e8f0')}}>
+          <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:14,padding:'8px 4px',borderBottom:'1px solid '+(d?'#2a2e38':'#e5e7eb')}}>
             <button onClick={()=>setFilterSubject('all')}
-              style={{padding:'8px 14px',background:filterSubject==='all'?'#dc2626':(d?'#334155':'#f1f5f9'),color:filterSubject==='all'?'white':(d?'#cbd5e1':'#475569'),border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+              style={{padding:'8px 14px',background:filterSubject==='all'?'#7B52EE':(d?'#2a2e38':'#f3f4f6'),color:filterSubject==='all'?'white':(d?'#d1d5db':'#4b5563'),border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer'}}>
               Бүгд ({exams.length})
             </button>
             {examSubjects.map(sub=>(
               <button key={sub} onClick={()=>setFilterSubject(sub)}
-                style={{padding:'8px 14px',background:filterSubject===sub?'#dc2626':(d?'#334155':'#f1f5f9'),color:filterSubject===sub?'white':(d?'#cbd5e1':'#475569'),border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer'}}>
+                style={{padding:'8px 14px',background:filterSubject===sub?'#7B52EE':(d?'#2a2e38':'#f3f4f6'),color:filterSubject===sub?'white':(d?'#d1d5db':'#4b5563'),border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer'}}>
                 {sub} ({subjectCounts[sub]})
               </button>
             ))}
@@ -1397,11 +1307,11 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
             const rm=exam.sec1Scores?.reduce((a,b)=>a+b,0)||0;
             return (
               <div key={exam.id} onClick={()=>onSelectExam(exam)}
-                style={{background:'white',borderRadius:12,padding:18,cursor:'pointer',border:`2px solid ${act?'#dc2626':'#e2e8f0'}`,boxShadow:act?'0 0 0 4px #fecaca':'0 1px 4px rgba(0,0,0,.08)',transition:'all .2s'}}>
-                <div style={{display:'flex',justifyContent:'space-between',marginBottom:10}}>
-                  <div style={{flex:1,minWidth:0}}>
-                    <div style={{fontSize:15,fontWeight:800,color:'#1e293b',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{exam.title}</div>
-                    <div style={{fontSize:12,color:'#64748b',marginTop:2}}>{exam.subject} · {exam.sec1Count} дасгал · Raw max: {rm}</div>
+                style={{background:'white',borderRadius:12,padding:18,cursor:'pointer',border:`2px solid ${act?'#7B52EE':'#e5e7eb'}`,boxShadow:act?'0 0 0 4px #e5e7eb':'0 1px 4px rgba(17,24,39,.06)',transition:'all .2s'}}>
+                <div style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',gap:8,marginBottom:10}}>
+                  <div style={{flex:'1 1 100%',minWidth:0}}>
+                    <div style={{fontSize:15.5,fontWeight:900,color:'#1c1f2a',lineHeight:1.3}}>{exam.title}</div>
+                    <div style={{fontSize:12,color:'#6b7280',marginTop:2}}>{exam.subject} · {exam.sec1Count} дасгал · Raw max: {rm}</div>
                     {exam.useSec2&&<div style={{fontSize:11,color:'#059669',marginTop:1}}>2-р хэсэг</div>}
                   </div>
                   <div style={{display:'flex',gap:6,alignItems:'center'}}>
@@ -1409,13 +1319,17 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
                     <button onClick={e=>{e.stopPropagation();onEditExam(exam);}}
                       style={{padding:'4px 8px',background:'#dbeafe',border:'none',borderRadius:6,fontSize:11,color:'#1d4ed8',cursor:'pointer',fontWeight:700}}>Засах</button>
                     <button onClick={e=>{e.stopPropagation();const code=prompt('"'+exam.title+'" устгахын тулд УСТГАХ гэж бичнэ үү:');if(code==='УСТГАХ'){ onDeleteExam(exam.id);}}}
-                      style={{padding:'4px 8px',background:'#fee2e2',border:'none',borderRadius:6,fontSize:11,color:'#dc2626',cursor:'pointer'}}>Устгах</button>
+                      style={{padding:'4px 8px',background:'#fdecec',border:'none',borderRadius:6,fontSize:11,color:'#b3261e',cursor:'pointer'}}>Устгах</button>
                   </div>
                 </div>
                 <div style={{display:'flex',gap:14,alignItems:'flex-end'}}>
-                  <div><div style={{fontSize:20,fontWeight:800,color:'#dc2626'}}>{es.length}</div><div style={{fontSize:11,color:'#94a3b8'}}>Сурагч</div></div>
-                  {avgS&&<div><div style={{fontSize:20,fontWeight:800,color:eyeshGrade(pf(avgS)).c}}>{avgS}</div><div style={{fontSize:11,color:'#94a3b8'}}>Дундаж ЭЕШ</div></div>}
-                  <div style={{flex:1,textAlign:'right',fontSize:11,color:'#94a3b8'}}>{new Date(exam.createdAt).toLocaleDateString('mn-MN')}</div>
+                  <div><div style={{fontSize:20,fontWeight:800,color:'#7B52EE'}}>{es.length}</div><div style={{fontSize:11,color:'#9ca3af'}}>Сурагч</div></div>
+                  {avgS&&<div><div style={{fontSize:20,fontWeight:800,color:eyeshGrade(pf(avgS)).c}}>{avgS}</div><div style={{fontSize:11,color:'#9ca3af'}}>Дундаж ЭЕШ</div></div>}
+                  <div style={{flex:1,textAlign:'right',fontSize:11,color:'#9ca3af'}}>{new Date(exam.createdAt).toLocaleDateString('mn-MN')}</div>
+                </div>
+                <div style={{display:'flex',gap:8,marginTop:12}}>
+                  <button className="cm-btn" style={{flex:1,padding:'.6rem .8rem',fontSize:13.5}} onClick={e=>{e.stopPropagation();onSelectExam(exam);onNavigate('scan');}}>Шалгах</button>
+                  <button className="cm-btn ghost" style={{flex:1,padding:'.6rem .8rem',fontSize:13.5}} onClick={e=>{e.stopPropagation();onSelectExam(exam);onNavigate('sheets');}}>Хуудас хэвлэх</button>
                 </div>
               </div>
             );
@@ -1471,25 +1385,25 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
 
   return (
     <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px'}}>
-      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.08)',marginBottom:16}}>
-        <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:16}}>1. Шалгалтын тохиргоо</div>
+      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+        <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>1. Шалгалтын тохиргоо</div>
         <div style={{marginBottom:12}}>
           <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>Шалгалтын нэр</label>
           <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Жишээ: Математик 2024 Дадлага 1"
-            style={{width:'100%',padding:'10px 14px',border:'2px solid #e2e8f0',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
+            style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
         </div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:12}}>
           <div>
             <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>Хичээл</label>
             <select value={subject} onChange={e=>setSubject(e.target.value)}
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e2e8f0',borderRadius:10,fontSize:14,outline:'none'}}>
+              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none'}}>
               {SUBJECTS.map(s=><option key={s}>{s}</option>)}
             </select>
           </div>
           <div>
             <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>1-р хэсэг дасгал (1-36)</label>
             <input type="number" min={1} max={200} value={cnt} onChange={e=>handleCntChange(e.target.value)}
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e2e8f0',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
+              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
           </div>
           <div style={{display:'flex',alignItems:'center',gap:10,paddingTop:24}}>
             <input type="checkbox" checked={useSec2} onChange={e=>setUseSec2(e.target.checked)} id="us2" style={{width:18,height:18}} />
@@ -1500,7 +1414,7 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
           <div style={{marginBottom:8,display:'flex',gap:12,alignItems:'center',flexWrap:'wrap'}}>
             <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
               {SEC2_SUBS.map((sub,si)=>(
-                <label key={sub} style={{display:'flex',alignItems:'center',gap:4,cursor:'pointer',fontSize:13,fontWeight:600,padding:'6px 10px',background:sec2EnabledSubs[si]?'#dcfce7':'#f1f5f9',borderRadius:8,border:'1px solid '+(sec2EnabledSubs[si]?'#86efac':'#e2e8f0')}}>
+                <label key={sub} style={{display:'flex',alignItems:'center',gap:4,cursor:'pointer',fontSize:13,fontWeight:600,padding:'6px 10px',background:sec2EnabledSubs[si]?'#dcfce7':'#f3f4f6',borderRadius:8,border:'1px solid '+(sec2EnabledSubs[si]?'#86efac':'#e5e7eb')}}>
                   <input type="checkbox" checked={!!sec2EnabledSubs[si]} onChange={e=>{const n=[...sec2EnabledSubs];n[si]=e.target.checked;setSec2EnabledSubs(n);}} style={{width:14,height:14}} />
                   {sub}
                 </label>
@@ -1510,27 +1424,27 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
         )}
       </div>
 
-      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.08)',marginBottom:16}}>
-        <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:12}}>2. Зөв хариулт, оноо, сэдэв</div>
+      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+        <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:12}}>2. Зөв хариулт, оноо, сэдэв</div>
 
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:6}}>
           {Array.from({length:cnt},(_,i)=>(
-            <div key={i} style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px',background:'#f8fafc',borderRadius:8,border:'1px solid #e2e8f0'}}>
-              <span style={{fontSize:11,fontWeight:700,color:'#94a3b8',minWidth:26,textAlign:'right'}}>D{i+1}</span>
-              <div style={{display:'flex',gap:2}}>
+            <div key={i} className="cm-keyrow" style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px',background:'#f9fafb',borderRadius:8,border:'1px solid #e5e7eb'}}>
+              <span className="cm-keyno" style={{fontSize:11,fontWeight:700,color:'#9ca3af',minWidth:26,textAlign:'right'}}>D{i+1}</span>
+              <div className="cm-keych" style={{display:'flex',gap:2}}>
                 {SEC1_CHOICES.map(c=>(
                   <button key={c} onClick={()=>setKeys(k=>{const n=[...k];n[i]=c;return n;})}
-                    style={{width:28,height:28,borderRadius:6,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:keys[i]===c?'#7c3aed':'#e2e8f0',color:keys[i]===c?'white':'#64748b'}}>{c}</button>
+                    style={{width:28,height:28,borderRadius:6,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:keys[i]===c?'#7B52EE':'#e5e7eb',color:keys[i]===c?'white':'#6b7280'}}>{c}</button>
                 ))}
               </div>
-              <div style={{display:'flex',alignItems:'center',gap:2}}>
+              <div className="cm-keyst" style={{display:'flex',alignItems:'center',gap:2}}>
                 <button onClick={()=>setScores(s=>{const n=[...s];n[i]=Math.max(1,n[i]-1);return n;})}
-                  style={{width:20,height:20,border:'1px solid #e2e8f0',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#64748b'}}>−</button>
+                  style={{width:20,height:20,border:'1px solid #e5e7eb',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#6b7280'}}>−</button>
                 <span style={{minWidth:20,textAlign:'center',fontSize:12,fontWeight:700,color:'#374151'}}>{scores[i]}</span>
                 <button onClick={()=>setScores(s=>{const n=[...s];n[i]=Math.min(10,n[i]+1);return n;})}
-                  style={{width:20,height:20,border:'1px solid #e2e8f0',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#64748b'}}>+</button>
+                  style={{width:20,height:20,border:'1px solid #e5e7eb',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#6b7280'}}>+</button>
               </div>
-              <select value={topics[i]} onChange={e=>setTopics(t=>{const n=[...t];n[i]=e.target.value;return n;})}
+              <select className="cm-keytp" value={topics[i]} onChange={e=>setTopics(t=>{const n=[...t];n[i]=e.target.value;return n;})}
                 style={{flex:1,padding:'4px 8px',border:'none',borderRadius:8,fontWeight:700,fontSize:11,cursor:'pointer',background:TOPIC_COLORS[getTopics(subject).indexOf(topics[i])%8]+'22',color:TOPIC_COLORS[getTopics(subject).indexOf(topics[i])%8],outline:'none',minWidth:0}}>
                 {getTopics(subject).map(tp=>(
                   <option key={tp} value={tp}>{tp}</option>
@@ -1541,27 +1455,27 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
         </div>
       </div>
       {useSec2&&(
-        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.08)',marginBottom:16}}>
-          <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:12}}>3. 2-р хэсгийн зөв хариулт, оноо</div>
+        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+          <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:12}}>3. 2-р хэсгийн зөв хариулт, оноо</div>
           {SEC2_SUBS.filter((_,i)=>sec2EnabledSubs[i]).map(sub=>(
             <div key={sub} style={{marginBottom:20}}>
-              <div style={{fontWeight:700,fontSize:14,color:'#7c3aed',marginBottom:8}}>Дэд хэсэг {sub}</div>
+              <div style={{fontWeight:700,fontSize:14,color:'#7B52EE',marginBottom:8}}>Дэд хэсэг {sub}</div>
               <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(200px,1fr))',gap:6}}>
                 {SEC2_ROWS.map(row=>(
-                  <div key={row} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 8px',background:'#f8fafc',borderRadius:8,border:'1px solid #e2e8f0'}}>
-                    <span style={{fontSize:12,fontWeight:700,color:'#94a3b8',minWidth:14}}>{row}</span>
+                  <div key={row} className="cm-s2key" style={{display:'flex',alignItems:'center',gap:6,padding:'6px 8px',background:'#f9fafb',borderRadius:8,border:'1px solid #e5e7eb'}}>
+                    <span style={{fontSize:12,fontWeight:700,color:'#9ca3af',minWidth:14}}>{row}</span>
                     <input type="text" maxLength={1} value={typeof sec2Keys[sub]?.[row]==='object'?(sec2Keys[sub][row].ans||''):(sec2Keys[sub]?.[row]||'')} 
-                      onChange={e=>{const v=e.target.value.replace(/[^0-9]/g,'');setSec2Keys(k=>({...k,[sub]:{...k[sub],[row]:{...(typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''}),ans:v}}}));}}
-                      placeholder="0-9" style={{width:44,padding:'5px 6px',border:'1px solid #e2e8f0',borderRadius:6,fontSize:13,outline:'none',textAlign:'center'}} />
-                    <span style={{fontSize:11,color:'#94a3b8'}}>оноо:</span>
+                      onChange={e=>{const v=e.target.value.replace(/[^0-9.-]/g,'');setSec2Keys(k=>({...k,[sub]:{...k[sub],[row]:{...(typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''}),ans:v}}}));}}
+                      placeholder="0-9" style={{width:44,padding:'5px 6px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,outline:'none',textAlign:'center'}} />
+                    <span style={{fontSize:11,color:'#9ca3af'}}>оноо:</span>
                     <div style={{display:'flex',alignItems:'center',gap:2}}>
                       <button onClick={()=>setSec2Keys(k=>{const cur=typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''};const sc=Math.max(0.5,Math.round(((cur.score||1)-0.5)*10)/10);return{...k,[sub]:{...k[sub],[row]:{...cur,score:sc}}};} )}
-                        style={{width:20,height:20,border:'1px solid #e2e8f0',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#64748b'}}>−</button>
+                        style={{width:20,height:20,border:'1px solid #e5e7eb',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#6b7280'}}>−</button>
                       <span style={{minWidth:28,textAlign:'center',fontSize:12,fontWeight:700}}>
                         {(typeof sec2Keys[sub]?.[row]==='object'?sec2Keys[sub][row].score:null)||1}
                       </span>
                       <button onClick={()=>setSec2Keys(k=>{const cur=typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''};const sc=Math.min(20,Math.round(((cur.score||1)+0.5)*10)/10);return{...k,[sub]:{...k[sub],[row]:{...cur,score:sc}}};} )}
-                        style={{width:20,height:20,border:'1px solid #e2e8f0',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#64748b'}}>+</button>
+                        style={{width:20,height:20,border:'1px solid #e5e7eb',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#6b7280'}}>+</button>
                     </div>
                   </div>
                 ))}
@@ -1570,7 +1484,7 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
           ))}
         </div>
       )}
-      <button onClick={handleSave} style={{width:'100%',padding:'14px',background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:12,fontSize:16,fontWeight:800,cursor:'pointer'}}>
+      <button onClick={handleSave} style={{width:'100%',padding:'14px',background:'#7B52EE',color:'white',border:'none',borderRadius:12,fontSize:16,fontWeight:800,cursor:'pointer'}}>
         {isEdit ? 'Шалгалт Хадгалах (Засвар)' : 'Шалгалт Хадгалах'}
       </button>
     </div>
@@ -1670,209 +1584,7 @@ function BubbleOverlay({scored, det}) {
 }
 
 
-// ── Scan Mode Panel ───────────────────────────────────────
-// Дасгал бүрийн bubble-г нэг нэгээр скан хийдэг горим
-function ScanModePanel({exam, scanIdx, setScanIdx, scanAnswers, setScanAnswers,
-  scanResult, setScanResult, scanAnalyzing, setScanAnalyzing, onDone, onCancel}) {
-
-  const total = exam.sec1Count;
-  const videoRef = useRef();
-  const [stream, setStream] = useState(null);
-  const [camErr, setCamErr] = useState('');
-  const [captured, setCaptured] = useState(null); // base64 of last capture
-  const [confirming, setConfirming] = useState(false); // show confirm step
-
-  // Start camera on mount
-  useEffect(()=>{
-    navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
-      .then(s=>{ setStream(s); if(videoRef.current) videoRef.current.srcObject=s; })
-      .catch(()=>setCamErr('Камер нэвтрэх боломжгүй'));
-    return ()=>{}; 
-  },[]);
-
-  function stopCam() { stream?.getTracks().forEach(t=>t.stop()); }
-
-  function captureFrame() {
-    if(!videoRef.current) return;
-    const canvas=document.createElement('canvas');
-    canvas.width=videoRef.current.videoWidth;
-    canvas.height=videoRef.current.videoHeight;
-    canvas.getContext('2d').drawImage(videoRef.current,0,0);
-    canvas.toBlob(blob=>{
-      const reader=new FileReader();
-      reader.onload=async e=>{
-        const b64=e.target.result.split(',')[1];
-        setCaptured(b64);
-        // Analyze single row — question number + filled bubble
-        setScanAnalyzing(true);
-        try {
-          const resp = await fetch('/api/ai',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body: JSON.stringify({
-              model:'claude-sonnet-4-20250514',
-              max_tokens:50,
-              messages:[{role:'user',content:[
-                {type:'image',source:{type:'base64',media_type:'image/jpeg',data:b64}},
-                {type:'text',text:`This is a single row from a bubble answer sheet. The row has a circled number on the left (the question number is inside a circle), followed by 5 bubbles labeled A, B, C, D, E. One bubble is filled/darkened by the student.
-
-Return ONLY a JSON object like: {"q": 3, "answer": "B"}
-- "q" is the question number inside the circle on the left
-- "answer" is the filled/darkened bubble letter (A/B/C/D/E), or "BLANK" if none are filled
-No other text, no markdown, no explanation.`}
-              ]}]
-            })
-          });
-          const data=await resp.json();
-          const txt=(data.content?.[0]?.text||'').trim();
-          let q=scanIdx+1, ans='BLANK';
-          try {
-            const clean=txt.replace(/```json|```/g,'').trim();
-            const parsed=JSON.parse(clean);
-            if(parsed.q&&Number.isInteger(parsed.q)) q=parsed.q;
-            const a=(parsed.answer||'').toUpperCase().replace(/[^ABCDE]/g,'');
-            ans=(['A','B','C','D','E'].includes(a)?a:'BLANK');
-          } catch(e){ 
-            const a=txt.toUpperCase().replace(/[^ABCDE]/g,'');
-            ans=(['A','B','C','D','E'].includes(a)?a:'BLANK');
-          }
-          setScanResult({answer:ans, q});
-          setConfirming(true);
-        } catch(e){ setScanResult({answer:'BLANK',q:scanIdx+1,err:e.message}); setConfirming(true); }
-        setScanAnalyzing(false);
-      };
-      reader.readAsDataURL(blob);
-    },'image/jpeg',0.92);
-  }
-
-  function confirmAnswer(ans, qNum) {
-    const idx = (qNum!=null && qNum>=1 && qNum<=total) ? qNum-1 : scanIdx;
-    const newAnswers=[...scanAnswers];
-    newAnswers[idx]=ans;
-    setScanAnswers(newAnswers);
-    setCaptured(null); setConfirming(false); setScanResult(null);
-    // Move to next unanswered question
-    const nextEmpty = newAnswers.findIndex((a,i)=>i>idx&&!a);
-    const next = nextEmpty>=0 ? nextEmpty : newAnswers.findIndex(a=>!a);
-    if(next<0 || newAnswers.every(a=>a)) {
-      stopCam();
-      onDone(newAnswers);
-    } else {
-      setScanIdx(next);
-      setTimeout(()=>{ if(videoRef.current&&stream) videoRef.current.srcObject=stream; },50);
-    }
-  }
-
-  function goBack() {
-    if(scanIdx>0) { setScanIdx(scanIdx-1); setCaptured(null); setConfirming(false); setScanResult(null); }
-  }
-
-  function cancel() { stopCam(); onCancel(); }
-
-  const progress = Math.round((scanIdx/total)*100);
-  const key = exam.sec1Key?.[scanIdx]||'?';
-
-  return (
-    <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.08)',marginBottom:16}}>
-      {/* Header */}
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
-        <div>
-          <span style={{fontWeight:900,fontSize:18,color:'#dc2626'}}>D{scanIdx+1}</span>
-          <span style={{fontSize:13,color:'#94a3b8',marginLeft:8}}>/ {total} дасгал</span>
-        </div>
-        <div style={{display:'flex',gap:6,alignItems:'center'}}>
-          {scanIdx>0&&<button onClick={goBack} style={{padding:'6px 12px',background:'#f1f5f9',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer',color:'#64748b'}}>{t.back}</button>}
-          <button onClick={cancel} style={{padding:'6px 12px',background:'#fee2e2',border:'none',borderRadius:8,fontWeight:700,fontSize:12,cursor:'pointer',color:'#dc2626'}}>Цуцлах</button>
-        </div>
-      </div>
-
-      {/* Progress bar */}
-      <div style={{background:'#f1f5f9',borderRadius:99,height:8,marginBottom:16}}>
-        <div style={{width:progress+'%',background:'linear-gradient(90deg,#dc2626,#f97316)',height:8,borderRadius:99,transition:'width .3s'}}/>
-      </div>
-
-      {/* Already answered summary */}
-      <div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:14}}>
-        {Array.from({length:total},(_,i)=>{
-          const a=scanAnswers[i];
-          const isCur=i===scanIdx;
-          return <div key={i} style={{
-            width:28,height:28,borderRadius:6,
-            background:isCur?'#dc2626':a?'#dcfce7':'#f1f5f9',
-            border:isCur?'2px solid #dc2626':'2px solid transparent',
-            color:isCur?'white':a?'#16a34a':'#94a3b8',
-            fontSize:11,fontWeight:700,display:'flex',alignItems:'center',justifyContent:'center',
-            cursor:'pointer'
-          }} onClick={()=>{if(!confirming){setScanIdx(i);setCaptured(null);setScanResult(null);}}}>
-            {a||i+1}
-          </div>;
-        })}
-      </div>
-
-      {camErr&&<div style={{color:'#dc2626',fontSize:13,background:'#fef2f2',padding:10,borderRadius:8,marginBottom:12}}>{camErr}</div>}
-
-      {/* Camera — always visible */}
-      <div style={{position:'relative',marginBottom:12,borderRadius:12,overflow:'hidden',background:'#000',display:confirming?'none':'block'}}>
-        <video ref={videoRef} autoPlay playsInline style={{width:'100%',maxHeight:300,display:'block'}}/>
-        <div style={{position:'absolute',inset:0,display:'flex',alignItems:'center',justifyContent:'center',pointerEvents:'none'}}>
-          <div style={{width:'88%',height:'11%',border:'3px solid rgba(220,38,38,.9)',borderRadius:6,boxShadow:'0 0 0 9999px rgba(0,0,0,.55)'}}/>
-        </div>
-        <div style={{position:'absolute',bottom:8,left:0,right:0,textAlign:'center'}}>
-          <span style={{background:'rgba(0,0,0,.7)',color:'white',fontSize:12,padding:'4px 12px',borderRadius:99,fontWeight:700}}>
-            1 мөр — дугаар + 5 bubble хүрээнд байрлуул
-          </span>
-        </div>
-      </div>
-
-      {/* Capture button */}
-      {!confirming&&(
-        <button onClick={captureFrame} disabled={scanAnalyzing||!!camErr}
-          style={{width:'100%',padding:16,marginBottom:8,background:scanAnalyzing?'#94a3b8':'linear-gradient(135deg,#dc2626,#f97316)',
-            color:'white',border:'none',borderRadius:12,fontWeight:800,fontSize:16,cursor:'pointer',
-            display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-          {scanAnalyzing?<><Spinner/> AI шинжилж байна...</>:<>📸 D{scanIdx+1} зураг авах</>}
-        </button>
-      )}
-
-      {/* Confirm step — shown after capture */}
-      {confirming&&captured&&(
-        <div>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12,alignItems:'start'}}>
-            <div>
-              <div style={{fontSize:11,color:'#94a3b8',fontWeight:600,marginBottom:4}}>Авсан зураг</div>
-              <img src={`data:image/jpeg;base64,${captured}`} style={{width:'100%',borderRadius:8,border:'2px solid #e2e8f0'}}/>
-            </div>
-            <div style={{display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:6,paddingTop:12}}>
-              <div style={{fontSize:12,color:'#64748b'}}>Таасан дугаар:</div>
-              <div style={{fontSize:28,fontWeight:900,color:'#7c3aed'}}>D{scanResult?.q}</div>
-              <div style={{fontSize:12,color:'#64748b',marginTop:4}}>Таасан хариулт:</div>
-              <div style={{fontSize:52,fontWeight:900,color:scanResult?.answer==='BLANK'?'#94a3b8':'#dc2626',lineHeight:1}}>
-                {scanResult?.answer==='BLANK'?'—':scanResult?.answer}
-              </div>
-            </div>
-          </div>
-          <div style={{fontSize:13,color:'#64748b',marginBottom:6,textAlign:'center'}}>Буруу бол засаарай:</div>
-          <div style={{display:'flex',gap:6,justifyContent:'center',marginBottom:10}}>
-            {[...SEC1_CHOICES,'BLANK'].map(c=>(
-              <button key={c} onClick={()=>{ setScanResult(r=>({...r,answer:c})); }}
-                style={{width:42,height:42,borderRadius:10,border:'none',fontWeight:800,fontSize:14,cursor:'pointer',
-                  background:scanResult?.answer===c?'#dc2626':'#f1f5f9',
-                  color:scanResult?.answer===c?'white':'#374151'}}>
-                {c==='BLANK'?'—':c}
-              </button>
-            ))}
-          </div>
-          <button onClick={()=>confirmAnswer(scanResult?.answer==='BLANK'?'':scanResult?.answer, scanResult?.q)}
-            style={{width:'100%',padding:14,background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',border:'none',borderRadius:12,fontWeight:800,fontSize:15,cursor:'pointer'}}>
-            ✓ D{scanResult?.q} = {scanResult?.answer==='BLANK'?'Хоосон':scanResult?.answer} → Бүртгэх
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function UploadPage({exam, students, onAddStudent}) {
+function UploadPage({exam, students, onAddStudent, onNavigate}) {
   const [name,setName]=useState('');
   const [code,setCode]=useState('');
   const [mode,setMode]=useState(null); // null | 'ai' | 'manual'
@@ -1884,16 +1596,10 @@ function UploadPage({exam, students, onAddStudent}) {
   const [scored,setScored]=useState(null);
   const [showCamera,setShowCamera]=useState(false);
   const [showOverlay,setShowOverlay]=useState(false);
-  // Scan mode: one bubble per question
-  const [scanMode,setScanMode]=useState(false);
-  const [scanIdx,setScanIdx]=useState(0); // current question index
-  const [scanAnswers,setScanAnswers]=useState([]); // collected answers
-  const [scanResult,setScanResult]=useState(null); // last scan result
-  const [scanAnalyzing,setScanAnalyzing]=useState(false);
   const fileRef=useRef();
 
   if (!exam) return (
-    <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px',textAlign:'center',color:'#94a3b8',paddingTop:80}}>
+    <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px',textAlign:'center',color:'#9ca3af',paddingTop:80}}>
       <div style={{fontSize:16,fontWeight:600}}>Эхлээд шалгалт сонгоно уу</div>
     </div>
   );
@@ -1966,46 +1672,45 @@ function UploadPage({exam, students, onAddStudent}) {
   return (
     <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px'}}>
       {/* Student info */}
-      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.08)',marginBottom:16}}>
-        <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:16}}>Сурагчийн мэдээлэл</div>
+      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+        <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>Сурагчийн мэдээлэл</div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12}}>
           <div>
             <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>Нэр</label>
             <input value={name} onChange={e=>setName(e.target.value)} placeholder="Сурагчийн нэр"
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e2e8f0',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
+              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
           </div>
           <div>
             <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>Код / ID</label>
             <input value={code} onChange={e=>setCode(e.target.value)} placeholder="Сурагчийн код"
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e2e8f0',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
+              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
           </div>
         </div>
       </div>
 
       {/* Mode selector */}
       {!scored&&(
-        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.08)',marginBottom:16}}>
-          <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:16}}>Хариулт оруулах арга</div>
+        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+          <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>Хариулт оруулах арга</div>
           <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12}}>
             <button onClick={()=>setMode('ai')}
-              style={{padding:'22px 16px',background:mode==='ai'?'linear-gradient(135deg,#7c3aed,#a855f7)':'#f8fafc',
-                color:mode==='ai'?'white':'#374151',border:'2px solid '+(mode==='ai'?'#7c3aed':'#e2e8f0'),
+              style={{padding:'22px 16px',background:mode==='ai'?'#7B52EE':'#f9fafb',
+                color:mode==='ai'?'white':'#374151',border:'2px solid '+(mode==='ai'?'#7B52EE':'#e5e7eb'),
                 borderRadius:14,fontWeight:700,fontSize:15,cursor:'pointer',textAlign:'center'}}>
-              <div style={{display:'flex',justifyContent:'center',marginBottom:6}}><Ico d='M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z' size={28} color='#7c3aed'/></div>
+              <div style={{display:'flex',justifyContent:'center',marginBottom:6}}><Ico d='M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z' size={28} color='#7B52EE'/></div>
               AI шинжлэх
               <div style={{fontSize:12,fontWeight:400,marginTop:4,opacity:.8}}>Бүтэн хуудас нэг зураг</div>
             </button>
-            <button onClick={()=>{setScanMode(true);setScanIdx(0);setScanAnswers(Array(exam.sec1Count).fill(''));setScanResult(null);setMode('scan');}}
-              style={{padding:'22px 16px',background:mode==='scan'?'linear-gradient(135deg,#dc2626,#f97316)':'#f8fafc',
-                color:mode==='scan'?'white':'#374151',border:'2px solid '+(mode==='scan'?'#dc2626':'#e2e8f0'),
-                borderRadius:14,fontWeight:700,fontSize:15,cursor:'pointer',textAlign:'center'}}>
-              <div style={{display:'flex',justifyContent:'center',marginBottom:6}}><Ico d='M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.776 48.776 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z' size={28} color='#16a34a'/></div>
-              Нэг нэгээр
-              <div style={{fontSize:12,fontWeight:400,marginTop:4,opacity:.8}}>Дасгал бүрийг тусад нь скан</div>
+            <button onClick={()=>onNavigate&&onNavigate('scan')}
+              style={{padding:'22px 16px',background:'linear-gradient(135deg,#FFD966,#FFC93C)',color:'#5a2b00',border:'2px solid #FFC113',
+                borderRadius:14,fontWeight:800,fontSize:15,cursor:'pointer',textAlign:'center'}}>
+              <div style={{display:'flex',justifyContent:'center',marginBottom:6}}><Ico d={['M3 7V5a2 2 0 0 1 2-2h2','M17 3h2a2 2 0 0 1 2 2v2','M21 17v2a2 2 0 0 1-2 2h-2','M7 21H5a2 2 0 0 1-2-2v-2','M7 12h10']} size={28} color='#5a2b00' sw={2}/></div>
+              Камераар (OMR)
+              <div style={{fontSize:12,fontWeight:500,marginTop:4,opacity:.85}}>CyberMath хуудсыг AI-гүй, шууд уншина</div>
             </button>
             <button onClick={startManual}
-              style={{padding:'22px 16px',background:mode==='manual'?'linear-gradient(135deg,#0369a1,#0ea5e9)':'#f8fafc',
-                color:mode==='manual'?'white':'#374151',border:'2px solid '+(mode==='manual'?'#0369a1':'#e2e8f0'),
+              style={{padding:'22px 16px',background:mode==='manual'?'linear-gradient(135deg,#0369a1,#0ea5e9)':'#f9fafb',
+                color:mode==='manual'?'white':'#374151',border:'2px solid '+(mode==='manual'?'#0369a1':'#e5e7eb'),
                 borderRadius:14,fontWeight:700,fontSize:15,cursor:'pointer',textAlign:'center'}}>
               <div style={{display:'flex',justifyContent:'center',marginBottom:6}}><Ico d='M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10' size={28} color='#f97316'/></div>
               Гараар оруулах
@@ -2015,79 +1720,19 @@ function UploadPage({exam, students, onAddStudent}) {
         </div>
       )}
 
-      {/* Scan mode — one bubble per question */}
-      {mode==='scan'&&!scored&&(
-        <ScanModePanel
-          exam={exam}
-          scanIdx={scanIdx}
-          setScanIdx={setScanIdx}
-          scanAnswers={scanAnswers}
-          setScanAnswers={setScanAnswers}
-          scanResult={scanResult}
-          setScanResult={setScanResult}
-          scanAnalyzing={scanAnalyzing}
-          setScanAnalyzing={setScanAnalyzing}
-          onDone={(answers)=>{
-            // Build scored from scan answers
-            const sec1Results=(exam.sec1Key||[]).map((key,i)=>{
-              const sel=answers[i]||'BLANK';
-              const pts=exam.sec1Scores?.[i]||1;
-              if(sel==='BLANK'){return{q:i+1,sel:'BLANK',key,st:'blank',pts:0,max:pts};}
-              return sel===key?{q:i+1,sel,key,st:'ok',pts,max:pts}:{q:i+1,sel,key,st:'ng',pts:0,max:pts};
-            });
-            const rawEarned=sec1Results.reduce((s,r)=>s+r.pts,0);
-            const rawMax=sec1Results.reduce((s,r)=>s+r.max,0);
-            const scaled=rawMax>0?Math.round(rawEarned/rawMax*1000)/10:0;
-            const correct=sec1Results.filter(r=>r.st==='ok').length;
-            const wrong=sec1Results.filter(r=>r.st!=='ok').length;
-            const blank=sec1Results.filter(r=>r.st==='blank').length;
-            setScored({correct,wrong,blank,rawEarned,rawMax,scaled,grade:eyeshGrade(scaled),sec1Results,sec2Results:{},needsReview:false});
-          }}
-          onCancel={()=>{setMode(null);setScanMode(false);setScanIdx(0);setScanAnswers([]);setScanResult(null);}}
-        />
-      )}
-
-      {/* Scan mode — one bubble per question */}
-      {mode==='scan'&&!scored&&(
-        <ScanModePanel
-          exam={exam}
-          scanIdx={scanIdx}
-          setScanIdx={setScanIdx}
-          scanAnswers={scanAnswers}
-          setScanAnswers={setScanAnswers}
-          scanResult={scanResult}
-          setScanResult={setScanResult}
-          scanAnalyzing={scanAnalyzing}
-          setScanAnalyzing={setScanAnalyzing}
-          onDone={(answers)=>{
-            const sec1Results=(exam.sec1Key||[]).map((key,i)=>{
-              const sel=answers[i]||'BLANK';
-              const pts=exam.sec1Scores?.[i]||1;
-              if(sel==='BLANK') return{q:i+1,sel:'BLANK',key,st:'blank',pts:0,max:pts};
-              return sel===key?{q:i+1,sel,key,st:'ok',pts,max:pts}:{q:i+1,sel,key,st:'ng',pts:0,max:pts};
-            });
-            const rawEarned=sec1Results.reduce((s,r)=>s+r.pts,0);
-            const rawMax=sec1Results.reduce((s,r)=>s+r.max,0);
-            const scaled=rawMax>0?Math.round(rawEarned/rawMax*1000)/10:0;
-            const correct=sec1Results.filter(r=>r.st==='ok').length;
-            const wrong=sec1Results.filter(r=>r.st!=='ok').length;
-            const blank=sec1Results.filter(r=>r.st==='blank').length;
-            setScored({correct,wrong,blank,rawEarned,rawMax,scaled,grade:eyeshGrade(scaled),sec1Results,sec2Results:{},needsReview:false});
-          }}
-          onCancel={()=>{setMode(null);setScanMode(false);setScanIdx(0);setScanAnswers([]);setScanResult(null);}}
-        />
-      )}
-
       {/* AI mode — image upload */}
       {mode==='ai'&&!scored&&(
-        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.08)',marginBottom:16}}>
-          <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:16}}>Хариулт хуудасны зураг</div>
+        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+          <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:8}}>Хариулт хуудасны зураг</div>
+          <div style={{fontSize:12.5,color:'#7a4b00',background:'#fff7e0',border:'1px solid #fde68a',borderRadius:10,padding:'8px 12px',marginBottom:14}}>
+            AI уншилт алдаа гаргаж болзошгүй тул дасгал бүрийг шалгаж баталгаажуулна уу. 100% найдвартай уншихын тулд «Хуудас хэвлэх»-ээр CyberMath хуудас хэвлээд «Камераар (OMR)» ашиглана уу.
+          </div>
           {showCamera&&<CameraCapture onCapture={(data,mime)=>{setImgData(data);setImgMime(mime);setShowCamera(false);setDet(null);setScored(null);}} onClose={()=>setShowCamera(false)}/>}
           {!imgData?(
             <div>
               <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:10,marginBottom:10}}>
                 <button onClick={()=>setShowCamera(true)}
-                  style={{padding:'18px',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>
+                  style={{padding:'18px',background:'#7B52EE',color:'white',border:'none',borderRadius:12,fontWeight:700,fontSize:14,cursor:'pointer'}}>
                   📷 Camera
                 </button>
                 <button onClick={()=>fileRef.current.click()}
@@ -2108,25 +1753,25 @@ function UploadPage({exam, students, onAddStudent}) {
               </div>
               {scored&&(
                 <button onClick={()=>setShowOverlay(v=>!v)}
-                  style={{width:'100%',marginBottom:8,padding:'10px',background:showOverlay?'#dcfce7':'#f1f5f9',border:`2px solid ${showOverlay?'#16a34a':'#e2e8f0'}`,borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer',color:showOverlay?'#16a34a':'#64748b'}}>
+                  style={{width:'100%',marginBottom:8,padding:'10px',background:showOverlay?'#dcfce7':'#f3f4f6',border:`2px solid ${showOverlay?'#16a34a':'#e5e7eb'}`,borderRadius:10,fontWeight:700,fontSize:13,cursor:'pointer',color:showOverlay?'#16a34a':'#6b7280'}}>
                   {showOverlay?'Overlay харуулж байна — нуух':'Зураг дээр overlay харах'}
                 </button>
               )}
               {!scored&&<div style={{display:'flex',gap:8}}>
                 <button onClick={handleAnalyze} disabled={analyzing}
-                  style={{flex:1,padding:'12px',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',border:'none',borderRadius:10,fontWeight:700,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+                  style={{flex:1,padding:'12px',background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontWeight:700,fontSize:14,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
                   {analyzing&&<Spinner/>} AI-аар Шинжлэх
                 </button>
                 <button onClick={()=>{setImgData(null);setDet(null);setScored(null);}}
-                  style={{padding:'12px 20px',background:'#fee2e2',color:'#dc2626',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Устгах</button>
+                  style={{padding:'12px 20px',background:'#fdecec',color:'#b3261e',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Устгах</button>
               </div>}
               {scored&&<div style={{display:'flex',gap:8}}>
                 <button onClick={()=>{setImgData(null);setDet(null);setScored(null);setShowOverlay(false);}}
-                  style={{padding:'12px 20px',background:'#fee2e2',color:'#dc2626',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Зураг устгах</button>
+                  style={{padding:'12px 20px',background:'#fdecec',color:'#b3261e',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>Зураг устгах</button>
               </div>}
             </div>
           )}
-          {err&&<div style={{color:'#dc2626',fontSize:13,background:'#fef2f2',padding:'10px 14px',borderRadius:8,border:'1px solid #fecaca',marginTop:10}}>
+          {err&&<div style={{color:'#b3261e',fontSize:13,background:'#fdecec',padding:'10px 14px',borderRadius:8,border:'1px solid #f6c9c9',marginTop:10}}>
             <pre style={{margin:0,whiteSpace:'pre-wrap',wordBreak:'break-all'}}>{err}</pre>
           </div>}
         </div>
@@ -2225,36 +1870,36 @@ function RatingPage({exams, students, dark:d=false}) {
     return {cls, members, clsAvg, count:members.length};
   }).filter(g=>g.count>0).sort((a,b)=>b.clsAvg-a.clsAvg);
 
-  const bg = d?'#1e293b':'white';
-  const borderC = d?'#334155':'#e2e8f0';
-  const textC = d?'#f1f5f9':'#1e293b';
-  const mutedC = d?'#94a3b8':'#64748b';
-  const rowBg = d?'#0f172a':'#f8fafc';
+  const bg = d?'#1c1f2a':'white';
+  const borderC = d?'#2a2e38':'#e5e7eb';
+  const textC = d?'#f3f4f6':'#1c1f2a';
+  const mutedC = d?'#9ca3af':'#6b7280';
+  const rowBg = d?'#0f1115':'#f9fafb';
 
   return (
     <div style={{maxWidth:1000,margin:'0 auto',padding:'24px 20px'}}>
       {/* Header */}
-      <div style={{background:'linear-gradient(135deg,#7c3aed,#a855f7)',borderRadius:20,padding:'24px 28px',color:'white',marginBottom:20}}>
-        <div style={{fontSize:11,letterSpacing:3,opacity:.7,marginBottom:4}}>EYESH CHECKER</div>
+      <div style={{background:'white',border:'1px solid #e5e7eb',borderRadius:20,padding:'20px 22px',color:'#1c1f2a',marginBottom:20}}>
+        <div style={{fontSize:11,letterSpacing:2,opacity:.7,marginBottom:4}}>CYBERMATH · ЭЕШ</div>
         <div style={{fontSize:26,fontWeight:900}}>Рейтинг</div>
         <div style={{opacity:.8,fontSize:13,marginTop:4}}>Судлагдахуунаар, кодоор эрэмбэлсэн</div>
       </div>
 
       {/* Subject filter */}
-      <div style={{background:bg,borderRadius:14,padding:'14px 16px',marginBottom:12,boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
+      <div style={{background:bg,borderRadius:14,padding:'14px 16px',marginBottom:12,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
         <div style={{fontSize:11,fontWeight:700,color:mutedC,marginBottom:8,letterSpacing:1}}>СУДЛАГДАХУУН</div>
         <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
           <button onClick={()=>setFilterSubject('all')}
             style={{padding:'6px 14px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',
-              background:filterSubject==='all'?'#7c3aed':(d?'#334155':'#f1f5f9'),
-              color:filterSubject==='all'?'white':(d?'#e2e8f0':'#374151')}}>
+              background:filterSubject==='all'?'#7B52EE':(d?'#2a2e38':'#f3f4f6'),
+              color:filterSubject==='all'?'white':(d?'#e5e7eb':'#374151')}}>
             Бүгд
           </button>
           {allSubjects.map(s=>(
             <button key={s} onClick={()=>setFilterSubject(s)}
               style={{padding:'6px 14px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',
-                background:filterSubject===s?'#7c3aed':(d?'#334155':'#f1f5f9'),
-                color:filterSubject===s?'white':(d?'#e2e8f0':'#374151')}}>
+                background:filterSubject===s?'#7B52EE':(d?'#2a2e38':'#f3f4f6'),
+                color:filterSubject===s?'white':(d?'#e5e7eb':'#374151')}}>
               {s}
             </button>
           ))}
@@ -2263,13 +1908,13 @@ function RatingPage({exams, students, dark:d=false}) {
 
       {/* Class accordion filter */}
       {allClasses.length>0&&(
-        <div style={{background:bg,borderRadius:14,padding:'14px 16px',marginBottom:16,boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
+        <div style={{background:bg,borderRadius:14,padding:'14px 16px',marginBottom:16,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontSize:11,fontWeight:700,color:mutedC,marginBottom:8,letterSpacing:1}}>АНГИ</div>
           <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
             <button onClick={()=>{setFilterClass('all');setOpenClass(null);}}
               style={{padding:'6px 14px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',
-                background:filterClass==='all'?'#dc2626':(d?'#334155':'#f1f5f9'),
-                color:filterClass==='all'?'white':(d?'#e2e8f0':'#374151')}}>
+                background:filterClass==='all'?'#7B52EE':(d?'#2a2e38':'#f3f4f6'),
+                color:filterClass==='all'?'white':(d?'#e5e7eb':'#374151')}}>
               Бүгд
             </button>
             {allClasses.map(cls=>(
@@ -2278,9 +1923,9 @@ function RatingPage({exams, students, dark:d=false}) {
                   setFilterClass(cls);
                   setOpenClass(o=>o===cls?null:cls);
                 }}
-                style={{padding:'6px 14px',borderRadius:8,border:'1px solid '+(openClass===cls?'#dc2626':borderC),fontWeight:700,fontSize:12,cursor:'pointer',
-                  background:filterClass===cls?'#dc2626':(d?'#334155':'#f1f5f9'),
-                  color:filterClass===cls?'white':(d?'#e2e8f0':'#374151')}}>
+                style={{padding:'6px 14px',borderRadius:8,border:'1px solid '+(openClass===cls?'#7B52EE':borderC),fontWeight:700,fontSize:12,cursor:'pointer',
+                  background:filterClass===cls?'#7B52EE':(d?'#2a2e38':'#f3f4f6'),
+                  color:filterClass===cls?'white':(d?'#e5e7eb':'#374151')}}>
                 {cls} {openClass===cls?'▲':'▼'}
               </button>
             ))}
@@ -2296,7 +1941,7 @@ function RatingPage({exams, students, dark:d=false}) {
                   {grp.members.map((st,i)=>{
                     const g=eyeshGrade(st.avg);
                     return (
-                      <div key={st.code} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 10px',borderRadius:8,background:i%2===0?(d?'#1e293b':rowBg):(d?'#0f172a':'white')}}>
+                      <div key={st.code} style={{display:'flex',alignItems:'center',gap:10,padding:'7px 10px',borderRadius:8,background:i%2===0?(d?'#1c1f2a':rowBg):(d?'#0f1115':'white')}}>
                         <span style={{minWidth:24,fontSize:12,fontWeight:800,color:mutedC}}>{i+1}</span>
                         <span style={{flex:1,fontSize:13,fontWeight:700,color:textC,fontFamily:'monospace'}}>{st.code}</span>
                         {st.subjectAvgs.map(sa=>(
@@ -2318,7 +1963,7 @@ function RatingPage({exams, students, dark:d=false}) {
       )}
 
       {/* Main ranked list */}
-      <div style={{background:bg,borderRadius:14,boxShadow:'0 1px 4px rgba(0,0,0,.08)',overflow:'hidden'}}>
+      <div style={{background:bg,borderRadius:14,boxShadow:'0 1px 4px rgba(17,24,39,.06)',overflow:'hidden'}}>
         {ranked.length===0
           ? <div style={{textAlign:'center',padding:60,color:mutedC}}>Өгөгдөл байхгүй</div>
           : ranked.map((st,i)=>{
@@ -2328,7 +1973,7 @@ function RatingPage({exams, students, dark:d=false}) {
                 <div key={st.code} style={{
                   display:'flex',alignItems:'center',gap:12,padding:'11px 18px',
                   borderBottom:'1px solid '+borderC,
-                  background:i===0?(d?'#2d1f00':'#fffbeb'):i===1?(d?'#1a2030':'#f8fafc'):i===2?(d?'#271a0a':'#fef3e2'):bg
+                  background:i===0?(d?'#2d1f00':'#fffbeb'):i===1?(d?'#1a2030':'#f9fafb'):i===2?(d?'#271a0a':'#fef3e2'):bg
                 }}>
                   <div style={{minWidth:32,textAlign:'center'}}>
                     {isMedal
@@ -2366,7 +2011,7 @@ function RatingPage({exams, students, dark:d=false}) {
 
 // ── Board Page ────────────────────────────────────────────
 function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, dark:d=false}) {
-  if (!exam) return <div style={{textAlign:'center',padding:80,color:'#94a3b8',fontWeight:600}}>Шалгалт сонгоно уу</div>;
+  if (!exam) return <div style={{textAlign:'center',padding:80,color:'#9ca3af',fontWeight:600}}>Шалгалт сонгоно уу</div>;
   const sorted=[...students].sort((a,b)=>b.scaled-a.scaled);
   const [pdfOpen, setPdfOpen] = useState(false);
   // ── ZipGrade CSV import ──
@@ -2700,7 +2345,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
   return (
     <div style={{maxWidth:1200,margin:'0 auto',padding:'24px 20px'}}>
       <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12,flexWrap:'wrap',gap:8}}>
-        <h1 style={{margin:0,fontSize:22,fontWeight:800,color:d?'#f1f5f9':'#1e293b'}}>{exam.title} — Жагсаалт</h1>
+        <h1 style={{margin:0,fontSize:22,fontWeight:800,color:d?'#f3f4f6':'#1c1f2a'}}>{exam.title} — Жагсаалт</h1>
         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
           <button onClick={()=>setZipOpen(true)} style={{padding:'10px 16px',background:'linear-gradient(135deg,#0369a1,#0284c7)',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
             📥 ZipGrade CSV
@@ -2712,24 +2357,24 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
           <div style={{position:'relative',display:'inline-block'}}>
             <button
               onClick={()=>setPdfOpen(o=>!o)}
-              style={{padding:'10px 16px',background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
+              style={{padding:'10px 16px',background:'#7B52EE',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',gap:6}}>
               PDF бөөнөөр {pdfOpen?'↑':'↓'}
             </button>
             {pdfOpen&&(
-              <div style={{position:'absolute',right:0,top:'100%',marginTop:4,background:d?'#1e293b':'white',border:'1px solid '+(d?'#334155':'#e2e8f0'),borderRadius:10,boxShadow:'0 4px 20px rgba(0,0,0,.12)',zIndex:50,minWidth:200,overflow:'hidden'}}>
-                <div style={{padding:'8px 16px',fontSize:11,color:'#94a3b8',fontWeight:700,borderBottom:'1px solid '+(d?'#334155':'#f1f5f9'),letterSpacing:1}}>АНГИ СОНГОХ</div>
+              <div style={{position:'absolute',right:0,top:'100%',marginTop:4,background:d?'#1c1f2a':'white',border:'1px solid '+(d?'#2a2e38':'#e5e7eb'),borderRadius:10,boxShadow:'0 4px 20px rgba(0,0,0,.12)',zIndex:50,minWidth:200,overflow:'hidden'}}>
+                <div style={{padding:'8px 16px',fontSize:11,color:'#9ca3af',fontWeight:700,borderBottom:'1px solid '+(d?'#2a2e38':'#f3f4f6'),letterSpacing:1}}>АНГИ СОНГОХ</div>
                 <button onClick={()=>{exportClassPDFs('__all__');setPdfOpen(false);}}
-                  style={{display:'block',width:'100%',padding:'10px 16px',background:'none',border:'none',textAlign:'left',cursor:'pointer',fontSize:13,fontWeight:700,color:d?'#f1f5f9':'#1e293b',borderBottom:'1px solid '+(d?'#334155':'#f1f5f9')}}>
+                  style={{display:'block',width:'100%',padding:'10px 16px',background:'none',border:'none',textAlign:'left',cursor:'pointer',fontSize:13,fontWeight:700,color:d?'#f3f4f6':'#1c1f2a',borderBottom:'1px solid '+(d?'#2a2e38':'#f3f4f6')}}>
                   Бүгд ({sorted.length} сурагч)
                 </button>
                 {classes.map(cls=>(
                   <button key={cls} onClick={()=>{exportClassPDFs(cls);setPdfOpen(false);}}
-                    style={{display:'block',width:'100%',padding:'10px 16px',background:'none',border:'none',textAlign:'left',cursor:'pointer',fontSize:13,color:d?'#e2e8f0':'#374151',borderBottom:'1px solid '+(d?'#334155':'#f1f5f9')}}>
+                    style={{display:'block',width:'100%',padding:'10px 16px',background:'none',border:'none',textAlign:'left',cursor:'pointer',fontSize:13,color:d?'#e5e7eb':'#374151',borderBottom:'1px solid '+(d?'#2a2e38':'#f3f4f6')}}>
                     {cls} ({sorted.filter(s=>(s.class||'')===cls).length} сурагч)
                   </button>
                 ))}
                 <button onClick={()=>setPdfOpen(false)}
-                  style={{display:'block',width:'100%',padding:'8px 16px',background:'none',border:'none',textAlign:'center',cursor:'pointer',fontSize:12,color:'#94a3b8'}}>
+                  style={{display:'block',width:'100%',padding:'8px 16px',background:'none',border:'none',textAlign:'center',cursor:'pointer',fontSize:12,color:'#9ca3af'}}>
                   Хаах
                 </button>
               </div>
@@ -2738,14 +2383,35 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
         </div>
       </div>
       {sorted.length===0?(
-        <div style={{background:d?'#1e293b':'white',borderRadius:12,padding:'44px',textAlign:'center',color:'#94a3b8'}}>Одоохондоо сурагч байхгүй</div>
+        <div style={{background:d?'#1c1f2a':'white',borderRadius:12,padding:'44px',textAlign:'center',color:'#9ca3af'}}>Одоохондоо сурагч байхгүй</div>
       ):(
-        <div style={{background:d?'#1e293b':'white',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
+        <>
+        <div className="cm-card cm-only-phone" style={{padding:0,overflow:'hidden'}}>
+          {sorted.map((s,i)=>{
+            const g=eyeshGrade(s.scaled);
+            return (
+              <div key={s.id} className="cm-srow">
+                <div className="cm-srow-top">
+                  <span className="cm-srank">{i+1}</span>
+                  <div className="cm-sinfo"><b>{s.name}</b><span>{[s.class,s.code,s.version&&s.version!=='—'?'Хув. '+s.version:''].filter(Boolean).join(' · ')||'—'}</span></div>
+                  <div className="cm-sscore" style={{color:g.c}}><b>{s.scaled}</b><span>{g.g} · {g.l}</span></div>
+                </div>
+                <div className="cm-schips"><i className="ok">✓ {s.correct} зөв</i><i className="ng">✗ {s.wrong} буруу</i><i>○ {s.blank} хоосон</i></div>
+                <div className="cm-sacts">
+                  <button className="e" onClick={()=>openEdit(s,'sec1')}>✏️ Засах</button>
+                  <button className="p" onClick={()=>exportStudentPDF(s)}>PDF</button>
+                  <button className="x" onClick={()=>{const c=prompt(s.name+' устгахын тулд УСТГАХ гэж бичнэ үү:');if(c==='УСТГАХ')onDeleteStudent(s.id);}}>Устгах</button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="cm-only-desk" style={{background:d?'#1c1f2a':'white',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <table style={{width:'100%',borderCollapse:'collapse'}}>
             <thead>
-              <tr style={{background:d?'#0f172a':'#f8fafc',borderBottom:'2px solid '+(d?'#334155':'#e2e8f0')}}>
+              <tr style={{background:d?'#0f1115':'#f9fafb',borderBottom:'2px solid '+(d?'#2a2e38':'#e5e7eb')}}>
                 {['#','Нэр','Код','Хув.','Зөв','Буруу','Хоосон','Гүйцэтгэл','Засах','PDF',''].map(h=>(
-                  <th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:12,fontWeight:700,color:'#64748b'}}>{h}</th>
+                  <th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:12,fontWeight:700,color:'#6b7280'}}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -2753,14 +2419,14 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
               {sorted.map((s,i)=>{
                 const g=eyeshGrade(s.scaled);
                 return (
-                  <tr key={s.id} style={{borderBottom:'1px solid '+(d?'#1e293b':'#f1f5f9'),background:d?'#1e293b':'white'}}>
-                    <td style={{padding:'10px 14px',fontSize:13,color:'#94a3b8'}}>{i+1}</td>
-                    <td style={{padding:'10px 14px',fontSize:14,fontWeight:700,color:d?'#f1f5f9':'#1e293b'}}>{s.name}</td>
-                    <td style={{padding:'10px 14px',fontSize:13,color:'#64748b'}}>{s.code}</td>
-                    <td style={{padding:'10px 14px',fontSize:13,color:d?'#94a3b8':'#64748b'}}>{s.version}</td>
+                  <tr key={s.id} style={{borderBottom:'1px solid '+(d?'#1c1f2a':'#f3f4f6'),background:d?'#1c1f2a':'white'}}>
+                    <td style={{padding:'10px 14px',fontSize:13,color:'#9ca3af'}}>{i+1}</td>
+                    <td style={{padding:'10px 14px',fontSize:14,fontWeight:700,color:d?'#f3f4f6':'#1c1f2a'}}>{s.name}</td>
+                    <td style={{padding:'10px 14px',fontSize:13,color:'#6b7280'}}>{s.code}</td>
+                    <td style={{padding:'10px 14px',fontSize:13,color:d?'#9ca3af':'#6b7280'}}>{s.version}</td>
                     <td style={{padding:'10px 14px',fontSize:13,color:'#16a34a',fontWeight:600}}>{s.correct}</td>
                     <td style={{padding:'10px 14px',fontSize:13,color:'#dc2626',fontWeight:600}}>{s.wrong}</td>
-                    <td style={{padding:'10px 14px',fontSize:13,color:'#94a3b8'}}>{s.blank}</td>
+                    <td style={{padding:'10px 14px',fontSize:13,color:'#9ca3af'}}>{s.blank}</td>
                     <td style={{padding:'10px 14px',fontSize:16,fontWeight:800,color:g.c}}>{s.scaled}%</td>
                     <td style={{padding:'10px 14px'}}>
                       <button onClick={()=>openEdit(s,'sec1')}
@@ -2772,7 +2438,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
                     </td>
                     <td style={{padding:'10px 14px'}}>
                       <button onClick={()=>{const c=prompt(s.name+' устгахын тулд УСТГАХ гэж бичнэ үү:');if(c==='УСТГАХ')onDeleteStudent(s.id);}}
-                        style={{padding:'3px 8px',background:'#fee2e2',border:'none',borderRadius:6,fontSize:11,color:'#dc2626',cursor:'pointer'}}>Устгах</button>
+                        style={{padding:'3px 8px',background:'#fdecec',border:'none',borderRadius:6,fontSize:11,color:'#b3261e',cursor:'pointer'}}>Устгах</button>
                     </td>
                   </tr>
                 );
@@ -2780,17 +2446,18 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
             </tbody>
           </table>
         </div>
+        </>
       )}
 
       {/* ── ZipGrade CSV import modal ── */}
       {zipOpen && (
         <div onClick={()=>!zipBusy&&setZipOpen(false)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,padding:20}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:d?'#1e293b':'white',borderRadius:14,padding:24,maxWidth:560,width:'100%',maxHeight:'90vh',overflow:'auto'}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:d?'#1c1f2a':'white',borderRadius:14,padding:24,maxWidth:560,width:'100%',maxHeight:'90vh',overflow:'auto'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:14}}>
-              <h2 style={{margin:0,fontSize:18,fontWeight:800,color:d?'#f1f5f9':'#1e293b'}}>📥 ZipGrade CSV оруулах</h2>
-              <button onClick={()=>!zipBusy&&setZipOpen(false)} style={{border:'none',background:'none',fontSize:22,cursor:'pointer',color:'#94a3b8'}}>×</button>
+              <h2 style={{margin:0,fontSize:18,fontWeight:800,color:d?'#f3f4f6':'#1c1f2a'}}>📥 ZipGrade CSV оруулах</h2>
+              <button onClick={()=>!zipBusy&&setZipOpen(false)} style={{border:'none',background:'none',fontSize:22,cursor:'pointer',color:'#9ca3af'}}>×</button>
             </div>
-            <div style={{fontSize:13,color:d?'#cbd5e1':'#64748b',marginBottom:16,lineHeight:1.6}}>
+            <div style={{fontSize:13,color:d?'#d1d5db':'#6b7280',marginBottom:16,lineHeight:1.6}}>
               ZipGrade-н <b>"Quiz Results CSV"</b> файлыг оруулна уу. Зөвхөн <b>1-р хэсэг (A–E)</b> автоматаар тооцогдоно. <b>2-р хэсгийг</b> сурагч бүрд "Sec2" товчоор гар оруулна.
               <ul style={{marginTop:8,paddingLeft:18,fontSize:12}}>
                 <li>Шаардлагатай багана: <code>Stu1, Stu2, ..., Stu{exam.sec1Count||36}</code></li>
@@ -2799,21 +2466,21 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
               </ul>
             </div>
             {!zipResult && !zipBusy && (
-              <label style={{display:'block',padding:30,border:'2px dashed '+(d?'#475569':'#cbd5e1'),borderRadius:10,textAlign:'center',cursor:'pointer',background:d?'#0f172a':'#f8fafc'}}>
+              <label style={{display:'block',padding:30,border:'2px dashed '+(d?'#4b5563':'#d1d5db'),borderRadius:10,textAlign:'center',cursor:'pointer',background:d?'#0f1115':'#f9fafb'}}>
                 <div style={{fontSize:32,marginBottom:6}}>📄</div>
-                <div style={{fontSize:14,fontWeight:700,color:d?'#f1f5f9':'#1e293b'}}>CSV файл сонгох</div>
-                <div style={{fontSize:12,color:'#94a3b8',marginTop:4}}>.csv файлыг энд дарж оруулна уу</div>
+                <div style={{fontSize:14,fontWeight:700,color:d?'#f3f4f6':'#1c1f2a'}}>CSV файл сонгох</div>
+                <div style={{fontSize:12,color:'#9ca3af',marginTop:4}}>.csv файлыг энд дарж оруулна уу</div>
                 <input type="file" accept=".csv,text/csv" style={{display:'none'}} onChange={e=>handleZipImport(e.target.files?.[0])} />
               </label>
             )}
-            {zipBusy && <div style={{textAlign:'center',padding:30,color:'#94a3b8'}}>Импортлож байна...</div>}
-            {zipErr && <div style={{padding:12,background:'#fee2e2',color:'#dc2626',borderRadius:8,marginTop:10,fontSize:13}}>{zipErr}</div>}
+            {zipBusy && <div style={{textAlign:'center',padding:30,color:'#9ca3af'}}>Импортлож байна...</div>}
+            {zipErr && <div style={{padding:12,background:'#fdecec',color:'#b3261e',borderRadius:8,marginTop:10,fontSize:13}}>{zipErr}</div>}
             {zipResult && (
               <div style={{marginTop:16}}>
                 <div style={{padding:14,background:'#dcfce7',color:'#166534',borderRadius:8,fontSize:14,fontWeight:700}}>
                   ✅ Амжилттай: {zipResult.imported} нэмэгдсэн · {zipResult.replaced} шинэчилсэн · {zipResult.skipped} алгассан
                 </div>
-                <div style={{fontSize:12,color:d?'#cbd5e1':'#64748b',marginTop:8}}>
+                <div style={{fontSize:12,color:d?'#d1d5db':'#6b7280',marginTop:8}}>
                   Нийт оноо: {zipResult.totalMax} (Sec1: {zipResult.sec1Max} + Sec2: {zipResult.sec2Max})
                 </div>
                 {zipResult.errors?.length>0 && (
@@ -2834,22 +2501,22 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
       {/* ── Student edit modal (Sec1 + Sec2) ── */}
       {editStu && (
         <div onClick={()=>!editBusy&&setEditStu(null)} style={{position:'fixed',inset:0,background:'rgba(0,0,0,.5)',display:'flex',alignItems:'center',justifyContent:'center',zIndex:100,padding:20}}>
-          <div onClick={e=>e.stopPropagation()} style={{background:d?'#1e293b':'white',borderRadius:14,padding:24,maxWidth:820,width:'100%',maxHeight:'90vh',overflow:'auto'}}>
+          <div onClick={e=>e.stopPropagation()} style={{background:d?'#1c1f2a':'white',borderRadius:14,padding:24,maxWidth:820,width:'100%',maxHeight:'90vh',overflow:'auto'}}>
             <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:10}}>
-              <h2 style={{margin:0,fontSize:18,fontWeight:800,color:d?'#f1f5f9':'#1e293b'}}>
-                ✏️ {editStu.name} <span style={{fontSize:12,color:'#94a3b8',fontWeight:500}}>({editStu.code})</span>
+              <h2 style={{margin:0,fontSize:18,fontWeight:800,color:d?'#f3f4f6':'#1c1f2a'}}>
+                ✏️ {editStu.name} <span style={{fontSize:12,color:'#9ca3af',fontWeight:500}}>({editStu.code})</span>
               </h2>
-              <button onClick={()=>!editBusy&&setEditStu(null)} style={{border:'none',background:'none',fontSize:22,cursor:'pointer',color:'#94a3b8'}}>×</button>
+              <button onClick={()=>!editBusy&&setEditStu(null)} style={{border:'none',background:'none',fontSize:22,cursor:'pointer',color:'#9ca3af'}}>×</button>
             </div>
             {/* Tabs */}
-            <div style={{display:'flex',gap:4,marginBottom:14,borderBottom:'1px solid '+(d?'#334155':'#e2e8f0')}}>
+            <div style={{display:'flex',gap:4,marginBottom:14,borderBottom:'1px solid '+(d?'#2a2e38':'#e5e7eb')}}>
               <button onClick={()=>setEditTab('sec1')}
-                style={{padding:'8px 16px',background:editTab==='sec1'?(d?'#1e40af':'#dbeafe'):'transparent',color:editTab==='sec1'?(d?'#dbeafe':'#1e40af'):(d?'#94a3b8':'#64748b'),border:'none',borderBottom:editTab==='sec1'?'2px solid #1e40af':'2px solid transparent',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+                style={{padding:'8px 16px',background:editTab==='sec1'?(d?'#1e40af':'#dbeafe'):'transparent',color:editTab==='sec1'?(d?'#dbeafe':'#1e40af'):(d?'#9ca3af':'#6b7280'),border:'none',borderBottom:editTab==='sec1'?'2px solid #1e40af':'2px solid transparent',fontSize:13,fontWeight:700,cursor:'pointer'}}>
                 1-р хэсэг (A–E)
               </button>
               {exam.useSec2 && (
                 <button onClick={()=>setEditTab('sec2')}
-                  style={{padding:'8px 16px',background:editTab==='sec2'?(d?'#1e40af':'#dbeafe'):'transparent',color:editTab==='sec2'?(d?'#dbeafe':'#1e40af'):(d?'#94a3b8':'#64748b'),border:'none',borderBottom:editTab==='sec2'?'2px solid #1e40af':'2px solid transparent',fontSize:13,fontWeight:700,cursor:'pointer'}}>
+                  style={{padding:'8px 16px',background:editTab==='sec2'?(d?'#1e40af':'#dbeafe'):'transparent',color:editTab==='sec2'?(d?'#dbeafe':'#1e40af'):(d?'#9ca3af':'#6b7280'),border:'none',borderBottom:editTab==='sec2'?'2px solid #1e40af':'2px solid transparent',fontSize:13,fontWeight:700,cursor:'pointer'}}>
                   2-р хэсэг (0–9)
                 </button>
               )}
@@ -2858,7 +2525,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
             {/* Section 1 */}
             {editTab==='sec1' && (
               <div>
-                <div style={{fontSize:12,color:d?'#cbd5e1':'#64748b',marginBottom:10}}>
+                <div style={{fontSize:12,color:d?'#d1d5db':'#6b7280',marginBottom:10}}>
                   Асуулт бүрд A/B/C/D/E эсвэл хоосон сонго.
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:8}}>
@@ -2866,17 +2533,17 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
                     const key = exam.sec1Key?.[i] || '';
                     const pts = exam.sec1Scores?.[i] || 1;
                     return (
-                      <div key={i} style={{padding:8,border:'1px solid '+(d?'#334155':'#e2e8f0'),borderRadius:8,background:d?'#0f172a':'#f8fafc',display:'flex',alignItems:'center',gap:6}}>
-                        <div style={{fontSize:11,fontWeight:700,color:d?'#cbd5e1':'#64748b',width:32}}>Q{i+1}</div>
+                      <div key={i} style={{padding:8,border:'1px solid '+(d?'#2a2e38':'#e5e7eb'),borderRadius:8,background:d?'#0f1115':'#f9fafb',display:'flex',alignItems:'center',gap:6}}>
+                        <div style={{fontSize:11,fontWeight:700,color:d?'#d1d5db':'#6b7280',width:32}}>Q{i+1}</div>
                         <div style={{display:'flex',gap:2,flex:1}}>
                           {['A','B','C','D','E'].map(c=>(
                             <button key={c} onClick={()=>setSec1Vals(p=>{const n=[...p];n[i]=n[i]===c?'':c;return n;})}
-                              style={{padding:'4px 6px',minWidth:24,border:'1px solid '+(d?'#475569':'#cbd5e1'),borderRadius:4,background:val===c?(c===key?'#16a34a':'#dc2626'):(d?'#1e293b':'white'),color:val===c?'white':(d?'#f1f5f9':'#1e293b'),fontSize:11,fontWeight:700,cursor:'pointer'}}>
+                              style={{padding:'4px 6px',minWidth:24,border:'1px solid '+(d?'#4b5563':'#d1d5db'),borderRadius:4,background:val===c?(c===key?'#16a34a':'#dc2626'):(d?'#1c1f2a':'white'),color:val===c?'white':(d?'#f3f4f6':'#1c1f2a'),fontSize:11,fontWeight:700,cursor:'pointer'}}>
                               {c}
                             </button>
                           ))}
                         </div>
-                        <div style={{fontSize:10,color:'#94a3b8',whiteSpace:'nowrap'}}>{key}·{pts}о</div>
+                        <div style={{fontSize:10,color:'#9ca3af',whiteSpace:'nowrap'}}>{key}·{pts}о</div>
                       </div>
                     );
                   })}
@@ -2887,13 +2554,13 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
             {/* Section 2 */}
             {editTab==='sec2' && (
               <div>
-                <div style={{fontSize:12,color:d?'#cbd5e1':'#64748b',marginBottom:10}}>
+                <div style={{fontSize:12,color:d?'#d1d5db':'#6b7280',marginBottom:10}}>
                   Сурагчийн оруулсан 0–9 цифрийг бичнэ үү. Хоосон үлдээвэл "blank".
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:14}}>
                   {Object.keys(sec2Vals).sort().map(sub=>(
-                    <div key={sub} style={{padding:12,border:'1px solid '+(d?'#334155':'#e2e8f0'),borderRadius:10,background:d?'#0f172a':'#f8fafc'}}>
-                      <div style={{fontWeight:800,fontSize:14,color:d?'#f1f5f9':'#1e293b',marginBottom:8}}>{sub}</div>
+                    <div key={sub} style={{padding:12,border:'1px solid '+(d?'#2a2e38':'#e5e7eb'),borderRadius:10,background:d?'#0f1115':'#f9fafb'}}>
+                      <div style={{fontWeight:800,fontSize:14,color:d?'#f3f4f6':'#1c1f2a',marginBottom:8}}>{sub}</div>
                       <div style={{display:'grid',gridTemplateColumns:'auto 1fr auto',gap:6,alignItems:'center'}}>
                         {Object.keys(sec2Vals[sub]).map(rk=>{
                           const cfg = exam.sec2Config?.[sub]?.[rk];
@@ -2901,7 +2568,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
                           const pts = typeof cfg==='object'?(cfg.score!=null?cfg.score:1):(exam.sec2Score||1);
                           return (
                             <div key={rk} style={{display:'contents'}}>
-                              <div style={{fontSize:12,fontWeight:700,color:d?'#cbd5e1':'#64748b',width:18}}>{rk})</div>
+                              <div style={{fontSize:12,fontWeight:700,color:d?'#d1d5db':'#6b7280',width:18}}>{rk})</div>
                               <input
                                 type="text" inputMode="numeric" pattern="[0-9]*" maxLength={1}
                                 value={sec2Vals[sub][rk]}
@@ -2909,9 +2576,9 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
                                   const v = e.target.value.replace(/[^0-9]/g,'').slice(0,1);
                                   setSec2Vals(prev=>({...prev,[sub]:{...prev[sub],[rk]:v}}));
                                 }}
-                                style={{width:42,padding:'6px 8px',border:'1px solid '+(d?'#475569':'#cbd5e1'),borderRadius:6,textAlign:'center',fontWeight:700,fontSize:14,background:d?'#1e293b':'white',color:d?'#f1f5f9':'#1e293b'}}
+                                style={{width:42,padding:'6px 8px',border:'1px solid '+(d?'#4b5563':'#d1d5db'),borderRadius:6,textAlign:'center',fontWeight:700,fontSize:14,background:d?'#1c1f2a':'white',color:d?'#f3f4f6':'#1c1f2a'}}
                               />
-                              <div style={{fontSize:11,color:'#94a3b8',whiteSpace:'nowrap'}}>зөв={ans} ({pts}о)</div>
+                              <div style={{fontSize:11,color:'#9ca3af',whiteSpace:'nowrap'}}>зөв={ans} ({pts}о)</div>
                             </div>
                           );
                         })}
@@ -2922,12 +2589,12 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
               </div>
             )}
 
-            {editErr && <div style={{marginTop:10,padding:10,background:'#fee2e2',color:'#dc2626',borderRadius:8,fontSize:13}}>{editErr}</div>}
-            <div style={{display:'flex',gap:8,marginTop:18,position:'sticky',bottom:0,background:d?'#1e293b':'white',padding:'10px 0 0'}}>
+            {editErr && <div style={{marginTop:10,padding:10,background:'#fdecec',color:'#b3261e',borderRadius:8,fontSize:13}}>{editErr}</div>}
+            <div style={{display:'flex',gap:8,marginTop:18,position:'sticky',bottom:0,background:d?'#1c1f2a':'white',padding:'10px 0 0'}}>
               <button onClick={saveEdit} disabled={editBusy} style={{flex:1,padding:'12px 18px',background:'#16a34a',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:editBusy?'wait':'pointer',opacity:editBusy?0.6:1}}>
                 {editBusy?'Хадгалж байна...':'Хадгалах'}
               </button>
-              <button onClick={()=>setEditStu(null)} disabled={editBusy} style={{padding:'12px 18px',background:'#e2e8f0',color:'#475569',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
+              <button onClick={()=>setEditStu(null)} disabled={editBusy} style={{padding:'12px 18px',background:'#e5e7eb',color:'#4b5563',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
                 Цуцлах
               </button>
             </div>
@@ -2943,7 +2610,7 @@ function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
   const [filterClass, setFilterClass] = useState('');
   const allClasses = [...new Set(students.map(s=>s.class||'').filter(Boolean))].sort((a,b)=>a.localeCompare(b,'mn'));
   const filtered = filterClass ? students.filter(s=>(s.class||'')===filterClass) : students;
-  if (!exam||!students.length) return <div style={{textAlign:'center',padding:80,color:'#94a3b8',fontWeight:600}}>Дүн шинжилгээнд хангалттай өгөгдөл байхгүй</div>;
+  if (!exam||!students.length) return <div style={{textAlign:'center',padding:80,color:'#9ca3af',fontWeight:600}}>Дүн шинжилгээнд хангалттай өгөгдөл байхгүй</div>;
   const n=filtered.length||1, ss=filtered.map(s=>s.scaled);
   const avg=(ss.reduce((a,b)=>a+b,0)/n).toFixed(1);
   const pass=filtered.filter(s=>s.scaled>=60).length;
@@ -2969,9 +2636,9 @@ function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
         <h1 style={{margin:0,fontSize:22,fontWeight:800}}>Дүн Шинжилгээ</h1>
         <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}}>
           <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
-            <button onClick={()=>setFilterClass('')} style={{padding:'6px 12px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:filterClass===''?'#dc2626':'#f1f5f9',color:filterClass===''?'white':'#374151'}}>Бүгд</button>
+            <button onClick={()=>setFilterClass('')} style={{padding:'6px 12px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:filterClass===''?'#7B52EE':'#f3f4f6',color:filterClass===''?'white':'#374151'}}>Бүгд</button>
             {allClasses.map(c=>(
-              <button key={c} onClick={()=>setFilterClass(c)} style={{padding:'6px 12px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:filterClass===c?'#dc2626':'#f1f5f9',color:filterClass===c?'white':'#374151'}}>{c}</button>
+              <button key={c} onClick={()=>setFilterClass(c)} style={{padding:'6px 12px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:filterClass===c?'#7B52EE':'#f3f4f6',color:filterClass===c?'white':'#374151'}}>{c}</button>
             ))}
           </div>
           <button onClick={()=>onExportAnalytics(exam,filtered)} style={{padding:'10px 14px',background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
@@ -2980,15 +2647,15 @@ function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
         </div>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12,marginBottom:20}}>
-        {[['Нийт сурагч',filtered.length,'#dc2626'],['Дундаж ЭЕШ',avg,eyeshGrade(pf(avg)).c],['Медиан',median,'#7c3aed'],['Тэнцсэн',pass+'/'+filtered.length,'#16a34a'],['Тэнцэх %',filtered.length?+(pass/filtered.length*100).toFixed(1):0,'#f97316']].map(([l,v,c])=>(
-          <div key={l} style={{background:'white',borderRadius:12,padding:'16px 18px',boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
+        {[['Нийт сурагч',filtered.length,'#7B52EE'],['Дундаж ЭЕШ',avg,eyeshGrade(pf(avg)).c],['Медиан',median,'#7B52EE'],['Тэнцсэн',pass+'/'+filtered.length,'#16a34a'],['Тэнцэх %',filtered.length?+(pass/filtered.length*100).toFixed(1):0,'#f97316']].map(([l,v,c])=>(
+          <div key={l} style={{background:'white',borderRadius:12,padding:'16px 18px',boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
             <div style={{fontSize:26,fontWeight:900,color:c}}>{v}</div>
-            <div style={{fontSize:12,color:'#94a3b8',marginTop:4}}>{l}</div>
+            <div style={{fontSize:12,color:'#9ca3af',marginTop:4}}>{l}</div>
           </div>
         ))}
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
-        <div style={{background:'white',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
+      <div className="cm-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+        <div style={{background:'white',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Зэрэглэлийн тархалт</div>
           {grades.map((g,i)=>{
             const cnt=gradeCounts[i];
@@ -2997,16 +2664,16 @@ function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
               <div key={g} style={{marginBottom:8}}>
                 <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}>
                   <span style={{fontWeight:600}}>{g} — {gradeLabels[i]}</span>
-                  <span style={{color:'#64748b'}}>{cnt} ({pct}%)</span>
+                  <span style={{color:'#6b7280'}}>{cnt} ({pct}%)</span>
                 </div>
-                <div style={{height:8,background:'#f1f5f9',borderRadius:4,overflow:'hidden'}}>
+                <div style={{height:8,background:'#f3f4f6',borderRadius:4,overflow:'hidden'}}>
                   <div style={{height:'100%',background:gradeColors[i],width:pct+'%',borderRadius:4,transition:'width .3s'}} />
                 </div>
               </div>
             );
           })}
         </div>
-        <div style={{background:'white',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
+        <div style={{background:'white',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Сэдвийн амжилт</div>
           {Object.entries(topicMap).map(([t,d])=>{
             const pct=d.total?+(d.correct/d.total*100).toFixed(1):0;
@@ -3015,9 +2682,9 @@ function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
               <div key={t} style={{marginBottom:8}}>
                 <div style={{display:'flex',justifyContent:'space-between',fontSize:12,marginBottom:3}}>
                   <span style={{fontWeight:600}}>{t}</span>
-                  <span style={{color:'#64748b'}}>{pct}%</span>
+                  <span style={{color:'#6b7280'}}>{pct}%</span>
                 </div>
-                <div style={{height:8,background:'#f1f5f9',borderRadius:4,overflow:'hidden'}}>
+                <div style={{height:8,background:'#f3f4f6',borderRadius:4,overflow:'hidden'}}>
                   <div style={{height:'100%',background:TOPIC_COLORS[ci>=0?ci%8:7],width:pct+'%',borderRadius:4}} />
                 </div>
               </div>
@@ -3077,20 +2744,20 @@ function MaterialPage({onPrefill}) {
 
   return (
     <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px'}}>
-      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.08)',marginBottom:16}}>
-        <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:16}}>1. Шалгалтын тохиргоо</div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr auto',gap:12,alignItems:'end'}}>
+      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+        <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>1. Шалгалтын тохиргоо</div>
+        <div className="cm-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr auto',gap:12,alignItems:'end'}}>
           <div>
             <label style={{fontSize:13,fontWeight:600,display:'block',marginBottom:4}}>Хичээл</label>
             <select value={subject} onChange={e=>setSubject(e.target.value)}
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e2e8f0',borderRadius:10,fontSize:14,outline:'none'}}>
+              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none'}}>
               {SUBJECTS.map(s=><option key={s}>{s}</option>)}
             </select>
           </div>
           <div>
             <label style={{fontSize:13,fontWeight:600,display:'block',marginBottom:4}}>1-р хэсэг дасгал</label>
             <input type="number" min={1} max={200} value={cnt} onChange={e=>setCnt(parseInt(e.target.value)||1)}
-              style={{width:'100%',padding:'10px 14px',border:'2px solid #e2e8f0',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
+              style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
           </div>
           <div style={{paddingBottom:2}}>
             <label style={{display:'flex',alignItems:'center',gap:8,cursor:'pointer',fontSize:14,fontWeight:600}}>
@@ -3101,8 +2768,8 @@ function MaterialPage({onPrefill}) {
         </div>
       </div>
 
-      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.08)',marginBottom:16}}>
-        <div style={{fontWeight:800,fontSize:16,color:'#1e293b',marginBottom:16}}>2. Материалын файл оруулах</div>
+      <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+        <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:16}}>2. Материалын файл оруулах</div>
         {fileData?(
           <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:10,padding:'12px 16px',display:'flex',alignItems:'center',gap:12,marginBottom:12}}>
             <div style={{flex:1}}>
@@ -3110,39 +2777,39 @@ function MaterialPage({onPrefill}) {
               <div style={{fontSize:12,color:'#16a34a'}}>{fileType==='application/pdf'?'PDF':'Зураг'}</div>
             </div>
             <button onClick={()=>{setFileData(null);setFileType(null);setFileName('');setResult(null);}}
-              style={{padding:'4px 12px',background:'#fee2e2',border:'none',borderRadius:6,fontSize:12,color:'#dc2626',cursor:'pointer'}}>Устгах</button>
+              style={{padding:'4px 12px',background:'#fdecec',border:'none',borderRadius:6,fontSize:12,color:'#b3261e',cursor:'pointer'}}>Устгах</button>
           </div>
         ):(
           <div onClick={()=>fileRef.current.click()} onDragOver={e=>e.preventDefault()} onDrop={e=>{e.preventDefault();loadFile(e.dataTransfer.files[0]);}}
-            style={{border:'2px dashed #e2e8f0',borderRadius:12,padding:'40px 20px',textAlign:'center',cursor:'pointer',color:'#94a3b8',marginBottom:12}}>
+            style={{border:'2px dashed #e5e7eb',borderRadius:12,padding:'40px 20px',textAlign:'center',cursor:'pointer',color:'#9ca3af',marginBottom:12}}>
             <div style={{fontSize:14,fontWeight:600}}>PDF эсвэл зураг чирж тавих</div>
             <input ref={fileRef} type="file" accept=".pdf,image/*" style={{display:'none'}} onChange={e=>loadFile(e.target.files[0])} />
           </div>
         )}
-        {err&&<div style={{color:'#dc2626',fontSize:13,background:'#fef2f2',padding:'10px 14px',borderRadius:8,border:'1px solid #fecaca',marginBottom:12}}>
+        {err&&<div style={{color:'#b3261e',fontSize:13,background:'#fdecec',padding:'10px 14px',borderRadius:8,border:'1px solid #f6c9c9',marginBottom:12}}>
           <pre style={{margin:0,whiteSpace:'pre-wrap',wordBreak:'break-all',fontSize:11}}>{err}</pre>
         </div>}
         <button onClick={handleAnalyze} disabled={!fileData||analyzing}
-          style={{width:'100%',padding:'13px',background:'linear-gradient(135deg,#7c3aed,#a855f7)',color:'white',border:'none',borderRadius:12,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,opacity:(!fileData||analyzing)?.6:1}}>
+          style={{width:'100%',padding:'13px',background:'#7B52EE',color:'white',border:'none',borderRadius:12,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,opacity:(!fileData||analyzing)?.6:1}}>
           {analyzing&&<Spinner/>} AI-аар Хариулт Бодох
         </button>
       </div>
 
       {result&&(
-        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
+        <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontWeight:800,fontSize:16,marginBottom:16}}>Хариулт — {result.versions_found?.join(', ')}</div>
           {result.versions_found?.map(v=>(
             <div key={v} style={{marginBottom:20}}>
-              <div style={{fontWeight:700,fontSize:14,color:'#7c3aed',marginBottom:8}}>Хувилбар {v}</div>
+              <div style={{fontWeight:700,fontSize:14,color:'#7B52EE',marginBottom:8}}>Хувилбар {v}</div>
               <div style={{display:'flex',flexWrap:'wrap',gap:4,marginBottom:8}}>
                 {(result.section1?.[v]||[]).map(q=>(
-                  <div key={q.q} style={{background:q.confidence>=80?'#f0fdf4':q.confidence>=60?'#fef3c7':'#fef2f2',border:'1px solid #e2e8f0',borderRadius:6,padding:'3px 8px',fontSize:12}}>
-                    <span style={{color:'#94a3b8'}}>D{q.q}</span> <span style={{fontWeight:700}}>{q.answer}</span>
+                  <div key={q.q} style={{background:q.confidence>=80?'#f0fdf4':q.confidence>=60?'#fef3c7':'#f9fafb',border:'1px solid #e5e7eb',borderRadius:6,padding:'3px 8px',fontSize:12}}>
+                    <span style={{color:'#9ca3af'}}>D{q.q}</span> <span style={{fontWeight:700}}>{q.answer}</span>
                   </div>
                 ))}
               </div>
               <button onClick={()=>handleUsePrefill(v)}
-                style={{padding:'8px 20px',background:'#dc2626',color:'white',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer'}}>
+                style={{padding:'8px 20px',background:'#7B52EE',color:'white',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer'}}>
                 Хувилбар {v} ашиглан шалгалт үүсгэх
               </button>
             </div>
@@ -3230,32 +2897,32 @@ function StudentAccountsPage({dark:d=false}) {
 
   return (
     <div style={{maxWidth:900,margin:'0 auto',padding:'24px 20px'}}>
-      <div style={{fontWeight:800,fontSize:20,color:'#1e293b',marginBottom:20}}>Сурагчийн бүртгэл</div>
+      <div style={{fontWeight:800,fontSize:20,color:'#1c1f2a',marginBottom:20}}>Сурагчийн бүртгэл</div>
       <div style={{background:'#dbeafe',border:'1px solid #93c5fd',borderRadius:12,padding:'12px 16px',marginBottom:16,fontSize:13,color:'#1d4ed8'}}>
         Сурагчид <strong>/student</strong> хуудсаар орж кодоороо нэвтэрч шалгалтаа өгнө.
       </div>
 
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
-        <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
+      <div className="cm-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+        <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>Нэг сурагч нэмэх</div>
           <input value={singleName} onChange={e=>setSingleName(e.target.value)} placeholder="Нэр (заавал биш)"
-            style={{width:'100%',padding:'9px 12px',border:'2px solid #e2e8f0',borderRadius:8,fontSize:14,outline:'none',marginBottom:8,boxSizing:'border-box'}} />
+            style={{width:'100%',padding:'9px 12px',border:'2px solid #e5e7eb',borderRadius:8,fontSize:14,outline:'none',marginBottom:8,boxSizing:'border-box'}} />
           <input value={singleClass} onChange={e=>setSingleClass(e.target.value)} placeholder="Анги (заавал биш)"
-            style={{width:'100%',padding:'9px 12px',border:'2px solid #e2e8f0',borderRadius:8,fontSize:14,outline:'none',marginBottom:10,boxSizing:'border-box'}} />
+            style={{width:'100%',padding:'9px 12px',border:'2px solid #e5e7eb',borderRadius:8,fontSize:14,outline:'none',marginBottom:10,boxSizing:'border-box'}} />
           <button onClick={handleSingleAdd} disabled={adding}
-            style={{width:'100%',padding:'10px',background:'#dc2626',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
+            style={{width:'100%',padding:'10px',background:'#7B52EE',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
             Нэмэх
           </button>
         </div>
 
-        <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
+        <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontWeight:700,fontSize:15,marginBottom:4}}>Олноор нэмэх</div>
-          <div style={{fontSize:12,color:'#94a3b8',marginBottom:8}}>Нэг мөрт нэг сурагч: нэр, анги (код хоосон бол автоматаар үүснэ)</div>
+          <div style={{fontSize:12,color:'#9ca3af',marginBottom:8}}>Нэг мөрт нэг сурагч: нэр, анги (код хоосон бол автоматаар үүснэ)</div>
           <textarea value={bulkText} onChange={e=>setBulkText(e.target.value)}
             placeholder={"Болд, 12А\nНомун, 12Б\nДорж, 12А"}
-            style={{width:'100%',height:100,padding:'9px 12px',border:'2px solid #e2e8f0',borderRadius:8,fontSize:13,outline:'none',resize:'vertical',marginBottom:10,boxSizing:'border-box'}} />
+            style={{width:'100%',height:100,padding:'9px 12px',border:'2px solid #e5e7eb',borderRadius:8,fontSize:13,outline:'none',resize:'vertical',marginBottom:10,boxSizing:'border-box'}} />
           <button onClick={handleBulkAdd} disabled={adding}
-            style={{width:'100%',padding:'10px',background:'#7c3aed',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
+            style={{width:'100%',padding:'10px',background:'#7B52EE',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
             {adding?'Нэмж байна...':'Бүгдийг нэмэх'}
           </button>
         </div>
@@ -3263,36 +2930,36 @@ function StudentAccountsPage({dark:d=false}) {
 
       {msg && <div style={{background:'#f0fdf4',border:'1px solid #86efac',borderRadius:8,padding:'10px 14px',marginBottom:12,fontSize:13,color:'#15803d'}}>{msg}</div>}
 
-      <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
-        <div style={{padding:'14px 18px',borderBottom:'1px solid #f1f5f9',fontWeight:700,fontSize:14,display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8,alignItems:'center'}}>
+      <div style={{background:'white',borderRadius:12,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
+        <div style={{padding:'14px 18px',borderBottom:'1px solid #f3f4f6',fontWeight:700,fontSize:14,display:'flex',justifyContent:'space-between',flexWrap:'wrap',gap:8,alignItems:'center'}}>
           <span>Нийт: {accounts.length} сурагч</span>
           <div style={{display:'flex',gap:4,flexWrap:'wrap'}}>
             {[...new Set(accounts.map(a=>a.class||'').filter(Boolean))].sort().map(cls=>(
               <button key={cls} onClick={()=>setFilterCls(f=>f===cls?'':cls)}
                 style={{padding:'4px 10px',borderRadius:6,border:'none',fontWeight:700,fontSize:11,cursor:'pointer',
-                  background:filterCls===cls?'#dc2626':'#f1f5f9',color:filterCls===cls?'white':'#374151'}}>{cls}</button>
+                  background:filterCls===cls?'#7B52EE':'#f3f4f6',color:filterCls===cls?'white':'#374151'}}>{cls}</button>
             ))}
-            {filterCls&&<button onClick={()=>setFilterCls('')} style={{padding:'4px 10px',borderRadius:6,border:'none',fontWeight:700,fontSize:11,cursor:'pointer',background:'#f1f5f9',color:'#64748b'}}>× Цэвэрлэх</button>}
+            {filterCls&&<button onClick={()=>setFilterCls('')} style={{padding:'4px 10px',borderRadius:6,border:'none',fontWeight:700,fontSize:11,cursor:'pointer',background:'#f3f4f6',color:'#6b7280'}}>× Цэвэрлэх</button>}
           </div>
         </div>
         {loading ? <div style={{padding:40,textAlign:'center'}}><Spinner/></div> :
-        accounts.length===0 ? <div style={{padding:40,textAlign:'center',color:'#94a3b8'}}>Бүртгэлтэй сурагч байхгүй</div> : (
+        accounts.length===0 ? <div style={{padding:40,textAlign:'center',color:'#9ca3af'}}>Бүртгэлтэй сурагч байхгүй</div> : (
           <table style={{width:'100%',borderCollapse:'collapse'}}>
             <thead>
-              <tr style={{background:'#f8fafc'}}>
-                {['#','Код','Нэр','Анги',''].map(h=><th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:12,fontWeight:700,color:'#64748b'}}>{h}</th>)}
+              <tr style={{background:'#f9fafb'}}>
+                {['#','Код','Нэр','Анги',''].map(h=><th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:12,fontWeight:700,color:'#6b7280'}}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
               {accounts.filter(a=>!filterCls||a.class===filterCls).map((a,i)=>(
-                <tr key={a.id} style={{borderTop:'1px solid #f1f5f9'}}>
-                  <td style={{padding:'10px 14px',fontSize:13,color:'#94a3b8'}}>{i+1}</td>
-                  <td style={{padding:'10px 14px',fontWeight:800,fontSize:14,color:'#dc2626'}}>{a.code}</td>
+                <tr key={a.id} style={{borderTop:'1px solid #f3f4f6'}}>
+                  <td style={{padding:'10px 14px',fontSize:13,color:'#9ca3af'}}>{i+1}</td>
+                  <td style={{padding:'10px 14px',fontWeight:800,fontSize:14,color:'#7B52EE'}}>{a.code}</td>
                   <td style={{padding:'10px 14px',fontSize:14}}>{a.name||'—'}</td>
-                  <td style={{padding:'10px 14px',fontSize:13,color:'#64748b'}}>{a.class||'—'}</td>
+                  <td style={{padding:'10px 14px',fontSize:13,color:'#6b7280'}}>{a.class||'—'}</td>
                   <td style={{padding:'10px 14px'}}>
                     <button onClick={()=>handleDelete(a.id)}
-                      style={{padding:'3px 10px',background:'#fee2e2',border:'none',borderRadius:6,fontSize:11,color:'#dc2626',cursor:'pointer'}}>Устгах</button>
+                      style={{padding:'3px 10px',background:'#fdecec',border:'none',borderRadius:6,fontSize:11,color:'#b3261e',cursor:'pointer'}}>Устгах</button>
                   </td>
                 </tr>
               ))}
@@ -3400,23 +3067,23 @@ function StudentPortal({student, onLogout}) {
 
   // Result screen
   if (submitted && scored) return (
-    <div style={{minHeight:'100vh',background:'#f1f5f9',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
+    <div style={{minHeight:'100vh',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
       <div style={{background:'white',borderRadius:20,padding:'36px 28px',maxWidth:400,width:'100%',textAlign:'center',boxShadow:'0 4px 24px rgba(0,0,0,.1)'}}>
         <div style={{display:'flex',justifyContent:'center',marginBottom:16}}><div style={{background:'#dcfce7',borderRadius:20,padding:16}}><Ico d='M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z' size={56} color='#16a34a' sw={1}/></div></div>
         <div style={{fontSize:20,fontWeight:900,color:'#15803d',marginBottom:16}}>{t.submitted}</div>
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:20}}>
           {[[t.performance,scored.scaled+'%',scored.grade?.c],[t.correct,scored.correct,'#16a34a'],[t.wrong,scored.wrong,'#dc2626']].map(([l,v,c])=>(
-            <div key={l} style={{background:'#f8fafc',borderRadius:10,padding:'12px 8px'}}>
+            <div key={l} style={{background:'#f9fafb',borderRadius:10,padding:'12px 8px'}}>
               <div style={{fontSize:20,fontWeight:900,color:c}}>{v}</div>
-              <div style={{fontSize:10,color:'#94a3b8'}}>{l}</div>
+              <div style={{fontSize:10,color:'#9ca3af'}}>{l}</div>
             </div>
           ))}
         </div>
         <button onClick={()=>{setSelectedExam(null);setSubmitted(false);setScored(null);}}
-          style={{width:'100%',padding:12,background:'#dc2626',color:'white',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer',marginBottom:8}}>
+          style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer',marginBottom:8}}>
           {t.back}
         </button>
-        <button onClick={onLogout} style={{width:'100%',padding:12,background:'#f1f5f9',color:'#64748b',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>
+        <button onClick={onLogout} style={{width:'100%',padding:12,background:'#f3f4f6',color:'#6b7280',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>
           {t.logout}
         </button>
       </div>
@@ -3425,23 +3092,23 @@ function StudentPortal({student, onLogout}) {
 
   // Exam list
   if (!selectedExam) return (
-    <div style={{minHeight:'100vh',background:'#f1f5f9'}}>
-      <header style={{background:'white',borderBottom:'1px solid #e2e8f0',padding:'14px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+    <div style={{minHeight:'100vh',background:'#f3f4f6'}}>
+      <header style={{background:'white',borderBottom:'1px solid #e5e7eb',padding:'14px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
         <div>
           <div style={{fontWeight:800,fontSize:16}}>{t.hello} {student.name||student.code}!</div>
-          <div style={{fontSize:12,color:'#64748b'}}>{t.code}: {student.code}</div>
+          <div style={{fontSize:12,color:'#6b7280'}}>{t.code}: {student.code}</div>
         </div>
-        <div style={{display:'flex',gap:8,alignItems:'center'}}><button onClick={toggleLang} style={{padding:'6px 10px',background:'#f1f5f9',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>{lang==='mn'?'EN':'МН'}</button><button onClick={onLogout} style={{padding:'6px 14px',background:'#fee2e2',border:'none',borderRadius:8,fontSize:13,color:'#dc2626',fontWeight:700,cursor:'pointer'}}>{t.logout}</button></div>
+        <div style={{display:'flex',gap:8,alignItems:'center'}}><button onClick={toggleLang} style={{padding:'6px 10px',background:'#f3f4f6',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>{lang==='mn'?'EN':'МН'}</button><button onClick={onLogout} style={{padding:'6px 14px',background:'#f3eeff',border:'none',borderRadius:8,fontSize:13,color:'#7B52EE',fontWeight:700,cursor:'pointer'}}>{t.logout}</button></div>
       </header>
       <div style={{maxWidth:600,margin:'0 auto',padding:'24px 16px'}}>
-        <div style={{fontWeight:800,fontSize:18,color:'#1e293b',marginBottom:16}}>{t.selectExam}</div>
+        <div style={{fontWeight:800,fontSize:18,color:'#1c1f2a',marginBottom:16}}>{t.selectExam}</div>
         {exams.length===0
-          ? <div style={{background:'white',borderRadius:12,padding:40,textAlign:'center',color:'#94a3b8'}}>{t.noExams}</div>
+          ? <div style={{background:'white',borderRadius:12,padding:40,textAlign:'center',color:'#9ca3af'}}>{t.noExams}</div>
           : exams.map(exam=>(
             <div key={exam.id} onClick={()=>selectExam(exam)}
-              style={{background:'white',borderRadius:12,padding:18,marginBottom:10,cursor:'pointer',border:'2px solid #e2e8f0',boxShadow:'0 1px 4px rgba(0,0,0,.06)'}}>
-              <div style={{fontWeight:800,fontSize:16,color:'#1e293b'}}>{exam.title}</div>
-              <div style={{fontSize:13,color:'#64748b',marginTop:4}}>{exam.subject} · {exam.sec1Count} дасгал{exam.useSec2?' · 2-р хэсэг':''}</div>
+              style={{background:'white',borderRadius:12,padding:18,marginBottom:10,cursor:'pointer',border:'2px solid #e5e7eb',boxShadow:'0 1px 4px rgba(17,24,39,.05)'}}>
+              <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a'}}>{exam.title}</div>
+              <div style={{fontSize:13,color:'#6b7280',marginTop:4}}>{exam.subject} · {exam.sec1Count} дасгал{exam.useSec2?' · 2-р хэсэг':''}</div>
             </div>
           ))
         }
@@ -3452,36 +3119,36 @@ function StudentPortal({student, onLogout}) {
   // Answer entry
   const enabledSec2Subs = SEC2_SUBS.filter(s=>selectedExam.sec2Config?.[s]?._enabled);
   return (
-    <div style={{minHeight:'100vh',background:'#f1f5f9'}}>
-      <header style={{background:'white',borderBottom:'1px solid #e2e8f0',padding:'14px 20px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
-        <button onClick={()=>setSelectedExam(null)} style={{padding:'6px 12px',background:'#f1f5f9',border:'none',borderRadius:8,cursor:'pointer',fontWeight:700}}>{t.back}</button>
+    <div style={{minHeight:'100vh',background:'#f3f4f6'}}>
+      <header style={{background:'white',borderBottom:'1px solid #e5e7eb',padding:'14px 20px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+        <button onClick={()=>setSelectedExam(null)} style={{padding:'6px 12px',background:'#f3f4f6',border:'none',borderRadius:8,cursor:'pointer',fontWeight:700}}>{t.back}</button>
         <div>
           <div style={{fontWeight:800,fontSize:15}}>{selectedExam.title}</div>
-          <div style={{fontSize:12,color:'#64748b'}}>{selectedExam.subject}</div>
+          <div style={{fontSize:12,color:'#6b7280'}}>{selectedExam.subject}</div>
         </div>
         <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8}}>
-          <button onClick={toggleLang} style={{padding:'6px 10px',background:'#f1f5f9',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>{lang==='mn'?'EN':'МН'}</button>
-          <button onClick={onLogout} style={{padding:'6px 14px',background:'#fee2e2',border:'none',borderRadius:8,fontSize:13,color:'#dc2626',fontWeight:700,cursor:'pointer'}}>{t.logout}</button>
+          <button onClick={toggleLang} style={{padding:'6px 10px',background:'#f3f4f6',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>{lang==='mn'?'EN':'МН'}</button>
+          <button onClick={onLogout} style={{padding:'6px 14px',background:'#f3eeff',border:'none',borderRadius:8,fontSize:13,color:'#7B52EE',fontWeight:700,cursor:'pointer'}}>{t.logout}</button>
         </div>
       </header>
       <div style={{maxWidth:700,margin:'0 auto',padding:'20px 16px'}}>
 
         {/* Section 1 */}
-        <div style={{background:'white',borderRadius:16,padding:20,marginBottom:12,boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
+        <div style={{background:'white',borderRadius:16,padding:20,marginBottom:12,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontWeight:800,fontSize:15,marginBottom:14}}>{t.section1} — {selectedExam.sec1Count} дасгал</div>
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:6}}>
             {Array.from({length:selectedExam.sec1Count},(_,i)=>(
-              <div key={i} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 10px',background:'#f8fafc',borderRadius:8,border:'1px solid #e2e8f0'}}>
-                <span style={{fontSize:11,fontWeight:700,color:'#94a3b8',minWidth:26,textAlign:'right'}}>D{i+1}</span>
+              <div key={i} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 10px',background:'#f9fafb',borderRadius:8,border:'1px solid #e5e7eb'}}>
+                <span style={{fontSize:11,fontWeight:700,color:'#9ca3af',minWidth:26,textAlign:'right'}}>D{i+1}</span>
                 <div style={{display:'flex',gap:3}}>
                   {SEC1_CHOICES.map(c=>(
                     <button key={c} onClick={()=>setSec1Sel(s=>{const n=[...s];n[i]=c;return n;})}
                       style={{width:30,height:30,borderRadius:6,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',
-                        background:sec1Sel[i]===c?'#dc2626':'#e2e8f0',
-                        color:sec1Sel[i]===c?'white':'#64748b'}}>{c}</button>
+                        background:sec1Sel[i]===c?'#7B52EE':'#e5e7eb',
+                        color:sec1Sel[i]===c?'white':'#6b7280'}}>{c}</button>
                   ))}
                   {sec1Sel[i]&&<button onClick={()=>setSec1Sel(s=>{const n=[...s];n[i]='';return n;})}
-                    style={{width:24,height:30,borderRadius:6,border:'none',fontSize:11,cursor:'pointer',background:'#fee2e2',color:'#dc2626',fontWeight:700}}>✕</button>}
+                    style={{width:24,height:30,borderRadius:6,border:'none',fontSize:11,cursor:'pointer',background:'#fdecec',color:'#b3261e',fontWeight:700}}>✕</button>}
                 </div>
               </div>
             ))}
@@ -3490,25 +3157,25 @@ function StudentPortal({student, onLogout}) {
 
         {/* Section 2 */}
         {enabledSec2Subs.length>0&&(
-          <div style={{background:'white',borderRadius:16,padding:20,marginBottom:12,boxShadow:'0 1px 4px rgba(0,0,0,.08)'}}>
+          <div style={{background:'white',borderRadius:16,padding:20,marginBottom:12,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
             <div style={{fontWeight:800,fontSize:15,marginBottom:14}}>{t.section2}</div>
             <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
               {enabledSec2Subs.map(sub=>{
                 const rows=Object.keys(sec2Sel[sub]||{});
                 return (
-                  <div key={sub} style={{background:'#f8fafc',borderRadius:10,padding:'12px 16px'}}>
-                    <div style={{fontWeight:700,fontSize:13,color:'#7c3aed',marginBottom:8}}>{sub}</div>
+                  <div key={sub} style={{background:'#f9fafb',borderRadius:10,padding:'12px 16px'}}>
+                    <div style={{fontWeight:700,fontSize:13,color:'#7B52EE',marginBottom:8}}>{sub}</div>
                     {rows.map(row=>(
                       <div key={row} style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
-                        <span style={{fontSize:11,color:'#94a3b8',minWidth:14}}>{row}</span>
+                        <span style={{fontSize:11,color:'#9ca3af',minWidth:14}}>{row}</span>
                         <div style={{display:'flex',gap:2,flexWrap:'wrap'}}>
                           {['0','1','2','3','4','5','6','7','8','9'].map(d=>(
                             <button key={d} onClick={()=>setSec2Sel(s=>({...s,[sub]:{...s[sub],[row]:d}}))}
                               style={{width:26,height:26,borderRadius:5,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',
-                                background:sec2Sel[sub]?.[row]===d?'#7c3aed':'#e2e8f0',
-                                color:sec2Sel[sub]?.[row]===d?'white':'#64748b'}}>{d}</button>
+                                background:sec2Sel[sub]?.[row]===d?'#7B52EE':'#e5e7eb',
+                                color:sec2Sel[sub]?.[row]===d?'white':'#6b7280'}}>{d}</button>
                           ))}
-                          {sec2Sel[sub]?.[row]&&<button onClick={()=>setSec2Sel(s=>({...s,[sub]:{...s[sub],[row]:''}}))} style={{width:22,height:26,borderRadius:5,border:'none',fontSize:10,cursor:'pointer',background:'#fee2e2',color:'#dc2626',fontWeight:700}}>✕</button>}
+                          {sec2Sel[sub]?.[row]&&<button onClick={()=>setSec2Sel(s=>({...s,[sub]:{...s[sub],[row]:''}}))} style={{width:22,height:26,borderRadius:5,border:'none',fontSize:10,cursor:'pointer',background:'#fdecec',color:'#b3261e',fontWeight:700}}>✕</button>}
                         </div>
                       </div>
                     ))}
@@ -3519,10 +3186,10 @@ function StudentPortal({student, onLogout}) {
           </div>
         )}
 
-        {err&&<div style={{color:'#dc2626',fontSize:13,background:'#fef2f2',padding:'10px 14px',borderRadius:8,border:'1px solid #fecaca',marginBottom:12}}>{err}</div>}
+        {err&&<div style={{color:'#b3261e',fontSize:13,background:'#fdecec',padding:'10px 14px',borderRadius:8,border:'1px solid #f6c9c9',marginBottom:12}}>{err}</div>}
 
         <button id='student-submit-btn' onClick={handleSubmit} disabled={submitting}
-          style={{width:'100%',padding:16,background:'linear-gradient(135deg,#dc2626,#ef4444)',color:'white',border:'none',borderRadius:14,fontSize:16,fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+          style={{width:'100%',padding:16,background:'#7B52EE',color:'white',border:'none',borderRadius:14,fontSize:16,fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
           {submitting&&<Spinner/>} {submitting?t.submitting:t.submit}
         </button>
       </div>
@@ -3551,6 +3218,9 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [prefill, setPrefill] = useState(null);
   const [editingExam, setEditingExam] = useState(null);
+  const [moreOpen, setMoreOpen] = useState(false);
+
+  useEffect(() => { document.body.classList.toggle('dark', dark); }, [dark]);
 
   useEffect(() => {
     const token = getToken();
@@ -3680,117 +3350,88 @@ export default function App() {
   );
 
   const examStudents = students.filter(s=>s.examId===currentExam?.id);
+  const navIds = PAGE_IDS.filter(id => id!=='admin' || teacher?.isAdmin);
+  const moreIds = MORE_IDS.filter(id => id!=='admin' || teacher?.isAdmin);
+  function go(id) { setPage(id); setMoreOpen(false); if (typeof window!=='undefined') window.scrollTo(0,0); }
+  function logout() { localStorage.removeItem('eyesh_token');localStorage.removeItem('eyesh_teacher');setAuthed(false);setTeacher(null);setMoreOpen(false); }
+  const tab = (id, label) => (
+    <button key={id} className={'cm-tab'+((id==='more'?moreIds.includes(page):page===id)?' on':'')} onClick={()=>id==='more'?setMoreOpen(true):go(id)}>
+      <Ico d={NAV_ICON[id]} size={23} sw={2}/>{label}
+    </button>
+  );
 
   return (
     <>
       <Head>
-        <title>EYESH Checker</title>
-        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>{(t.nav[page]||t.nav.home)+' · ЭЕШ шалгагч'}</title>
       </Head>
-      <style>{`
-        *{box-sizing:border-box;margin:0;padding:0;}
-        body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;min-height:100vh;transition:background .2s,color .2s;}
-        body.dark{background:#0f172a;color:#e2e8f0;}
-        body:not(.dark){background:#f1f5f9;color:#1e293b;}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        button:hover{opacity:.9;}
-        input,select{font-family:inherit;}
-        table{font-family:inherit;}
-        .dk-card{background:${d?'#1e293b':'white'};color:${d?'#e2e8f0':'#1e293b'};}
-        .dk-bg{background:${d?'#0f172a':'#f1f5f9'};}
-        .dk-border{border-color:${d?'#334155':'#e2e8f0'} !important;}
-        .dk-text-muted{color:${d?'#94a3b8':'#64748b'};}
-      `}</style>
-      {/* Apply dark class to body */}
-      {typeof document!=='undefined'&&(dark?document.body.classList.add('dark'):document.body.classList.remove('dark'))}
-      <header style={{background:d?'#1e293b':'white',borderBottom:'1px solid '+(d?'#334155':'#e2e8f0'),position:'sticky',top:0,zIndex:100,boxShadow:'0 2px 8px rgba(0,0,0,.06)'}}>
-        <div style={{maxWidth:1200,margin:'0 auto',padding:'0 16px',display:'flex',alignItems:'center',gap:10,height:60}}>
-          <div style={{display:'flex',alignItems:'center',gap:10,flexShrink:0}}>
-            <div style={{width:36,height:36,borderRadius:10,background:'linear-gradient(135deg,#7f1d1d,#dc2626)',display:'flex',alignItems:'center',justifyContent:'center',color:'white',fontWeight:900,fontSize:15}}>E</div>
-            <div style={{display:'none'}} className="desktop-logo">
-              <div style={{fontSize:13,fontWeight:900,color:d?'#f1f5f9':'#1e293b',lineHeight:1}}>EYESH Checker</div>
-            </div>
-          </div>
-          {/* Desktop nav */}
-          <nav style={{display:'flex',gap:1,flex:1,overflowX:'auto',scrollbarWidth:'none'}} className="desktop-nav">
-            {PAGE_IDS.filter(id => id!=='admin' || teacher?.isAdmin).map(id=>(
-              <button key={id} onClick={()=>setPage(id)}
-                style={{padding:'6px 10px',border:'none',borderRadius:8,fontWeight:600,fontSize:12,cursor:'pointer',whiteSpace:'nowrap',background:page===id?'#fee2e2':'transparent',color:page===id?'#dc2626':d?'#94a3b8':'#64748b',flexShrink:0}}>
-                {t.nav[id]||id}
-              </button>
+      <header className="cm-top no-print">
+        <div className="cm-top-in">
+          <button className="cm-brand" onClick={()=>go('home')}>
+            <img src="/chick.svg" alt="" className="cm-chick" />
+            <span><b>ЭЕШ шалгагч</b><small>CyberMath</small></span>
+          </button>
+          <nav className="cm-nav">
+            {navIds.map(id=>(
+              <button key={id} className={page===id||(id==='create'&&page==='edit')?'on':''} onClick={()=>go(id)}>{t.nav[id]||id}</button>
             ))}
           </nav>
-          <div style={{display:'flex',alignItems:'center',gap:6,marginLeft:'auto',flexShrink:0}}>
-            {currentExam&&(
-              <div style={{fontSize:11,color:'#dc2626',background:'#fff1f2',padding:'4px 8px',borderRadius:8,border:'1px solid #fecaca',fontWeight:600,maxWidth:120,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}} className="hide-mobile">
-                {currentExam.title}
-              </div>
-            )}
-            <button onClick={toggleDark}
-              style={{padding:'5px 10px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,fontSize:14,color:d?'#fbbf24':'#374151',cursor:'pointer'}}>
-              {d?'☀️':'🌙'}
-            </button>
-            <button onClick={toggleLang}
-              style={{padding:'5px 10px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,fontSize:11,color:d?'#e2e8f0':'#374151',fontWeight:700,cursor:'pointer'}} className="hide-mobile">
-              {lang==='mn'?'🇬🇧':'🇲🇳'}
-            </button>
-            <button onClick={()=>{localStorage.removeItem('eyesh_token');localStorage.removeItem('eyesh_teacher');setAuthed(false);setTeacher(null);}}
-              style={{padding:'5px 10px',background:'#fee2e2',border:'none',borderRadius:8,fontSize:11,color:'#dc2626',fontWeight:700,cursor:'pointer'}}>
-              {t.logout}
-            </button>
+          <div className="cm-actions">
             {demoSecsLeft!==null && teacher?.email==='demo@eyeshcheck.com' &&(
-              <span style={{padding:'4px 8px',background:'#fef3c7',border:'1px solid #fde68a',borderRadius:8,fontSize:11,fontWeight:700,color:'#92400e',flexShrink:0}}>
-                ⏱ {Math.floor(demoSecsLeft/60)}:{String(demoSecsLeft%60).padStart(2,'0')}
-              </span>
+              <span className="cm-timer">⏱ {Math.floor(demoSecsLeft/60)}:{String(demoSecsLeft%60).padStart(2,'0')}</span>
             )}
-            {/* Hamburger for mobile */}
-            <button onClick={()=>{const m=document.getElementById('mobile-menu');if(m)m.style.display=m.style.display==='flex'?'none':'flex';}}
-              style={{padding:'5px 8px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,cursor:'pointer',color:d?'#f1f5f9':'#374151',fontSize:18,lineHeight:1}} className="show-mobile">
-              ☰
-            </button>
-          </div>
-        </div>
-        {/* Mobile dropdown menu */}
-        <div id="mobile-menu" style={{display:'none',flexDirection:'column',background:d?'#1e293b':'white',borderTop:'1px solid '+(d?'#334155':'#e2e8f0'),padding:'8px 16px 16px',gap:4}}>
-          {PAGE_IDS.filter(id => id!=='admin' || teacher?.isAdmin).map(id=>(
-            <button key={id} onClick={()=>{setPage(id);document.getElementById('mobile-menu').style.display='none';}}
-              style={{padding:'10px 14px',border:'none',borderRadius:8,fontWeight:600,fontSize:14,cursor:'pointer',textAlign:'left',background:page===id?'#fee2e2':'transparent',color:page===id?'#dc2626':d?'#94a3b8':'#374151'}}>
-              {t.nav[id]||id}
-            </button>
-          ))}
-          <div style={{display:'flex',gap:8,marginTop:8}}>
-            <button onClick={toggleLang}
-              style={{flex:1,padding:'8px',background:d?'#334155':'#f1f5f9',border:'none',borderRadius:8,fontSize:13,fontWeight:700,cursor:'pointer',color:d?'#e2e8f0':'#374151'}}>
-              {lang==='mn'?'🇬🇧 EN':'🇲🇳 МН'}
-            </button>
+            {currentExam&&<button className="cm-exam" onClick={()=>go('home')} title="Идэвхтэй шалгалт">{currentExam.title}</button>}
+            <a className="cm-back cm-desk" href={PRACTICE_URL}>← Дасгалын төв</a>
+            <button className="cm-ibtn cm-desk" onClick={toggleDark} title={d?'Цайвар':'Бараан'}><Ico d={d?NAV_ICON.sun:NAV_ICON.moon} size={18} sw={2}/></button>
+            <button className="cm-ibtn cm-desk" onClick={toggleLang} style={{fontSize:11,fontWeight:900}}>{lang==='mn'?'EN':'МН'}</button>
+            <button className="cm-ibtn cm-desk" onClick={logout} title={t.logout}><Ico d={NAV_ICON.logout} size={18} sw={2}/></button>
           </div>
         </div>
       </header>
-      <style>{`
-        @media (max-width: 640px) {
-          .desktop-nav { display: none !important; }
-          .hide-mobile { display: none !important; }
-          .show-mobile { display: flex !important; }
-        }
-        @media (min-width: 641px) {
-          .show-mobile { display: none !important; }
-        }
-      `}</style>
-      <main style={{background:d?'#0f172a':'#f1f5f9',minHeight:'calc(100vh - 100px)'}}>
-        {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={setPage} onEditExam={e=>{setEditingExam(e);setPage('edit');}} dark={d} />}
+      <main className="cm-main">
+        {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={go} onEditExam={e=>{setEditingExam(e);go('edit');}} dark={d} />}
+        {page==='scan'&&<ScanPage exam={currentExam} exams={exams} students={examStudents} onSelectExam={setCurrentExam} onAddStudent={handleAddStudent} onNavigate={go} />}
+        {page==='sheets'&&<SheetsPage exam={currentExam} onNavigate={go} dark={d} />}
         {page==='create'&&<CreatePage onCreated={handleAddExam} prefill={prefill} dark={d} />}
         {page==='edit'&&<CreatePage onCreated={handleUpdateExam} prefill={editingExam} isEdit={true} dark={d} />}
         {page==='material'&&<MaterialPage onPrefill={handlePrefill} dark={d} />}
-        {page==='upload'&&<UploadPage exam={currentExam} students={examStudents} onAddStudent={handleAddStudent} dark={d} />}
+        {page==='upload'&&<UploadPage exam={currentExam} students={examStudents} onAddStudent={handleAddStudent} onNavigate={go} dark={d} />}
         {page==='board'&&<BoardPage exam={currentExam} students={examStudents} onDeleteStudent={handleDeleteStudent} onExportExcel={exportExcel} onReload={loadData} dark={d} />}
         {page==='analytics'&&<AnalyticsPage exam={currentExam} students={examStudents} onExportAnalytics={exportAnalytics} dark={d} />}
         {page==='rating'&&<RatingPage exams={exams} students={students} dark={d} />}
         {page==='students'&&<StudentAccountsPage dark={d} />}
         {page==='admin'&&teacher?.isAdmin&&<AdminPage dark={d} />}
       </main>
-      <footer style={{textAlign:'center',padding:'20px',color:'#94a3b8',fontSize:12,borderTop:'1px solid '+(d?'#334155':'#e2e8f0'),background:d?'#1e293b':'white',marginTop:36}}>
-        EYESH Хариулт Хуудас Шалгагч · AI Bubble Detection
+      <footer className="cm-foot no-print">
+        CyberMath · ЭЕШ шалгагч · <a href={PRACTICE_URL}>Дасгалын төв →</a>
       </footer>
+      <nav className="cm-tabbar no-print">
+        {tab('home', t.nav.home)}
+        {tab('board', t.nav.board)}
+        <button className="cm-fab" onClick={()=>go('scan')}><span><Ico d={NAV_ICON.scan} size={26} sw={2.2}/></span>{t.nav.scan}</button>
+        {tab('analytics', t.nav.analytics)}
+        {tab('more', t.more)}
+      </nav>
+      {moreOpen&&(
+        <div className="cm-sheet-bg no-print" onClick={()=>setMoreOpen(false)}>
+          <div className="cm-sheet" onClick={e=>e.stopPropagation()}>
+            <div className="cm-sheet-grab"/>
+            <div className="cm-sheet-grid">
+              {moreIds.map(id=>(
+                <button key={id} className={page===id?'on':''} onClick={()=>go(id)}>
+                  <span className="ic"><Ico d={NAV_ICON[id]} size={21} sw={2}/></span>{t.nav[id]}
+                </button>
+              ))}
+              <a href={PRACTICE_URL}><span className="ic"><Ico d={NAV_ICON.book} size={21} sw={2}/></span>Дасгалын төв</a>
+            </div>
+            <div className="cm-sheet-row">
+              <button onClick={toggleDark}>{d?'☀️ Цайвар':'🌙 Бараан'}</button>
+              <button onClick={toggleLang}>{lang==='mn'?'English':'Монгол'}</button>
+              <button className="danger" onClick={logout}>{t.logout}</button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

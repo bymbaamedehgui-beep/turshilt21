@@ -43,7 +43,7 @@ export default async function handler(req, res) {
         from: 'EYESH Checker <noreply@eyeshcheck.com>',
         to: email.toLowerCase(),
         subject: 'EYESH Checker — Email баталгаажуулах код',
-        html: '<div style="font-family:Arial,sans-serif;max-width:420px;margin:0 auto;padding:32px"><h2 style="color:#dc2626">EYESH Checker</h2><p>Таны баталгаажуулах код:</p><div style="font-size:40px;font-weight:900;letter-spacing:8px;color:#1e293b;background:#f1f5f9;padding:24px;border-radius:10px;text-align:center;margin:20px 0">'+code+'</div><p style="color:#64748b;font-size:13px">Код 10 минут хүчинтэй.</p></div>'
+        html: '<div style="font-family:Arial,sans-serif;max-width:420px;margin:0 auto;padding:32px"><h2 style="color:#7B52EE">EYESH Checker</h2><p>Таны баталгаажуулах код:</p><div style="font-size:40px;font-weight:900;letter-spacing:8px;color:#1a1030;background:#f1eef8;padding:24px;border-radius:10px;text-align:center;margin:20px 0">'+code+'</div><p style="color:#7c7596;font-size:13px">Код 10 минут хүчинтэй.</p></div>'
       })
     });
     if (!emailRes.ok) {
