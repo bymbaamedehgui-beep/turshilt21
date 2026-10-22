@@ -51,11 +51,18 @@ function Box({ x, y, w, h, title, titleH = 5, fs = titleH * 0.62 }) {
 }
 
 export function AnswerSheetSVG({ exam, student, className, style }) {
-  const L = useMemo(() => sheetLayout(exam), [exam]);
+  // Хуудсан дээр ЭЕШ шиг 1–60, 2.1–2.4 бүгдийг хэвлэнэ; аль мөрийг бөглөхийг шалгалтаас (E) заана
+  const L = useMemo(() => sheetLayout(exam, { full: true }), [exam]);
+  const E = useMemo(() => sheetLayout(exam), [exam]);
   const code = student && /^\d{1,10}$/.test(String(student.code || '')) ? String(student.code) : '';
   const byKind = k => L.groups.filter(g => g.kind === k);
   const s1 = byKind('s1');
-  const title = (exam?.title || '').slice(0, 64);
+  const title = (exam?.title || '').slice(0, 48);
+  const s1Hint = E.s1Count ? `1–${E.s1Count}-г бөглөнө` : '1-р хэсэг байхгүй';
+  const s2Hint = E.s2.length
+    ? 'Бөглөх: ' + E.s2.map(b => b.sub + ' (' + (b.rows.length > 2 && S2_ROWS.indexOf(b.rows[b.rows.length - 1]) - S2_ROWS.indexOf(b.rows[0]) === b.rows.length - 1
+        ? b.rows[0] + '–' + b.rows[b.rows.length - 1] : b.rows.join(', ')) + ')').join(' · ')
+    : 'Энэ шалгалтад 2-р хэсэг байхгүй';
   const wrong = [['x', 3], ['dot', 2], ['ring', 1], ['tick', 2], ['scrib', 3], ['two', 0], ['half', 3]];
   return (
     <svg className={className} style={style} viewBox={`0 0 ${PAGE_W} ${PAGE_H}`} width={PAGE_W + 'mm'} height={PAGE_H + 'mm'}
@@ -70,6 +77,7 @@ export function AnswerSheetSVG({ exam, student, className, style }) {
 
       {/* Гарчиг + нэр */}
       <text x={105} y={20.5} textAnchor="middle" fontSize={6.6} fontWeight={900} fill={RED}>ХАРИУЛТЫН ХУУДАС</text>
+      {title && <text x={190} y={13.8} textAnchor="end" fontSize={2.6} fontWeight={800} fill="#555">{title}</text>}
       <text x={20} y={26} fontSize={2.6} fontWeight={700} fill={RED}>Овог нэр:</text>
       <line x1={33} y1={26.4} x2={118} y2={26.4} stroke={RED} strokeWidth={0.2} />
       {student?.name && <text x={35} y={25.6} fontSize={3.3} fontWeight={800} fill={INK}>{student.name}</text>}
@@ -130,8 +138,7 @@ export function AnswerSheetSVG({ exam, student, className, style }) {
 
       {/* 1-р хэсэг */}
       <text x={20} y={92} fontSize={3.8} fontWeight={900} fill={RED}>1-Р ХЭСЭГ</text>
-      {title && <text x={46} y={92} fontSize={2.4} fontWeight={700} fill="#9a5a5a">{title}</text>}
-      {L.s1Count === 0 && <text x={20} y={100} fontSize={2.8} fill={RED}>Энэ шалгалтад 1-р хэсэг байхгүй</text>}
+      <text x={94} y={92} textAnchor="end" fontSize={2.5} fontWeight={800} fill={INK}>{s1Hint}</text>
       {[0, 1].map(c => Array.from({ length: S1_ROWS / 2 }, (_, p) => {
         const first = c * S1_ROWS + p * 2;
         if (first >= L.s1Count || p % 2) return null;
@@ -147,7 +154,8 @@ export function AnswerSheetSVG({ exam, student, className, style }) {
       ))}
 
       {/* 2-р хэсэг */}
-      {L.s2.length > 0 && <text x={S2_POS.x} y={92} fontSize={3.8} fontWeight={900} fill={RED}>2-Р ХЭСЭГ</text>}
+      <text x={S2_POS.x} y={92} fontSize={3.8} fontWeight={900} fill={RED}>2-Р ХЭСЭГ</text>
+      <text x={S2_POS.x + S2_POS.w} y={92} textAnchor="end" fontSize={2.5} fontWeight={800} fill={INK}>{s2Hint}</text>
       {L.s2.map(b => {
         const last = S2_ROWS.indexOf(b.rows[b.rows.length - 1]);
         const top = b.y0 + 4.6, bottom = b.y0 + S2_POS.rowY + last * S2_POS.pitch + 3;
