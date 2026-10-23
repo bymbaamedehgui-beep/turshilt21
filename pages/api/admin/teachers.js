@@ -1,4 +1,4 @@
-import { getAllTeachers, updateTeacherStatus, deleteTeacher, getTeacherById, initDb } from '../../../lib/db';
+import { getAllTeachers, updateTeacherStatus, deleteTeacher, getTeacherById, initDb, extendTeacher } from '../../../lib/db';
 import { requireAuth } from '../../../lib/auth';
 
 export default requireAuth(async function handler(req, res) {
@@ -9,6 +9,13 @@ export default requireAuth(async function handler(req, res) {
   if (req.method === 'GET') {
     const teachers = await getAllTeachers();
     return res.json(teachers);
+  }
+  if (req.method === 'PATCH' && req.body?.extendMonths) {
+    // Гараар эрх сунгах (бэлэн мөнгө, дансаар гэх мэт)
+    const months = parseInt(req.body.extendMonths, 10);
+    if (![1, 3, 6, 12].includes(months)) return res.status(400).json({ error: 'Сар буруу' });
+    const paidUntil = await extendTeacher(req.body.id, months);
+    return paidUntil ? res.json({ ok: true, paidUntil }) : res.status(404).json({ error: 'Багш олдсонгүй' });
   }
   if (req.method === 'PATCH') {
     const { id, status } = req.body;

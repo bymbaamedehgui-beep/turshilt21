@@ -1,10 +1,10 @@
 import { getExams, createExam, initDb, getTeacherById } from '../../../lib/db';
-import { requireAuth } from '../../../lib/auth';
+import { requirePaid } from '../../../lib/auth';
 import { neon } from '@neondatabase/serverless';
 
 const DEMO_EMAIL = 'demo@eyeshcheck.com';
 
-export default requireAuth(async function handler(req, res) {
+export default requirePaid(async function handler(req, res) {
   await initDb();
   if (req.method === 'GET') {
     const exams = await getExams(req.teacherId);

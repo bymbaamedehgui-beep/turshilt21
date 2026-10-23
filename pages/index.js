@@ -3,6 +3,8 @@ import Head from 'next/head';
 import { SEC1_CHOICES, SEC2_ROWS, SEC2_SUBS, uid, pf, eyeshGrade, toScaled, getToken, apiFetch, calcScore } from '../lib/eyesh';
 import { ScanPage } from '../components/QuickScan';
 import { SheetsPage } from '../components/AnswerSheet';
+import { Paywall } from '../components/Paywall';
+import { PLANS, planPrice, fullPrice, perMonth, fmtMNT, fmtDay, TRIAL_DAYS } from '../lib/plans';
 
 const PRACTICE_URL = 'https://cyber-math.com/worksheets.html';
 
@@ -77,7 +79,7 @@ const T = {
     timeUp:'Хугацаа дууссан! Хариулт автоматаар илгээгдлээ.',
     section1:'1-р хэсэг', section2:'2-р хэсэг',
     hello:'Сайн байна уу,',
-    nav:{home:'Нүүр',scan:'Шалгах',sheets:'Хуудас хэвлэх',create:'Шалгалт үүсгэх',edit:'Шалгалт засах',board:'Жагсаалт',analytics:'Анализ',rating:'Рейтинг',students:'Сурагчид',admin:'Admin'},
+    nav:{billing:'Эрх сунгах',home:'Нүүр',scan:'Шалгах',sheets:'Хуудас хэвлэх',create:'Шалгалт үүсгэх',edit:'Шалгалт засах',board:'Жагсаалт',analytics:'Анализ',rating:'Рейтинг',students:'Сурагчид',admin:'Admin'},
     more:'Цэс',
   },
   en: {
@@ -97,7 +99,7 @@ const T = {
     timeUp:'Time is up! Your answers have been submitted.',
     section1:'Section 1', section2:'Section 2',
     hello:'Hello,',
-    nav:{home:'Home',scan:'Scan',sheets:'Print sheets',create:'Create Exam',edit:'Edit Exam',board:'Results',analytics:'Analytics',rating:'Ranking',students:'Students',admin:'Admin'},
+    nav:{billing:'Renew',home:'Home',scan:'Scan',sheets:'Print sheets',create:'Create Exam',edit:'Edit Exam',board:'Results',analytics:'Analytics',rating:'Ranking',students:'Students',admin:'Admin'},
     more:'More',
   }
 };
@@ -368,14 +370,21 @@ function LandingPage({onEnter}) {
           </div>
         )}
 
-        <div style={{...sec,textAlign:'center'}}>
-          <div className="cm-hero" style={{display:'inline-block',minWidth:290,padding:'30px 34px',marginBottom:0}}>
-            <div className="cm-hero-t" style={{marginBottom:12}}>
-              <span className="cm-eyebrow">ҮНЭ</span>
-              <div style={{fontSize:44,fontWeight:900,lineHeight:1}}>9,900₮</div>
-              <p>нэг сарын хязгааргүй ашиглалт</p>
-            </div>
-            <button className="cm-btn amber" onClick={onEnter}>Бүртгүүлэх →</button>
+        <div style={sec}>
+          <div style={h2}>Үнэ</div>
+          <div style={sub}>Бүртгүүлээд {TRIAL_DAYS} хоног үнэгүй туршина · дараа нь QPay-ээр төлнө</div>
+          <div className="pw-plans">
+            {PLANS.map(p => (
+              <div key={p.months} className={'pw-plan' + (p.best ? ' best on' : '')} style={{cursor:'default'}}>
+                {p.best && <span className="pw-ribbon">Хамгийн ашигтай</span>}
+                <span className="pw-plan-m"><b>{p.months} сар</b>{p.off > 0 && <em>−{p.off}%</em>}</span>
+                <span className="pw-plan-p"><b>{fmtMNT(planPrice(p.months))}</b>{p.off > 0 && <s>{fmtMNT(fullPrice(p.months))}</s>}</span>
+                <span className="pw-plan-n">{p.off > 0 ? <>сард <b>{fmtMNT(perMonth(p.months))}</b> · <i>{fmtMNT(fullPrice(p.months) - planPrice(p.months))} хэмнэнэ</i></> : <>хязгааргүй шалгалт</>}</span>
+              </div>
+            ))}
+          </div>
+          <div style={{textAlign:'center',marginTop:6}}>
+            <button className="cm-btn amber" style={{padding:'.85rem 1.6rem',fontSize:16}} onClick={onEnter}>{TRIAL_DAYS} хоног үнэгүй турших →</button>
           </div>
         </div>
 
@@ -395,10 +404,11 @@ function LandingPage({onEnter}) {
           {[
             {q:'Ямар төхөөрөмжид ажилладаг вэ?', a:'Утас, таблет, компьютерийн хөтөч дээр ажиллана. Суулгах шаардлагагүй — утсан дээрээ «Нүүр дэлгэцэнд нэмэх»-ээр апп шиг ашиглаж болно.'},
             {q:'Камераар уншихад хэр найдвартай вэ?', a:'CyberMath-ийн хэвлэсэн хуудсыг AI-гүй, тэмдгээр нь байрлалыг тогтоож пикселээр уншдаг тул нэг хуудсыг хэдэн удаа уншуулсан ч ижил үр дүн гарна. Олон будсан, бүдэг, арилгасан мөрийг таньж танаас баталгаажуулалт авна.'},
-            {q:'Нэг сард хэдэн шалгалт шалгаж болох вэ?', a:'9,900₮-ийн тарифт хязгааргүй шалгалт шалгах боломжтой.'},
+            {q:'Үнэгүй туршиж болох уу?', a:'Тийм. Бүртгүүлэхдээ утасны дугаараа SMS-ээр баталгаажуулмагц ' + TRIAL_DAYS + ' хоног бүх боломжийг үнэгүй ашиглана.'},
+            {q:'Үнэ хэд вэ?', a:'1 сар 9,900₮. 3 сараар авбал 20%, 6 сараар авбал 30% хямд. Аль ч багцад шалгалт хязгааргүй.'},
             {q:'Өгөгдөл хаана хадгалагддаг вэ?', a:'Бүх өгөгдөл Neon cloud database-д хадгалагдана. Өгөгдлийг гуравдагч этгээдэд дамжуулахгүй.'},
             {q:'Олон багш нэг платформ ашиглаж болох уу?', a:'Тийм. Багш бүр өөрийн бүртгэлтэй бөгөөд зөвхөн өөрийн шалгалт, сурагчдаа харна.'},
-            {q:'Төлбөрийг хэрхэн төлөх вэ?', a:'Хаан банкны 5542136007 дансруу "Нэр, утасны дугаар" гүйлгээний утгатай шилжүүлнэ. Admin 24 цагийн дотор эрхийг нээнэ.'},
+            {q:'Төлбөрийг хэрхэн төлөх вэ?', a:'Нэвтэрсний дараа багцаа сонгоод QPay-ээр төлнө: банкны аппаараа QR уншуулах эсвэл утсан дээрээ банкны апп руу шууд орно. Төлсөн даруй эрх нээгдэнэ. Хугацаа дуусахаас өмнө сунгавал үлдсэн хоног дээр нэмэгдэнэ.'},
           ].map((item,i)=>(
             <FAQItem key={i} q={item.q} a={item.a} />
           ))}
@@ -474,6 +484,11 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
   const [verifyCode, setVerifyCode] = useState('');
   const [verifyErr, setVerifyErr] = useState('');
   const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyMasked, setVerifyMasked] = useState('');
+  const [resendAt, setResendAt] = useState(0);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => { if (!verifying) return; const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, [verifying]);
+  const resendIn = Math.max(0, Math.ceil((resendAt - now) / 1000));
   
   async function handleForgotSend() {
     if (!forgotEmail) return;
@@ -535,15 +550,9 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
       const d = await fetch('/api/verify-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:verifyEmail,code:verifyCode.trim()})}).then(async r=>{
         const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
       });
-      if (d.isAdmin) {
-        const d2 = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:verifyEmail,password:pass})}).then(r=>r.json());
-        localStorage.setItem('eyesh_token', d2.token);
-        localStorage.setItem('eyesh_teacher', JSON.stringify(d2.teacher));
-        onLogin(d2.teacher);
-      } else {
-        setVerifying(false);
-        setRegistered(true);
-      }
+      localStorage.setItem('eyesh_token', d.token);
+      localStorage.setItem('eyesh_teacher', JSON.stringify(d.teacher));
+      onLogin(d.teacher);
     } catch(e) { setVerifyErr(e.message); }
     setVerifyLoading(false);
   }
@@ -555,18 +564,12 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
       const d = await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass,name,phone})}).then(async r=>{
         const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
       });
-      if (d.isAdmin) {
-        const d2 = await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass})}).then(r=>r.json());
-        localStorage.setItem('eyesh_token', d2.token);
-        localStorage.setItem('eyesh_teacher', JSON.stringify(d2.teacher));
-        onLogin(d2.teacher);
-      } else if (d.needsVerification) {
-        setVerifyEmail(email);
-        setVerifying(true);
-      } else {
-        setRegistered(true);
-      }
-    } catch(e) { setErr(e.message); }
+      setVerifyEmail(email);
+      setVerifyMasked(d.masked || '');
+      setResendAt(Date.now() + 60000);
+      setVerifyErr('');
+      setVerifying(true);
+    } catch(e) { if (verifying) setVerifyErr(e.message); else setErr(e.message); }
     setLoading(false);
   }
 
@@ -629,12 +632,11 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
               <div style={{textAlign:'center',padding:'8px 0'}}>
                 <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
                   <div style={{background:'#f3eeff',borderRadius:14,padding:12}}>
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#7B52EE" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75"/></svg>
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#7B52EE" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10 18h4"/><path d="M9 8h6M9 11h4"/></svg>
                   </div>
                 </div>
-                <div style={{fontWeight:800,fontSize:15,color:'#1c1f2a',marginBottom:4}}>Email шалгана уу!</div>
-                <div style={{fontSize:12,color:'#6b7280',marginBottom:8}}><b>{verifyEmail}</b> руу 6 оронтой код илгээлээ</div>
-                <div style={{fontSize:11,color:'#6b7280',marginBottom:16,background:'#fef9c3',padding:'6px 10px',borderRadius:6,border:'1px solid #fde68a'}}>Хэрэв ирэхгүй бол spam/junk фолдероо шалгана уу</div>
+                <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:4}}>SMS кодоо оруулна уу</div>
+                <div style={{fontSize:13,color:'#6b7280',marginBottom:14}}><b>{verifyMasked || 'Таны'}</b> дугаарт 6 оронтой код илгээлээ</div>
                 {verifyErr && <div style={{color:'#b3261e',fontSize:12,background:'#fdecec',padding:'6px 10px',borderRadius:6,marginBottom:10,textAlign:'center'}}>{verifyErr}</div>}
                 <input value={verifyCode} onChange={e=>setVerifyCode(e.target.value.replace(/\D/g,'').slice(0,6))}
                   onKeyDown={e=>e.key==='Enter'&&handleVerify()}
@@ -644,37 +646,10 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
                   style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8,opacity:verifyCode.length!==6?0.6:1}}>
                   {verifyLoading&&<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>} Баталгаажуулах
                 </button>
-                <button onClick={()=>{setVerifying(false);setVerifyCode('');setVerifyErr('');}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12}}>← Буцах</button>
-              </div>
-            ) : registered ? (
-              <div style={{padding:'8px 0'}}>
-                <div style={{textAlign:'center',marginBottom:16}}>
-                  <div style={{display:'flex',justifyContent:'center',marginBottom:10}}><div style={{background:'#fef3c7',borderRadius:14,padding:12}}><Ico d='M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z' size={40} color='#d97706'/></div></div>
-                  <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:6}}>Хүсэлт илгээгдлээ!</div>
-                  <div style={{fontSize:12,color:'#6b7280',lineHeight:1.6}}>Admin таны төлбөрийг баталгаажуулсны дараа нэвтэрч болно.</div>
-                </div>
-                {/* Payment info */}
-                <div style={{background:'#f9fafb',border:'1px solid #e5e7eb',borderRadius:12,padding:'16px',marginBottom:14}}>
-                  <div style={{fontWeight:800,fontSize:13,color:'#1c1f2a',marginBottom:10,textAlign:'center'}}>💳 Төлбөрийн мэдээлэл</div>
-                  <div style={{display:'grid',gridTemplateColumns:'auto 1fr',gap:'6px 12px',fontSize:12}}>
-                    <span style={{color:'#6b7280',fontWeight:600}}>Банк:</span>
-                    <span style={{color:'#1c1f2a',fontWeight:700}}>Хаан банк</span>
-                    <span style={{color:'#6b7280',fontWeight:600}}>Данс:</span>
-                    <span style={{color:'#1c1f2a',fontWeight:700,letterSpacing:1}}>5542136007</span>
-                    <span style={{color:'#6b7280',fontWeight:600}}>IBAN:</span>
-                    <span style={{color:'#1c1f2a',fontWeight:700}}>34000500</span>
-                    <span style={{color:'#6b7280',fontWeight:600}}>Эзэмшигч:</span>
-                    <span style={{color:'#1c1f2a',fontWeight:700}}>М.Бямбадорж</span>
-                    <span style={{color:'#6b7280',fontWeight:600}}>Дүн:</span>
-                    <span style={{color:'#7B52EE',fontWeight:900,fontSize:14}}>9,900 ₮ / сар</span>
-                    <span style={{color:'#6b7280',fontWeight:600}}>Утга:</span>
-                    <span style={{color:'#1c1f2a',fontWeight:700}}>Бүртгүүлсэн нэр, утасны дугаар</span>
-                  </div>
-                </div>
-                <div style={{background:'#fef9c3',border:'1px solid #fde68a',borderRadius:8,padding:'8px 12px',fontSize:11,color:'#92400e',marginBottom:12,textAlign:'center'}}>
-                  Төлбөр хийсний дараа admin эрхийг нээнэ
-                </div>
-                <button onClick={()=>{setRegistered(false);setTab('login');}} style={{width:'100%',padding:'8px',background:'#f3f4f6',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer'}}>Нэвтрэх хуудас руу</button>
+                <button onClick={handleRegister} disabled={resendIn>0||loading} style={{background:'none',border:'none',color:resendIn>0?'#9ca3af':'#7B52EE',cursor:resendIn>0?'default':'pointer',fontSize:13,fontWeight:800,marginBottom:6}}>
+                  {resendIn>0 ? `Дахин код авах (${resendIn}с)` : 'Дахин код авах'}
+                </button>
+                <div><button onClick={()=>{setVerifying(false);setVerifyCode('');setVerifyErr('');}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12}}>← Дугаараа засах</button></div>
               </div>
             ) : (
               <>
@@ -738,7 +713,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
               <>
               <input value={name} onChange={e=>setName(e.target.value)} placeholder="Таны нэр (заавал биш)"
                 style={inp} />
-              <input value={phone} onChange={e=>setPhone(e.target.value)} placeholder="Утасны дугаар" type="tel"
+              <input value={phone} onChange={e=>setPhone(e.target.value.replace(/[^0-9+ ]/g,''))} placeholder="Утасны дугаар — SMS код ирнэ" type="tel" inputMode="numeric" maxLength={13}
                 style={inp} />
               </>
             )}
@@ -748,11 +723,11 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
               style={{...inp,marginBottom:16}} />
             <button onClick={tab==='login'?handleTeacherLogin:handleRegister} disabled={loading}
               style={{width:'100%',padding:13,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-              {loading&&<Spinner/>} {tab==='login'?'Нэвтрэх':'Хүсэлт илгээх'}
+              {loading&&<Spinner/>} {tab==='login'?'Нэвтрэх':'SMS код авах'}
             </button>
             {tab==='register'&&(
               <div style={{fontSize:11,color:'#9ca3af',textAlign:'center',marginTop:10}}>
-                Бүртгүүлсний дараа admin зөвшөөрнө
+                SMS-ээр баталгаажуулмагц 1 хоног үнэгүй туршина
               </div>
             )}
             </>
@@ -803,6 +778,13 @@ function AdminPage({dark:d=false}) {
     } catch(e) { alert(e.message); }
   }
 
+  async function extend(id, months) {
+    try {
+      const r = await apiFetch('/api/admin/teachers', { method:'PATCH', body:{ id, extendMonths: months } });
+      setTeachers(ts => ts.map(t => t.id===id ? {...t, paid_until: r.paidUntil} : t));
+    } catch(e) { alert(e.message); }
+  }
+
   async function removeTeacher(id, email) {
     if (!confirm(`"${email}" устгах уу?`)) return;
     try {
@@ -829,7 +811,10 @@ function AdminPage({dark:d=false}) {
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontWeight:700,fontSize:14,color:text}}>{t.name||'—'}</div>
           <div style={{fontSize:12,color:muted}}>{t.email}</div>
-          <div style={{fontSize:11,color:muted}}>{new Date(t.created_at).toLocaleDateString('mn-MN')}</div>
+          <div style={{fontSize:11,color:muted}}>{new Date(t.created_at).toLocaleDateString('mn-MN')}{t.phone ? ' · ' + t.phone : ''}</div>
+          {!t.is_admin && <div style={{fontSize:12,fontWeight:800,marginTop:2,color:t.paid_until && new Date(t.paid_until) > new Date() ? '#16a34a' : '#b3261e'}}>
+            {t.paid_until ? (new Date(t.paid_until) > new Date() ? 'Эрх: ' : 'Дууссан: ') + new Date(t.paid_until).toLocaleDateString('mn-MN') : 'Эрхгүй'}
+          </div>}
         </div>
         <div style={{display:'flex',gap:6,flexShrink:0}}>
           {actions}
@@ -878,6 +863,7 @@ function AdminPage({dark:d=false}) {
           ? <div style={{padding:'24px',textAlign:'center',color:muted,fontSize:13}}>Одоохондоо байхгүй</div>
           : active.map(t=>(
             <TeacherRow key={t.id} t={t} actions={<>
+              <button style={btnStyle('#e1f4e9','#16a34a')} onClick={()=>extend(t.id,1)}>+1 сар</button>
               <button style={btnStyle('#f3f4f6','#374151')} onClick={()=>updateStatus(t.id,'disabled')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636' size={14} color='#374151'/>Хаах</span></button>
               <button style={btnStyle('#fdecec','#b3261e')} onClick={()=>removeTeacher(t.id,t.email)}><Ico d='M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0' size={14} color='#b3261e'/></button>
             </>}/>
@@ -2477,6 +2463,14 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [editingExam, setEditingExam] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [me, setMe] = useState(null);             // { hasAccess, paidUntil, … } — /api/me
+
+  // Ямар нэг API 402 (эрх дууссан) буцаавал эрхийн мэдээллийг шинэчилж төлбөрийн дэлгэц гаргана
+  useEffect(() => {
+    const onPaywall = () => { apiFetch('/api/me').then(setMe).catch(() => {}); };
+    window.addEventListener('eyesh:paywall', onPaywall);
+    return () => window.removeEventListener('eyesh:paywall', onPaywall);
+  }, []);
 
   // ☰ цэс нээлттэй үед: Esc-ээр хаах, ард нь гүйлгэхгүй
   useEffect(() => {
@@ -2532,6 +2526,9 @@ export default function App() {
   async function loadData() {
     setLoading(true);
     try {
+      const m = await apiFetch('/api/me');
+      setMe(m);
+      if (!m.hasAccess) { setLoading(false); return; }
       const [ex, st] = await Promise.all([apiFetch('/api/exams'), apiFetch('/api/students')]);
       setExams(ex);
       setStudents(st);
@@ -2613,7 +2610,21 @@ export default function App() {
   const examStudents = students.filter(s=>s.examId===currentExam?.id);
   const navIds = PAGE_IDS.filter(id => id!=='admin' || teacher?.isAdmin);
   function go(id) { setPage(id); setMenuOpen(false); if (typeof window!=='undefined') window.scrollTo(0,0); }
-  function logout() { localStorage.removeItem('eyesh_token');localStorage.removeItem('eyesh_teacher');setAuthed(false);setTeacher(null);setMenuOpen(false); }
+  function logout() { localStorage.removeItem('eyesh_token');localStorage.removeItem('eyesh_teacher');setAuthed(false);setTeacher(null);setMe(null);setMenuOpen(false); }
+  const daysLeft = me?.paidUntil ? (new Date(me.paidUntil) - Date.now()) / 86400000 : null;
+  const showRenew = me && me.hasAccess && !me.isAdmin && daysLeft !== null;
+  function paid(r) { setMe(m => ({ ...m, hasAccess: true, paidUntil: r.paidUntil })); }
+
+  // Эрх дууссан: зөвхөн төлбөрийн дэлгэц
+  if (me && !me.hasAccess) return (
+    <>
+      <Head><title>Эрх идэвхжүүлэх · ЭЕШ шалгагч</title></Head>
+      <header className="cm-top"><div className="cm-top-in">
+        <div className="cm-brand"><img src="/chick.svg" alt="" className="cm-chick" /><span><b>ЭЕШ шалгагч</b><small>CyberMath</small></span></div>
+      </div></header>
+      <Paywall me={me} onClose={() => { setPage('home'); loadData(); }} onLogout={logout} />
+    </>
+  );
   const tab = (id, label) => (
     <button key={id} className={'cm-tab'+(page===id?' on':'')} onClick={()=>go(id)}>
       <Ico d={NAV_ICON[id]} size={23} sw={2}/>{label}
@@ -2643,6 +2654,13 @@ export default function App() {
         </div>
       </header>
       <main className="cm-main">
+        {showRenew && daysLeft < 3 && page !== 'billing' && (
+          <div className="cm-billbar no-print">
+            <span>{daysLeft < 1 ? `Эрх ${Math.max(1, Math.ceil(daysLeft * 24))} цагийн дараа дуусна` : `Эрх ${Math.ceil(daysLeft)} хоногийн дараа дуусна`}</span>
+            <button onClick={()=>go('billing')}>Сунгах</button>
+          </div>
+        )}
+        {page==='billing'&&<Paywall me={me} renew onPaid={paid} onClose={()=>go('home')} />}
         {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={go} onEditExam={e=>{setEditingExam(e);go('edit');}} dark={d} />}
         {page==='scan'&&<ScanPage exam={currentExam} exams={exams} students={examStudents} onSelectExam={setCurrentExam} onAddStudent={handleAddStudent} onNavigate={go} />}
         {page==='sheets'&&<SheetsPage exam={currentExam} onNavigate={go} dark={d} />}
@@ -2672,6 +2690,12 @@ export default function App() {
               <button className="cm-ibtn" onClick={()=>setMenuOpen(false)} aria-label="Хаах"><Ico d={NAV_ICON.close} size={20} sw={2.2}/></button>
             </div>
             {teacher&&<div className="cm-drawer-user"><b>{teacher.name||'Багш'}</b><span>{teacher.email}</span></div>}
+            {showRenew&&(
+              <div className="cm-drawer-plan">
+                <span>Эрх<b>{fmtDay(me.paidUntil)} хүртэл</b></span>
+                <button onClick={()=>go('billing')}>Сунгах</button>
+              </div>
+            )}
             <nav className="cm-drawer-nav">
               {navIds.map(id=>(
                 <button key={id} className={page===id||(id==='create'&&page==='edit')?'on':''} onClick={()=>go(id)}>

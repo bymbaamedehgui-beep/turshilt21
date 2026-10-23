@@ -4,7 +4,7 @@
 // leaves Section 2 blank (teacher fills in via separate endpoint), and
 // inserts (or replaces) student records in the DB.
 
-import { requireAuth } from '../../../lib/auth';
+import { requirePaid } from '../../../lib/auth';
 import { getExam, initDb } from '../../../lib/db';
 import { neon } from '@neondatabase/serverless';
 
@@ -51,7 +51,7 @@ function uid() { return Math.random().toString(36).slice(2) + Date.now().toStrin
 
 export const config = { api: { bodyParser: { sizeLimit: '10mb' } } };
 
-export default requireAuth(async function handler(req, res) {
+export default requirePaid(async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
   try {
     const { examId, csvText } = req.body || {};

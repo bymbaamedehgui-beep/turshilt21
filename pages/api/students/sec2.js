@@ -2,7 +2,7 @@
 // Body: { studentId, sec1?: ['A','B',...], sec2?: { '2.1': {a:'5',b:'4',...}, ... } }
 // Updates the student's answers (Sec1 and/or Sec2), recomputes total + grade, saves.
 
-import { requireAuth } from '../../../lib/auth';
+import { requirePaid } from '../../../lib/auth';
 import { initDb } from '../../../lib/db';
 import { neon } from '@neondatabase/serverless';
 
@@ -20,7 +20,7 @@ function eyeshGrade(p) {
   return {g:'F',l:'Тэнцээгүй',c:'#dc2626'};
 }
 
-export default requireAuth(async function handler(req, res) {
+export default requirePaid(async function handler(req, res) {
   if (req.method !== 'PATCH' && req.method !== 'POST') return res.status(405).end();
   try {
     const { studentId, sec1, sec2 } = req.body || {};

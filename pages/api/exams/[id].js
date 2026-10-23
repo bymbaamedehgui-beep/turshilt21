@@ -1,7 +1,7 @@
 import { getExam, updateExam, deleteExam, initDb } from '../../../lib/db';
-import { requireAuth } from '../../../lib/auth';
+import { requirePaid } from '../../../lib/auth';
 
-export default requireAuth(async function handler(req, res) {
+export default requirePaid(async function handler(req, res) {
   await initDb();
   const { id } = req.query;
   if (req.method === 'GET') {
