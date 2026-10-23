@@ -1,71 +1,50 @@
-import { initDb, getTeacherByEmail, createTeacher } from '../../lib/db';
-import { neon } from '@neondatabase/serverless';
+import { initDb, getTeacherByEmail, createTeacher, getVerification, bumpVerificationAttempt, deleteVerification, phoneTaken, hasAccess } from '../../lib/db';
+import { signToken } from '../../lib/auth';
+import { hashCode } from '../../lib/sms';
+import { TRIAL_DAYS } from '../../lib/plans';
 
-function getDb() { return neon(process.env.POSTGRES_URL || process.env.DATABASE_URL); }
+// Бүртгэлийн SMS кодыг шалгаж, багшийг 1 хоногийн туршилттай үүсгээд шууд нэвтрүүлнэ
+// (замын нэр хуучин клиентүүдтэй нийцүүлэхийн тулд verify-email хэвээр)
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+const MAX_ATTEMPTS = 5;
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
-  const { email, code } = req.body || {};
-  if (!email || !code) return res.status(400).json({ error: 'Мэдээлэл дутуу' });
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const code = String(req.body?.code || '').replace(/\D/g, '');
+  if (!email || code.length !== 6) return res.status(400).json({ error: '6 оронтой кодоо оруулна уу' });
 
   await initDb();
-  const sql = getDb();
-
-  const rows = await sql`SELECT * FROM email_verifications WHERE email=${email.toLowerCase()} AND code=${code.trim()} AND expires_at > NOW()`;
-  if (!rows[0]) return res.status(400).json({ error: 'Код буруу эсвэл хугацаа дууссан' });
-
-  const v = rows[0];
-
-  // Check if teacher already exists
-  const existing = await getTeacherByEmail(email.toLowerCase());
-  if (!existing) {
-    // Check if first user
-    const count = await sql`SELECT COUNT(*) as c FROM teachers`;
-    const isFirst = parseInt(count[0].c) === 0;
-    await createTeacher({
-      id: genId(),
-      email: email.toLowerCase(),
-      passwordHash: v.password_hash,
-      name: v.name||'',
-      phone: v.phone||''
-    });
-    if (isFirst) {
-      await sql`DELETE FROM email_verifications WHERE email=${email.toLowerCase()}`;
-      return res.json({ ok: true, isAdmin: true });
-    }
+  const v = await getVerification(email);
+  if (!v || !v.code_hash || new Date(v.expires_at) < new Date()) return res.status(400).json({ error: 'Кодын хугацаа дууссан. Дахин код авна уу.' });
+  if ((v.attempts || 0) >= MAX_ATTEMPTS) return res.status(429).json({ error: 'Хэт олон буруу оролдлого. Дахин код авна уу.' });
+  if (hashCode(code, email) !== v.code_hash) {
+    const left = MAX_ATTEMPTS - (v.attempts || 0) - 1;
+    await bumpVerificationAttempt(email);
+    return res.status(400).json({ error: left > 0 ? `Код буруу байна (${left} оролдлого үлдлээ)` : 'Код буруу байна. Дахин код авна уу.' });
   }
 
-  await sql`DELETE FROM email_verifications WHERE email=${email.toLowerCase()}`;
-
-  // Notify admin
-  try {
-    const msg = `🎯 EYESH Checker\n\n📋 Шинэ бүртгэлийн хүсэлт\n\n👤 Нэр: ${v.name||'—'}\n📧 Email: ${email.toLowerCase()}\n📱 Утас: ${v.phone||'—'}\n✅ Email баталгаажсан`;
-    await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({chat_id: process.env.TELEGRAM_CHAT_ID, text: msg})
-    });
-  } catch(e) {}
+  let teacher = await getTeacherByEmail(email);
+  if (!teacher) {
+    if (await phoneTaken(v.phone)) { await deleteVerification(email); return res.status(400).json({ error: 'Энэ утасны дугаараар бүртгэл үүссэн байна' }); }
+    teacher = await createTeacher({ id: genId(), email, passwordHash: v.password_hash, name: v.name || '', phone: v.phone || '', trialDays: TRIAL_DAYS, phoneVerified: true });
+  }
+  await deleteVerification(email);
 
   try {
-    await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','Authorization':`Bearer ${process.env.RESEND_API_KEY}`},
-      body: JSON.stringify({
-        from: 'EYESH Checker <noreply@eyeshcheck.com>',
-        to: 'bymbaamedehgui@gmail.com',
-        subject: 'EYESH Checker — Шинэ бүртгэлийн хүсэлт (email баталгаажсан)',
-        html: `<div style="font-family:Arial,sans-serif;padding:24px">
-          <h2 style="color:#7B52EE">🎯 EYESH Checker</h2>
-          <p><b>Нэр:</b> ${v.name||'—'}</p>
-          <p><b>Email:</b> ${email.toLowerCase()}</p>
-          <p><b>Утас:</b> ${v.phone||'—'}</p>
-          <p style="color:#16a34a">✅ Email баталгаажсан</p>
-        </div>`
-      })
-    });
-  } catch(e) {}
+    const msg = `🎯 ЭЕШ шалгагч\n\n🆕 Шинэ бүртгэл (${TRIAL_DAYS} хоног туршилт)\n\n👤 ${v.name || '—'}\n📧 ${email}\n📱 ${v.phone || '—'} ✅ SMS`;
+    if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) {
+      await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: process.env.TELEGRAM_CHAT_ID, text: msg }),
+      });
+    }
+  } catch (e) {}
 
-  res.json({ ok: true, isAdmin: false });
+  res.json({
+    ok: true,
+    token: signToken(teacher.id, teacher.email),
+    teacher: { id: teacher.id, email: teacher.email, name: teacher.name, isAdmin: teacher.is_admin, status: teacher.status,
+      paidUntil: teacher.paid_until, hasAccess: hasAccess(teacher) },
+  });
 }

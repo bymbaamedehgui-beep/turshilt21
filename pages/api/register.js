@@ -1,56 +1,39 @@
 import bcrypt from 'bcryptjs';
-import { getTeacherByEmail, initDb } from '../../lib/db';
-import { neon } from '@neondatabase/serverless';
+import { getTeacherByEmail, initDb, phoneTaken, getVerification, saveVerification } from '../../lib/db';
+import { normalizePhone, maskPhone, genCode, hashCode, sendSms, smsConfigured } from '../../lib/sms';
 
-function getDb() { return neon(process.env.POSTGRES_URL || process.env.DATABASE_URL); }
-function genCode() { return String(Math.floor(100000 + Math.random() * 900000)); }
+const RESEND_SEC = 60;      // дахин код хүсэх хамгийн бага хугацаа
+const MAX_SENDS_DAY = 5;    // нэг имэйлд өдөрт илгээх SMS
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
-  const { email, password, name, phone } = req.body || {};
+  const { email: rawEmail, password, name, phone } = req.body || {};
+  const email = String(rawEmail || '').trim().toLowerCase();
   if (!email || !password) return res.status(400).json({ error: 'Email болон нууц үг шаардлагатай' });
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ error: 'Email буруу байна' });
   if (password.length < 6) return res.status(400).json({ error: 'Нууц үг хамгийн багадаа 6 тэмдэгт' });
+  const ph = normalizePhone(phone);
+  if (!ph) return res.status(400).json({ error: 'Утасны дугаараа зөв оруулна уу (8 оронтой гар утас)' });
+  if (!smsConfigured()) return res.status(503).json({ error: 'SMS илгээх үйлчилгээ түр ажиллахгүй байна. Түр хүлээгээд дахин оролдоно уу.' });
 
   await initDb();
-  const sql = getDb();
+  if (await getTeacherByEmail(email)) return res.status(400).json({ error: 'Энэ email бүртгэлтэй байна. Нэвтэрнэ үү.' });
+  // Нэг дугаар — нэг бүртгэл (үнэгүй туршилтыг давтан авахаас сэргийлнэ)
+  if (await phoneTaken(ph.local)) return res.status(400).json({ error: 'Энэ утасны дугаараар бүртгэл үүссэн байна' });
 
-  await sql`CREATE TABLE IF NOT EXISTS email_verifications (
-    email VARCHAR(200) PRIMARY KEY,
-    code VARCHAR(10) NOT NULL,
-    name VARCHAR(200),
-    phone VARCHAR(50),
-    password_hash VARCHAR(200),
-    expires_at TIMESTAMPTZ NOT NULL,
-    created_at TIMESTAMPTZ DEFAULT NOW()
-  )`;
+  const prev = await getVerification(email);
+  if (prev?.sent_at) {
+    const ago = (Date.now() - new Date(prev.sent_at).getTime()) / 1000;
+    if (ago < RESEND_SEC) return res.status(429).json({ error: `${Math.ceil(RESEND_SEC - ago)} секундын дараа дахин код авна уу`, wait: Math.ceil(RESEND_SEC - ago) });
+    if (ago < 86400 && (prev.sends || 0) >= MAX_SENDS_DAY) return res.status(429).json({ error: 'Өнөөдөр хэт олон код хүслээ. Маргааш дахин оролдоно уу.' });
+  }
 
-  const existing = await getTeacherByEmail(email.toLowerCase());
-  if (existing) return res.status(400).json({ error: 'Энэ email бүртгэлтэй байна' });
-
-  const passwordHash = await bcrypt.hash(password, 10);
   const code = genCode();
-  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-  await sql`INSERT INTO email_verifications (email, code, name, phone, password_hash, expires_at)
-    VALUES (${email.toLowerCase()}, ${code}, ${name||''}, ${phone||''}, ${passwordHash}, ${expiresAt.toISOString()})
-    ON CONFLICT (email) DO UPDATE SET code=${code}, name=${name||''}, phone=${phone||''}, password_hash=${passwordHash}, expires_at=${expiresAt.toISOString()}`;
-
-  try {
-    const emailRes = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json','Authorization':'Bearer '+process.env.RESEND_API_KEY},
-      body: JSON.stringify({
-        from: 'EYESH Checker <noreply@eyeshcheck.com>',
-        to: email.toLowerCase(),
-        subject: 'EYESH Checker — Email баталгаажуулах код',
-        html: '<div style="font-family:Arial,sans-serif;max-width:420px;margin:0 auto;padding:32px"><h2 style="color:#7B52EE">EYESH Checker</h2><p>Таны баталгаажуулах код:</p><div style="font-size:40px;font-weight:900;letter-spacing:8px;color:#1a1030;background:#f1eef8;padding:24px;border-radius:10px;text-align:center;margin:20px 0">'+code+'</div><p style="color:#7c7596;font-size:13px">Код 10 минут хүчинтэй.</p></div>'
-      })
-    });
-    if (!emailRes.ok) {
-      const errText = await emailRes.text();
-      return res.status(500).json({ error: 'Email алдаа: ' + errText });
-    }
-  } catch(e) { return res.status(500).json({ error: 'Email илгээхэд алдаа: '+e.message }); }
-
-  res.json({ ok: true, needsVerification: true });
+  const sent = await sendSms(ph.e164, `ЭЕШ шалгагч бүртгэлийн код: ${code}. Хэнд ч бүү хэл. 10 мин.`);
+  if (!sent.ok) {
+    console.error('[register] sms', sent.cls);
+    return res.status(503).json({ error: 'SMS илгээж чадсангүй. Түр хүлээгээд дахин оролдоно уу.' });
+  }
+  await saveVerification({ email, codeHash: hashCode(code, email), name, phone: ph.local, passwordHash: await bcrypt.hash(password, 10) });
+  res.json({ ok: true, needsVerification: true, masked: maskPhone(ph.local) });
 }

@@ -1,10 +1,10 @@
 import { getStudentAccounts, createStudentAccount, initDb } from '../../../lib/db';
-import { requireAuth } from '../../../lib/auth';
+import { requirePaid } from '../../../lib/auth';
 import { neon } from '@neondatabase/serverless';
 
 function getDb() { return neon(process.env.POSTGRES_URL || process.env.DATABASE_URL); }
 
-export default requireAuth(async function handler(req, res) {
+export default requirePaid(async function handler(req, res) {
   await initDb();
   if (req.method === 'GET') {
     const accounts = await getStudentAccounts(req.teacherId);

@@ -1,4 +1,4 @@
-import { requireAuth } from '../../../lib/auth';
+import { requirePaid } from '../../../lib/auth';
 import { deleteStudentAccount, initDb } from '../../../lib/db';
 
 async function handler(req, res) {
@@ -9,4 +9,4 @@ async function handler(req, res) {
   }
   res.status(405).end();
 }
-export default requireAuth(handler);
+export default requirePaid(handler);
