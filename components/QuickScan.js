@@ -47,10 +47,51 @@ const STATUS = {
   saved: 'Энэ хуудас хадгалагдсан — дараагийн хуудсаа тавина уу',
   dim: 'Тод бус байна — гэрэлтэй газар, сүүдэргүй барина уу',
   start: 'Камер асааж байна…',
+  pick: 'Эхлээд дээрээс сурагчаа сонгоно уу',
 };
+const CLASS_KEY = 'eyesh_scan_class';      // сүүлд сонгосон анги — дараагийн сурагчид хадгалагдана
+const lsGet = k => { try { return localStorage.getItem(k) || ''; } catch (e) { return ''; } };
+const lsSet = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
+
+// ── Сурагч сонгох (анги → нэр) ─────────────────────────────────────────────
+function StudentPicker({ roster, cls, onClass, scanned, onPick, onClose }) {
+  const [q, setQ] = useState('');
+  const classes = useMemo(() => [...new Set(roster.map(a => a.class || '—'))]
+    .sort((a, b) => a.localeCompare(b, 'mn', { numeric: true })), [roster]);
+  const inCls = roster.filter(a => (a.class || '—') === cls);
+  const done = inCls.filter(a => scanned[a.code]).length;
+  const needle = q.trim().toLowerCase();
+  const list = inCls
+    .filter(a => !needle || (a.name || '').toLowerCase().includes(needle) || String(a.code || '').includes(needle))
+    .sort((a, b) => (!!scanned[a.code] - !!scanned[b.code]) || (a.name || '').localeCompare(b.name || '', 'mn'));
+  return (
+    <div className="qs-pick-bg" onClick={onClose}>
+      <div className="qs-pick" onClick={e => e.stopPropagation()}>
+        <div className="qs-pick-h">
+          <div><b>Сурагч сонгох</b><span>{cls} · шалгасан {done}/{inCls.length}</span></div>
+          <button className="qs-round light" onClick={onClose} aria-label="Хаах">✕</button>
+        </div>
+        <div className="qs-pick-cls">
+          {classes.map(c => <button key={c} className={c === cls ? 'on' : ''} onClick={() => onClass(c)}>{c}</button>)}
+        </div>
+        <input className="qs-pick-q" type="search" placeholder="Нэр эсвэл кодоор хайх…" value={q} onChange={e => setQ(e.target.value)} />
+        <div className="qs-pick-list">
+          {list.map(a => (
+            <button key={a.id} className={scanned[a.code] ? 'done' : ''} onClick={() => onPick(a)}>
+              <span><b>{a.name || '—'}</b><i>{a.code}</i></span>
+              {scanned[a.code] && <em>✓ {scanned[a.code].scaled}</em>}
+            </button>
+          ))}
+          {!list.length && <div className="qs-pick-empty">{inCls.length ? 'Хайлтад тохирох сурагч алга' : 'Энэ ангид сурагч алга'}</div>}
+        </div>
+        <button className="qs-pick-manual" onClick={() => onPick('manual')}>Жагсаалтад байхгүй сурагч — нэрийг дараа бичнэ</button>
+      </div>
+    </div>
+  );
+}
 
 // ── Камер ──────────────────────────────────────────────────────────────────
-function Scanner({ layout, paused, lastKey, examTitle, savedCount, recent, onCapture, onClose }) {
+function Scanner({ layout, paused, lastKey, examTitle, savedCount, recent, student, needStudent, onPick, onCapture, onClose }) {
   const videoRef = useRef(), overlayRef = useRef(), streamRef = useRef(), lastOk = useRef(null);
   const [status, setStatus] = useState('start');
   const [found, setFound] = useState(false);
@@ -137,7 +178,7 @@ function Scanner({ layout, paused, lastKey, examTitle, savedCount, recent, onCap
     try { await tr.applyConstraints({ advanced: [{ torch: !torch }] }); setTorch(!torch); } catch (e) {}
   }
   function manual() {
-    if (lastOk.current) { beep(); onCapture(lastOk.current); }
+    if (lastOk.current && !pausedRef.current) { beep(); onCapture(lastOk.current); }
   }
 
   return (
@@ -153,15 +194,26 @@ function Scanner({ layout, paused, lastKey, examTitle, savedCount, recent, onCap
             </button>
           : <span style={{ width: 44 }} />}
       </div>
+      {onPick && (
+        <button className={'qs-who' + (needStudent ? ' need' : '')} onClick={onPick}>
+          {student === 'manual'
+            ? <span><b>Жагсаалтгүй сурагч</b><i>Нэрийг үр дүн дээр бичнэ</i></span>
+            : student
+              ? <span><b>{student.name}</b><i>{student.class ? student.class + ' · ' : ''}{student.code}</i></span>
+              : <span><b>Сурагч сонгох</b><i>Анги, нэрийг сонгоод уншуулна</i></span>}
+          <em>{student ? 'Солих' : 'Сонгох'}</em>
+        </button>
+      )}
       {recent.length > 0 && (
-        <div className="qs-recent">
+        <div className={'qs-recent' + (onPick ? ' low' : '')}>
           {recent.slice(0, 3).map((s, i) => <span key={i}><b>{s.name}</b> {s.scaled}</span>)}
         </div>
       )}
       <div className="qs-bottom">
         {err ? <div className="qs-status err">{err}</div>
+          : needStudent ? <div className="qs-status">{STATUS.pick}</div>
           : <div className={'qs-status' + (found ? ' ok' : '')}>{STATUS[status] || STATUS.markers}</div>}
-        <button className="qs-shutter" onClick={manual} disabled={!found} aria-label="Одоо унших"><span /></button>
+        <button className="qs-shutter" onClick={manual} disabled={!found || needStudent} aria-label="Одоо унших"><span /></button>
         <div className="qs-hint">Автоматаар уншина · дарвал шууд авна</div>
       </div>
     </div>
@@ -169,22 +221,32 @@ function Scanner({ layout, paused, lastKey, examTitle, savedCount, recent, onCap
 }
 
 // ── Үр дүн / баталгаажуулалт ───────────────────────────────────────────────
-function Review({ exam, layout, result, roster, existing, onSave, onRetake, onClose }) {
+function Review({ exam, layout, result, roster, existing, chosen, onChangeStudent, onSave, onRetake, onClose }) {
   const { read, frame } = result;
   const groups = layout.groups;
   const [ans, setAns] = useState(() => Object.fromEntries(groups.map(g => [g.id, read.groups[g.id]?.sel || ''])));
   const [pending, setPending] = useState(() => new Set(groups.filter(g => g.kind !== 'id' && read.groups[g.id]?.flag).map(g => g.id)));
   const [editing, setEditing] = useState(null);
   const [tagAck, setTagAck] = useState(read.tagOk);
-  const match = roster.find(a => a.code && a.code === read.code);
-  const [code, setCode] = useState(read.code || '');
+  const picked = chosen && chosen !== 'manual' ? chosen : null;   // багш урьдчилан сонгосон сурагч
+  const match = picked || roster.find(a => a.code && a.code === read.code);
+  const [code, setCode] = useState(match?.code || read.code || '');
   const [name, setName] = useState(match?.name || '');
   const [cls, setCls] = useState(match?.class || '');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
   const canvasRef = useRef();
 
+  // Сонгосон сурагч ба хуудсан дээр будсан код зөрвөл — хэнийх болохыг багш шийднэ
+  const sheetOwner = read.code ? roster.find(a => a.code === read.code) : null;
+  const codeClash = !!(picked && read.code && read.code !== picked.code);
+  const [clashOk, setClashOk] = useState(!codeClash);
+
   useEffect(() => {
+    if (picked) { setCode(picked.code || ''); setName(picked.name || ''); setCls(picked.class || ''); setClashOk(!(read.code && read.code !== picked.code)); }
+  }, [picked && picked.id]);
+  useEffect(() => {
+    if (picked) return;
     const m = roster.find(a => a.code && a.code === code);
     if (m) { setName(m.name || ''); setCls(m.class || ''); }
   }, [code, roster]);
@@ -231,7 +293,7 @@ function Review({ exam, layout, result, roster, existing, onSave, onRetake, onCl
     setEditing(null);
   }
   const dup = existing.find(s => (code && s.code === code) || (!code && name && s.name === name));
-  const ready = pending.size === 0 && tagAck && !saving;
+  const ready = pending.size === 0 && tagAck && clashOk && !saving;
 
   async function save() {
     if (!ready) return;
@@ -289,11 +351,19 @@ function Review({ exam, layout, result, roster, existing, onSave, onRetake, onCl
           </div>
         )}
 
+        {codeClash && !clashOk && (
+          <div className="qs-warn red">
+            <span>Хуудсан дээрх код <b>{read.code}</b>{sheetOwner ? ` (${sheetOwner.name})` : ''} сонгосон <b>{picked.name}</b>-ийн кодтой таарахгүй байна.</span>
+            {sheetOwner && <button onClick={() => onChangeStudent(sheetOwner)}>{sheetOwner.name} гэж солих</button>}
+            <button onClick={() => setClashOk(true)}>{picked.name}-д хадгалах</button>
+          </div>
+        )}
         <div className="qs-stu">
           {match && match.code === code ? (
             <div className="qs-match">
               <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
               <div><b>{name}</b><span>{cls ? cls + ' · ' : ''}код {code}</span></div>
+              {onChangeStudent && <button className="qs-link" onClick={() => onChangeStudent(null)}>Солих</button>}
             </div>
           ) : (
             <div className="qs-fields">
@@ -350,7 +420,7 @@ function Review({ exam, layout, result, roster, existing, onSave, onRetake, onCl
       )}
       <div className="qs-bar">
         <button className="cm-btn big" disabled={!ready} onClick={save}>
-          {saving ? 'Хадгалж байна…' : pending.size ? `${pending.size} эргэлзээтэйг шийднэ үү` : 'Хадгалаад дараагийн →'}
+          {saving ? 'Хадгалж байна…' : pending.size ? `${pending.size} эргэлзээтэйг шийднэ үү` : !clashOk ? 'Кодын зөрүүг шийднэ үү' : !tagAck ? 'Шалгалтын кодыг батална уу' : 'Хадгалаад дараагийн →'}
         </button>
       </div>
     </div>
@@ -366,6 +436,9 @@ export function ScanPage({ exam, exams, students, onSelectExam, onAddStudent, on
   const [lastKey, setLastKey] = useState('');
   const [session, setSession] = useState([]);
   const [msg, setMsg] = useState('');
+  const [cls, setCls] = useState(() => lsGet(CLASS_KEY));   // анги нэг сонгоход дараагийн сурагчид хэвээр
+  const [pick, setPick] = useState(null);                    // сонгосон сурагч | 'manual' | null
+  const [picker, setPicker] = useState(false);
   const fileRef = useRef();
 
   useEffect(() => { apiFetch('/api/student-accounts').then(setRoster).catch(() => {}); }, []);
@@ -373,6 +446,24 @@ export function ScanPage({ exam, exams, students, onSelectExam, onAddStudent, on
     document.body.classList.toggle('qs-lock', camera || !!review);
     return () => document.body.classList.remove('qs-lock');
   }, [camera, review]);
+  // Хадгалсан анги энэ багшийн жагсаалтад байхгүй бол эхний ангийг сонгоно
+  useEffect(() => {
+    if (!roster.length) return;
+    const classes = [...new Set(roster.map(a => a.class || '—'))].sort((a, b) => a.localeCompare(b, 'mn', { numeric: true }));
+    if (!classes.includes(cls)) setCls(classes[0]);
+  }, [roster]);
+
+  const hasRoster = roster.length > 0;
+  const scanned = useMemo(() => {
+    const m = {};
+    students.forEach(s => {   // сурагч бүрийн хамгийн сүүлийн үр дүн
+      if (s.code && (!m[s.code] || String(s.submittedAt) > String(m[s.code].submittedAt))) m[s.code] = s;
+    });
+    return m;
+  }, [students]);
+  function chooseClass(c) { setCls(c); lsSet(CLASS_KEY, c); }
+  function choose(a) { setPick(a); setPicker(false); }
+  function openCamera() { setCamera(true); if (hasRoster && !pick) setPicker(true); }
 
   if (!exam) return (
     <div className="cm-page">
@@ -409,6 +500,8 @@ export function ScanPage({ exam, exams, students, onSelectExam, onAddStudent, on
     setSession(s => [{ name: student.name, scaled: student.scaled }, ...s]);
     setLastKey(key);
     setReview(null);
+    setPick(null);                                   // дараагийн сурагч — анги хэвээр, нэрийг л сонгоно
+    if (camera && hasRoster) setPicker(true);
   }
 
   const recent = students.slice().sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt))).slice(0, 8);
@@ -422,7 +515,7 @@ export function ScanPage({ exam, exams, students, onSelectExam, onAddStudent, on
           <h1>{exam.title}</h1>
           <p>{exam.sec1Count} дасгал{exam.useSec2 ? ' · 2-р хэсэгтэй' : ''} · шалгасан {students.length}</p>
         </div>
-        <button className="cm-btn amber big" disabled={tooMany} onClick={() => setCamera(true)}>
+        <button className="cm-btn amber big" disabled={tooMany} onClick={openCamera}>
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
           Камераар шалгах
         </button>
@@ -467,13 +560,18 @@ export function ScanPage({ exam, exams, students, onSelectExam, onAddStudent, on
       )}
 
       {camera && (
-        <Scanner layout={layout} paused={!!review} lastKey={lastKey} examTitle={exam.title}
+        <Scanner layout={layout} paused={!!review || picker || (hasRoster && !pick)} lastKey={lastKey} examTitle={exam.title}
           savedCount={session.length} recent={session}
-          onCapture={r => setReview({ ...r, fromCamera: true })} onClose={() => setCamera(false)} />
+          student={pick} needStudent={hasRoster && !pick} onPick={hasRoster ? () => setPicker(true) : null}
+          onCapture={r => setReview({ ...r, fromCamera: true })} onClose={() => { setCamera(false); setPicker(false); }} />
       )}
       {review && (
         <Review key={readKey(review.read)} exam={exam} layout={layout} result={review} roster={roster} existing={students}
+          chosen={pick} onChangeStudent={hasRoster ? (a => a ? setPick(a) : setPicker(true)) : null}
           onSave={save} onRetake={() => setReview(null)} onClose={() => { setReview(null); if (!review.fromCamera) setCamera(false); }} />
+      )}
+      {picker && hasRoster && (
+        <StudentPicker roster={roster} cls={cls} onClass={chooseClass} scanned={scanned} onPick={choose} onClose={() => setPicker(false)} />
       )}
     </div>
   );
