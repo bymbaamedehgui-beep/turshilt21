@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { apiFetch } from '../lib/eyesh';
 import { sheetLayout, MARKERS, MARK, ORIENT, TAG, PAGE_W, PAGE_H, S1_MAX, S1_ROWS, S1_POS, S2_POS, S2_OPTS,
   S2_ROWS, ID_POS, VER_POS, s1RowY } from '../lib/omr';
+import { CyberMathLogo } from './CyberMathLogo';
 
 // ── Хэвлэх хариултын хуудас (A4, мм нэгжтэй SVG) ───────────────────────────
 // ЭЕШ-ийн хуудасны загвар. Улаан/ягаан өнгө нь уншигчийн улаан сувагт алга болдог («dropout»),
@@ -175,7 +176,7 @@ export function AnswerSheetSVG({ exam, student, className, style }) {
         </g>
       ))}
 
-      <text x={20} y={270.5} fontSize={3.4} fontWeight={900} fill="#7B52EE">CyberMath</text>
+      <CyberMathLogo x={20} y={266.4} height={5.6} />
       <text x={20} y={274.6} fontSize={2.2} fontWeight={700} fill="#6b7280">ЭЕШ шалгагч · eyeshcheck.com · Дасгалын төв</text>
     </svg>
   );
