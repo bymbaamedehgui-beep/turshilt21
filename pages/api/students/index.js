@@ -8,8 +8,8 @@ export default requirePaid(async function handler(req, res) {
     return res.json(students);
   }
   if (req.method === 'POST') {
-    const student = await createStudent(req.body);
-    return res.json(student);
+    const student = await createStudent(req.body, req.teacherId);
+    return student ? res.json(student) : res.status(404).json({ error: 'Шалгалт олдсонгүй' });
   }
   res.status(405).end();
 });
