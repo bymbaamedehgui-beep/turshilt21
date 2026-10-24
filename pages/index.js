@@ -5,6 +5,8 @@ import { ScanPage } from '../components/QuickScan';
 import { SheetsPage } from '../components/AnswerSheet';
 import { Paywall } from '../components/Paywall';
 import { PLANS, planPrice, fullPrice, perMonth, fmtMNT, fmtDay, TRIAL_DAYS } from '../lib/plans';
+import { StudentPortal } from '../components/StudentPortal';
+import { MaterialsPanel, EeshDateSetting } from '../components/MaterialsPanel';
 
 const PRACTICE_URL = 'https://cyber-math.com/worksheets.html';
 
@@ -39,7 +41,7 @@ function getTopics(subject) {
   return TOPICS_BY_SUBJECT[subject] || TOPICS_BY_SUBJECT['Математик'];
 }
 const TOPIC_COLORS = ['#3b82f6','#8b5cf6','#f59e0b','#06b6d4','#10b981','#ef4444','#f97316','#6366f1'];
-const PAGE_IDS = ['home','scan','board','analytics','rating','create','sheets','students','admin'];   // ☰ цэсний дараалал
+const PAGE_IDS = ['home','scan','board','analytics','rating','create','sheets','students','materials','admin'];   // ☰ цэсний дараалал
 const NAV_ICON = {
   home:'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   board:['M8 6h13','M8 12h13','M8 18h13','M3.5 6h.01','M3.5 12h.01','M3.5 18h.01'],
@@ -52,6 +54,7 @@ const NAV_ICON = {
   close:['M6 6l12 12','M18 6 6 18'],
   rating:['M8 21h8','M12 17v4','M7 4h10v5a5 5 0 0 1-10 0z','M17 5h3v2a3 3 0 0 1-3 3','M7 5H4v2a3 3 0 0 0 3 3'],
   students:['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2','M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z','M22 21v-2a4 4 0 0 0-3-3.87','M16 3.13a4 4 0 0 1 0 7.75'],
+  materials:'M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z',
   admin:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
   moon:'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
   sun:['M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z','M12 1v2','M12 21v2','M4.2 4.2l1.4 1.4','M18.4 18.4l1.4 1.4','M1 12h2','M21 12h2','M4.2 19.8l1.4-1.4','M18.4 5.6l1.4-1.4'],
@@ -79,7 +82,7 @@ const T = {
     timeUp:'Хугацаа дууссан! Хариулт автоматаар илгээгдлээ.',
     section1:'1-р хэсэг', section2:'2-р хэсэг',
     hello:'Сайн байна уу,',
-    nav:{billing:'Эрх сунгах',home:'Нүүр',scan:'Шалгах',sheets:'Хуудас хэвлэх',create:'Шалгалт үүсгэх',edit:'Шалгалт засах',board:'Жагсаалт',analytics:'Анализ',rating:'Рейтинг',students:'Сурагчид',admin:'Admin'},
+    nav:{billing:'Эрх сунгах',materials:'ЭЕШ материал',home:'Нүүр',scan:'Шалгах',sheets:'Хуудас хэвлэх',create:'Шалгалт үүсгэх',edit:'Шалгалт засах',board:'Жагсаалт',analytics:'Анализ',rating:'Рейтинг',students:'Сурагчид',admin:'Admin'},
     more:'Цэс',
   },
   en: {
@@ -99,7 +102,7 @@ const T = {
     timeUp:'Time is up! Your answers have been submitted.',
     section1:'Section 1', section2:'Section 2',
     hello:'Hello,',
-    nav:{billing:'Renew',home:'Home',scan:'Scan',sheets:'Print sheets',create:'Create Exam',edit:'Edit Exam',board:'Results',analytics:'Analytics',rating:'Ranking',students:'Students',admin:'Admin'},
+    nav:{billing:'Renew',materials:'Materials',home:'Home',scan:'Scan',sheets:'Print sheets',create:'Create Exam',edit:'Edit Exam',board:'Results',analytics:'Analytics',rating:'Ranking',students:'Students',admin:'Admin'},
     more:'More',
   }
 };
@@ -886,6 +889,13 @@ function AdminPage({dark:d=false}) {
           ))}
         </div>
       )}
+
+      {/* Сурагчийн хэсэг: ЭЕШ-ийн огноо, 12-р ангийн сурах бичиг */}
+      <div style={{marginTop:24}}>
+        <div style={{fontSize:18,fontWeight:900,color:text,margin:'0 2px 10px'}}>Сурагчийн хэсэг</div>
+        <EeshDateSetting />
+        <MaterialsPanel kind="textbook" />
+      </div>
     </div>
   );
 }
@@ -2218,230 +2228,6 @@ function StudentAccountsPage({dark:d=false}) {
 
 
 // ── Student Portal (built into main app) ─────────────────
-function StudentPortal({student, onLogout}) {
-  const [lang, toggleLang, t] = useLang();
-  const [exams, setExams] = useState([]);
-  const [selectedExam, setSelectedExam] = useState(null);
-  const [submitted, setSubmitted] = useState(false);
-  const [scored, setScored] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  // Manual answer state
-  const [sec1Sel, setSec1Sel] = useState([]); // array of selected answers (no key shown)
-  const [sec2Sel, setSec2Sel] = useState({}); // {sub: {row: digit}}
-  const [submitting, setSubmitting] = useState(false);
-  const [err, setErr] = useState('');
-
-  function stoken() { return typeof window!=='undefined'?localStorage.getItem('student_token'):''; }
-
-  useEffect(()=>{
-    // Fetch all exams for student to choose from (use public endpoint)
-    fetch('/api/student/exams',{headers:{Authorization:'Bearer '+stoken()}})
-      .then(r=>r.json()).then(d=>{ setExams(Array.isArray(d)?d:[]); }).catch(()=>{})
-      .finally(()=>setLoading(false));
-  },[]);
-
-  function selectExam(exam) {
-    setSelectedExam(exam);
-    setSec1Sel(Array(exam.sec1Count).fill(''));
-    const s2={};
-    SEC2_SUBS.forEach(sub=>{
-      if(!exam.sec2Config?.[sub]?._enabled) return;
-      s2[sub]={};
-      SEC2_ROWS.forEach(row=>{ if(exam.sec2Config[sub][row]!==''&&exam.sec2Config[sub][row]!==undefined) s2[sub][row]=''; });
-    });
-    setSec2Sel(s2);
-    setScored(null); setSubmitted(false); setErr('');
-  }
-
-  function calcStudentScore(exam) {
-    const {sec1Key,sec1Scores,sec2Config,sec2Score,useSec2} = exam;
-    let correct=0,wrong=0,blank=0,rawEarned=0,rawMax=0;
-    const sec1Results=[];
-    sec1Key.forEach((key,i)=>{
-      const sel=sec1Sel[i]||'BLANK';
-      const pts=sec1Scores?.[i]||1;
-      rawMax+=pts;
-      if(sel==='BLANK'||sel===''){wrong++;blank++;sec1Results.push({q:i+1,sel:'BLANK',key:'?',st:'blank',pts:0,max:pts});}
-      else if(sel===key){correct++;rawEarned+=pts;sec1Results.push({q:i+1,sel,key:'?',st:'ok',pts,max:pts});}
-      else{wrong++;sec1Results.push({q:i+1,sel,key:'?',st:'ng',pts:0,max:pts});}
-    });
-    const sec2Results={};
-    if(useSec2&&sec2Config){
-      SEC2_SUBS.forEach(sub=>{
-        if(!sec2Config?.[sub]?._enabled) return;
-        sec2Results[sub]={};
-        SEC2_ROWS.forEach(row=>{
-          const rowData=sec2Config[sub][row];
-          if(rowData===undefined||rowData===null||rowData==='') return;
-          // Хоёр форматыг дэмжих
-          const isObj=typeof rowData==='object';
-          const kv=isObj?rowData.ans:rowData;
-          if(kv===undefined||kv===null||kv==='') return;
-          const pts=isObj?(rowData.score!=null?parseFloat(rowData.score):1):(parseFloat(sec2Score)||1);
-          rawMax+=pts;
-          const dv=sec2Sel[sub]?.[row]||'BLANK';
-          if(dv==='BLANK'||dv===''){wrong++;blank++;sec2Results[sub][row]={sel:'BLANK',key:kv,st:'blank',pts:0,max:pts};}
-          else if(String(dv)===String(kv)){correct++;rawEarned+=pts;sec2Results[sub][row]={sel:dv,key:kv,st:'ok',pts,max:pts};}
-          else{wrong++;sec2Results[sub][row]={sel:dv,key:kv,st:'ng',pts:0,max:pts};}
-        });
-      });
-    }
-    const scaled=rawMax>0?Math.round(rawEarned/rawMax*1000)/10:0;
-    return{correct,wrong,blank,rawEarned,rawMax,scaled,grade:eyeshGrade(scaled),sec1Results,sec2Results,needsReview:false};
-  }
-
-  async function handleSubmit() {
-    if (!selectedExam) return;
-    setSubmitting(true); setErr('');
-    try {
-      const sc = calcStudentScore(selectedExam);
-      await fetch('/api/student/submit',{
-        method:'POST',
-        headers:{'Content-Type':'application/json',Authorization:'Bearer '+stoken()},
-        body:JSON.stringify({id:uid(),examId:selectedExam.id,name:student.name||student.code,
-          code:student.code,version:'—',...sc,submittedAt:new Date().toISOString()})
-      }).then(async r=>{const d=await r.json();if(!r.ok)throw new Error(d.error);return d;});
-      setScored(sc); setSubmitted(true);
-    } catch(e){ setErr(e.message); }
-    setSubmitting(false);
-  }
-
-  // Loading
-  if (loading) return <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100vh'}}><Spinner/></div>;
-
-  // Result screen
-  if (submitted && scored) return (
-    <div style={{minHeight:'100vh',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
-      <div style={{background:'white',borderRadius:20,padding:'36px 28px',maxWidth:400,width:'100%',textAlign:'center',boxShadow:'0 4px 24px rgba(0,0,0,.1)'}}>
-        <div style={{display:'flex',justifyContent:'center',marginBottom:16}}><div style={{background:'#dcfce7',borderRadius:20,padding:16}}><Ico d='M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z' size={56} color='#16a34a' sw={1}/></div></div>
-        <div style={{fontSize:20,fontWeight:900,color:'#15803d',marginBottom:16}}>{t.submitted}</div>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:10,marginBottom:20}}>
-          {[[t.performance,scored.scaled+'%',scored.grade?.c],[t.correct,scored.correct,'#16a34a'],[t.wrong,scored.wrong,'#dc2626']].map(([l,v,c])=>(
-            <div key={l} style={{background:'#f9fafb',borderRadius:10,padding:'12px 8px'}}>
-              <div style={{fontSize:20,fontWeight:900,color:c}}>{v}</div>
-              <div style={{fontSize:10,color:'#9ca3af'}}>{l}</div>
-            </div>
-          ))}
-        </div>
-        <button onClick={()=>{setSelectedExam(null);setSubmitted(false);setScored(null);}}
-          style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer',marginBottom:8}}>
-          {t.back}
-        </button>
-        <button onClick={onLogout} style={{width:'100%',padding:12,background:'#f3f4f6',color:'#6b7280',border:'none',borderRadius:10,fontWeight:700,cursor:'pointer'}}>
-          {t.logout}
-        </button>
-      </div>
-    </div>
-  );
-
-  // Exam list
-  if (!selectedExam) return (
-    <div style={{minHeight:'100vh',background:'#f3f4f6'}}>
-      <header style={{background:'white',borderBottom:'1px solid #e5e7eb',padding:'14px 20px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-        <div>
-          <div style={{fontWeight:800,fontSize:16}}>{t.hello} {student.name||student.code}!</div>
-          <div style={{fontSize:12,color:'#6b7280'}}>{t.code}: {student.code}</div>
-        </div>
-        <div style={{display:'flex',gap:8,alignItems:'center'}}><button onClick={toggleLang} style={{padding:'6px 10px',background:'#f3f4f6',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>{lang==='mn'?'EN':'МН'}</button><button onClick={onLogout} style={{padding:'6px 14px',background:'#f3eeff',border:'none',borderRadius:8,fontSize:13,color:'#7B52EE',fontWeight:700,cursor:'pointer'}}>{t.logout}</button></div>
-      </header>
-      <div style={{maxWidth:600,margin:'0 auto',padding:'24px 16px'}}>
-        <div style={{fontWeight:800,fontSize:18,color:'#1c1f2a',marginBottom:16}}>{t.selectExam}</div>
-        {exams.length===0
-          ? <div style={{background:'white',borderRadius:12,padding:40,textAlign:'center',color:'#9ca3af'}}>{t.noExams}</div>
-          : exams.map(exam=>(
-            <div key={exam.id} onClick={()=>selectExam(exam)}
-              style={{background:'white',borderRadius:12,padding:18,marginBottom:10,cursor:'pointer',border:'2px solid #e5e7eb',boxShadow:'0 1px 4px rgba(17,24,39,.05)'}}>
-              <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a'}}>{exam.title}</div>
-              <div style={{fontSize:13,color:'#6b7280',marginTop:4}}>{exam.subject} · {exam.sec1Count} дасгал{exam.useSec2?' · 2-р хэсэг':''}</div>
-            </div>
-          ))
-        }
-      </div>
-    </div>
-  );
-
-  // Answer entry
-  const enabledSec2Subs = SEC2_SUBS.filter(s=>selectedExam.sec2Config?.[s]?._enabled);
-  return (
-    <div style={{minHeight:'100vh',background:'#f3f4f6'}}>
-      <header style={{background:'white',borderBottom:'1px solid #e5e7eb',padding:'14px 20px',display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}}>
-        <button onClick={()=>setSelectedExam(null)} style={{padding:'6px 12px',background:'#f3f4f6',border:'none',borderRadius:8,cursor:'pointer',fontWeight:700}}>{t.back}</button>
-        <div>
-          <div style={{fontWeight:800,fontSize:15}}>{selectedExam.title}</div>
-          <div style={{fontSize:12,color:'#6b7280'}}>{selectedExam.subject}</div>
-        </div>
-        <div style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:8}}>
-          <button onClick={toggleLang} style={{padding:'6px 10px',background:'#f3f4f6',border:'none',borderRadius:8,fontSize:12,fontWeight:700,cursor:'pointer'}}>{lang==='mn'?'EN':'МН'}</button>
-          <button onClick={onLogout} style={{padding:'6px 14px',background:'#f3eeff',border:'none',borderRadius:8,fontSize:13,color:'#7B52EE',fontWeight:700,cursor:'pointer'}}>{t.logout}</button>
-        </div>
-      </header>
-      <div style={{maxWidth:700,margin:'0 auto',padding:'20px 16px'}}>
-
-        {/* Section 1 */}
-        <div style={{background:'white',borderRadius:16,padding:20,marginBottom:12,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
-          <div style={{fontWeight:800,fontSize:15,marginBottom:14}}>{t.section1} — {selectedExam.sec1Count} дасгал</div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))',gap:6}}>
-            {Array.from({length:selectedExam.sec1Count},(_,i)=>(
-              <div key={i} style={{display:'flex',alignItems:'center',gap:6,padding:'6px 10px',background:'#f9fafb',borderRadius:8,border:'1px solid #e5e7eb'}}>
-                <span style={{fontSize:11,fontWeight:700,color:'#9ca3af',minWidth:26,textAlign:'right'}}>D{i+1}</span>
-                <div style={{display:'flex',gap:3}}>
-                  {SEC1_CHOICES.map(c=>(
-                    <button key={c} onClick={()=>setSec1Sel(s=>{const n=[...s];n[i]=c;return n;})}
-                      style={{width:30,height:30,borderRadius:6,border:'none',fontWeight:700,fontSize:13,cursor:'pointer',
-                        background:sec1Sel[i]===c?'#7B52EE':'#e5e7eb',
-                        color:sec1Sel[i]===c?'white':'#6b7280'}}>{c}</button>
-                  ))}
-                  {sec1Sel[i]&&<button onClick={()=>setSec1Sel(s=>{const n=[...s];n[i]='';return n;})}
-                    style={{width:24,height:30,borderRadius:6,border:'none',fontSize:11,cursor:'pointer',background:'#fdecec',color:'#b3261e',fontWeight:700}}>✕</button>}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Section 2 */}
-        {enabledSec2Subs.length>0&&(
-          <div style={{background:'white',borderRadius:16,padding:20,marginBottom:12,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
-            <div style={{fontWeight:800,fontSize:15,marginBottom:14}}>{t.section2}</div>
-            <div style={{display:'flex',gap:12,flexWrap:'wrap'}}>
-              {enabledSec2Subs.map(sub=>{
-                const rows=Object.keys(sec2Sel[sub]||{});
-                return (
-                  <div key={sub} style={{background:'#f9fafb',borderRadius:10,padding:'12px 16px'}}>
-                    <div style={{fontWeight:700,fontSize:13,color:'#7B52EE',marginBottom:8}}>{sub}</div>
-                    {rows.map(row=>(
-                      <div key={row} style={{display:'flex',alignItems:'center',gap:6,marginBottom:6}}>
-                        <span style={{fontSize:11,color:'#9ca3af',minWidth:14}}>{row}</span>
-                        <div style={{display:'flex',gap:2,flexWrap:'wrap'}}>
-                          {['0','1','2','3','4','5','6','7','8','9'].map(d=>(
-                            <button key={d} onClick={()=>setSec2Sel(s=>({...s,[sub]:{...s[sub],[row]:d}}))}
-                              style={{width:26,height:26,borderRadius:5,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',
-                                background:sec2Sel[sub]?.[row]===d?'#7B52EE':'#e5e7eb',
-                                color:sec2Sel[sub]?.[row]===d?'white':'#6b7280'}}>{d}</button>
-                          ))}
-                          {sec2Sel[sub]?.[row]&&<button onClick={()=>setSec2Sel(s=>({...s,[sub]:{...s[sub],[row]:''}}))} style={{width:22,height:26,borderRadius:5,border:'none',fontSize:10,cursor:'pointer',background:'#fdecec',color:'#b3261e',fontWeight:700}}>✕</button>}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {err&&<div style={{color:'#b3261e',fontSize:13,background:'#fdecec',padding:'10px 14px',borderRadius:8,border:'1px solid #f6c9c9',marginBottom:12}}>{err}</div>}
-
-        <button id='student-submit-btn' onClick={handleSubmit} disabled={submitting}
-          style={{width:'100%',padding:16,background:'#7B52EE',color:'white',border:'none',borderRadius:14,fontSize:16,fontWeight:800,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-          {submitting&&<Spinner/>} {submitting?t.submitting:t.submit}
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ─────────────────────────────────────────────────────────
 // MAIN APP
 // ─────────────────────────────────────────────────────────
@@ -2670,6 +2456,7 @@ export default function App() {
         {page==='analytics'&&<AnalyticsPage exam={currentExam} students={examStudents} onExportAnalytics={exportAnalytics} dark={d} />}
         {page==='rating'&&<RatingPage exams={exams} students={students} dark={d} />}
         {page==='students'&&<StudentAccountsPage dark={d} />}
+        {page==='materials'&&<div className="mp-page"><h1 className="mp-title">ЭЕШ материал</h1><MaterialsPanel kind="material" classes={[...new Set(students.map(s=>s.class).filter(Boolean))].sort()} /></div>}
         {page==='admin'&&teacher?.isAdmin&&<AdminPage dark={d} />}
       </main>
       <footer className="cm-foot no-print">
