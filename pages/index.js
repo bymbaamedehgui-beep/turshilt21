@@ -483,16 +483,41 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
   const [forgotErr, setForgotErr] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotDone, setForgotDone] = useState(false);
-  const [verifyEmail, setVerifyEmail] = useState('');
-  const [verifyCode, setVerifyCode] = useState('');
   const [verifyErr, setVerifyErr] = useState('');
-  const [verifyLoading, setVerifyLoading] = useState(false);
   const [verifyMasked, setVerifyMasked] = useState('');
-  const [resendAt, setResendAt] = useState(0);
+  const [mo, setMo] = useState(null);              // verify.mn: { moText, shortcode, pollToken, expiresAt }
+  const [moExpired, setMoExpired] = useState(false);
   const [now, setNow] = useState(Date.now());
   useEffect(() => { if (!verifying) return; const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, [verifying]);
-  const resendIn = Math.max(0, Math.ceil((resendAt - now) / 1000));
-  
+  const moLeft = mo ? Math.max(0, Math.round((Date.parse(mo.expiresAt) - now) / 1000)) : 0;
+  // Хэрэглэгч 144773 руу илгээхийг хүлээнэ: 3 сек тутам дараалан асууна (давхар хүсэлтгүй)
+  useEffect(() => {
+    if (!verifying || !mo || moExpired) return;
+    let stop = false, timer = null;
+    async function poll() {
+      if (Date.now() > Date.parse(mo.expiresAt)) { setMoExpired(true); return; }
+      try {
+        const r = await fetch('/api/verify-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pollToken: mo.pollToken }) });
+        const d = await r.json();
+        if (stop) return;
+        if (r.ok && d.status === 'VERIFIED') {
+          localStorage.setItem('eyesh_token', d.token);
+          localStorage.setItem('eyesh_teacher', JSON.stringify(d.teacher));
+          onLogin(d.teacher);
+          return;
+        }
+        if (d.status === 'EXPIRED') { setMoExpired(true); return; }
+        if (!r.ok) { setVerifyErr(d.error || 'Алдаа'); return; }
+      } catch (e) {}                                // сүлжээ тасарвал дараагийн удаа
+      if (!stop) timer = setTimeout(poll, 3000);
+    }
+    timer = setTimeout(poll, 2500);
+    return () => { stop = true; clearTimeout(timer); };
+  }, [verifying, mo, moExpired]);
+  const isPhone = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  // iOS нь sms:NUM&body=..., Android нь sms:NUM?body=... гэж ойлгодог
+  const smsHref = (sc, text) => 'sms:' + sc + (/iPad|iPhone|iPod/.test(navigator.userAgent) ? '&' : '?') + 'body=' + encodeURIComponent(text);
+
   async function handleForgotSend() {
     if (!forgotEmail) return;
     setForgotLoading(true); setForgotErr('');
@@ -546,20 +571,6 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
     setLoading(false);
   }
 
-  async function handleVerify() {
-    if (!verifyCode.trim()) return;
-    setVerifyLoading(true); setVerifyErr('');
-    try {
-      const d = await fetch('/api/verify-email',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:verifyEmail,code:verifyCode.trim()})}).then(async r=>{
-        const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
-      });
-      localStorage.setItem('eyesh_token', d.token);
-      localStorage.setItem('eyesh_teacher', JSON.stringify(d.teacher));
-      onLogin(d.teacher);
-    } catch(e) { setVerifyErr(e.message); }
-    setVerifyLoading(false);
-  }
-
     async function handleRegister() {
     if (!email||!pass) return;
     setLoading(true); setErr('');
@@ -567,10 +578,11 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
       const d = await fetch('/api/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password:pass,name,phone})}).then(async r=>{
         const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
       });
-      setVerifyEmail(email);
       setVerifyMasked(d.masked || '');
-      setResendAt(Date.now() + 60000);
+      setMo({ moText: d.moText, shortcode: d.shortcode || '144773', pollToken: d.pollToken, expiresAt: d.expiresAt });
+      setMoExpired(false);
       setVerifyErr('');
+      setNow(Date.now());
       setVerifying(true);
     } catch(e) { if (verifying) setVerifyErr(e.message); else setErr(e.message); }
     setLoading(false);
@@ -631,28 +643,42 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
         {role==='teacher'&&(
           <>
             <button onClick={()=>{setRole(null);setErr('');setRegistered(false);}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:13,marginBottom:14,padding:0}}>← Буцах</button>
-            {verifying ? (
-              <div style={{textAlign:'center',padding:'8px 0'}}>
+            {verifying && mo ? (
+              <div style={{textAlign:'center',padding:'4px 0'}}>
                 <div style={{display:'flex',justifyContent:'center',marginBottom:10}}>
                   <div style={{background:'#f3eeff',borderRadius:14,padding:12}}>
-                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#7B52EE" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10 18h4"/><path d="M9 8h6M9 11h4"/></svg>
+                    <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#7B52EE" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M22 2 11 13"/><path d="M22 2l-7 20-4-9-9-4 20-7z"/></svg>
                   </div>
                 </div>
-                <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:4}}>SMS кодоо оруулна уу</div>
-                <div style={{fontSize:13,color:'#6b7280',marginBottom:14}}><b>{verifyMasked || 'Таны'}</b> дугаарт 6 оронтой код илгээлээ</div>
+                <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:4}}>Утаснаасаа SMS илгээж баталгаажуулна уу</div>
+                <div style={{fontSize:13,color:'#6b7280',marginBottom:14}}>Доорх кодыг <b>{mo.shortcode}</b> дугаарт SMS-ээр илгээнэ үү</div>
+                <div style={{border:'2px dashed #d9ccfb',borderRadius:14,background:'#faf8ff',padding:'12px 10px',marginBottom:12}}>
+                  <div style={{fontSize:11,fontWeight:800,color:'#8b7fae',letterSpacing:.5}}>ИЛГЭЭХ КОД</div>
+                  <div style={{fontSize:32,fontWeight:900,color:'#4c23c4',letterSpacing:8,fontFamily:'ui-monospace,Menlo,Consolas,monospace',lineHeight:1.3}}>{mo.moText}</div>
+                  <div style={{fontSize:12,color:'#8b7fae',fontWeight:700}}>{mo.shortcode} дугаарт</div>
+                </div>
+                {isPhone && !moExpired && (
+                  <a href={smsHref(mo.shortcode, mo.moText)} style={{display:'block',textDecoration:'none',padding:13,background:'#7B52EE',color:'white',borderRadius:10,fontSize:15,fontWeight:800,marginBottom:10}}>SMS бичих</a>
+                )}
+                <div style={{fontSize:12,color:'#9ca3af',lineHeight:1.5,marginBottom:12}}>
+                  Өөрийн <b style={{color:'#6b7280'}}>{verifyMasked}</b> дугаараасаа илгээнэ үү. 2 SIM-тэй бол зөв SIM-ээ сонгоорой. SMS-ийн төлбөр энгийн тарифаар.
+                </div>
                 {verifyErr && <div style={{color:'#b3261e',fontSize:12,background:'#fdecec',padding:'6px 10px',borderRadius:6,marginBottom:10,textAlign:'center'}}>{verifyErr}</div>}
-                <input value={verifyCode} onChange={e=>setVerifyCode(e.target.value.replace(/\D/g,'').slice(0,6))}
-                  onKeyDown={e=>e.key==='Enter'&&handleVerify()}
-                  placeholder="000000" maxLength={6}
-                  style={{...inp,fontSize:22,textAlign:'center',letterSpacing:10,fontWeight:900,marginBottom:12}} />
-                <button onClick={handleVerify} disabled={verifyLoading||verifyCode.length!==6}
-                  style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8,opacity:verifyCode.length!==6?0.6:1}}>
-                  {verifyLoading&&<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M12 2v4m0 12v4M4.93 4.93l2.83 2.83m8.48 8.48l2.83 2.83M2 12h4m12 0h4M4.93 19.07l2.83-2.83m8.48-8.48l2.83-2.83"/></svg>} Баталгаажуулах
-                </button>
-                <button onClick={handleRegister} disabled={resendIn>0||loading} style={{background:'none',border:'none',color:resendIn>0?'#9ca3af':'#7B52EE',cursor:resendIn>0?'default':'pointer',fontSize:13,fontWeight:800,marginBottom:6}}>
-                  {resendIn>0 ? `Дахин код авах (${resendIn}с)` : 'Дахин код авах'}
-                </button>
-                <div><button onClick={()=>{setVerifying(false);setVerifyCode('');setVerifyErr('');}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12}}>← Дугаараа засах</button></div>
+                {moExpired ? (
+                  <>
+                    <div style={{fontSize:13,fontWeight:800,color:'#b3261e',marginBottom:8}}>Хугацаа дууслаа — шинэ код аваад дахин илгээнэ үү</div>
+                    <button onClick={handleRegister} disabled={loading}
+                      style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8}}>
+                      {loading&&<Spinner/>} Шинэ код авах
+                    </button>
+                  </>
+                ) : (
+                  <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,fontSize:13,fontWeight:800,color:'#7B52EE'}}>
+                    <span className="pw-dot" style={{background:'#7B52EE'}} />Илгээхийг хүлээж байна…
+                    <span style={{color:'#9ca3af'}}>{Math.floor(moLeft/60)}:{String(moLeft%60).padStart(2,'0')}</span>
+                  </div>
+                )}
+                <div style={{marginTop:12}}><button onClick={()=>{setVerifying(false);setMo(null);setVerifyErr('');}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12}}>← Дугаараа засах</button></div>
               </div>
             ) : (
               <>
@@ -716,7 +742,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
               <>
               <input value={name} onChange={e=>setName(e.target.value)} placeholder="Таны нэр (заавал биш)"
                 style={inp} />
-              <input value={phone} onChange={e=>setPhone(e.target.value.replace(/[^0-9+ ]/g,''))} placeholder="Утасны дугаар — SMS код ирнэ" type="tel" inputMode="numeric" maxLength={13}
+              <input value={phone} onChange={e=>setPhone(e.target.value.replace(/[^0-9+ ]/g,''))} placeholder="Утасны дугаар — SMS-ээр баталгаажуулна" type="tel" inputMode="numeric" maxLength={13}
                 style={inp} />
               </>
             )}
@@ -726,7 +752,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
               style={{...inp,marginBottom:16}} />
             <button onClick={tab==='login'?handleTeacherLogin:handleRegister} disabled={loading}
               style={{width:'100%',padding:13,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
-              {loading&&<Spinner/>} {tab==='login'?'Нэвтрэх':'SMS код авах'}
+              {loading&&<Spinner/>} {tab==='login'?'Нэвтрэх':'Үргэлжлүүлэх'}
             </button>
             {tab==='register'&&(
               <div style={{fontSize:11,color:'#9ca3af',textAlign:'center',marginTop:10}}>
