@@ -477,18 +477,20 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
   const [verifying, setVerifying] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotCode, setForgotCode] = useState('');
   const [forgotNewPass, setForgotNewPass] = useState('');
-  const [forgotStep, setForgotStep] = useState(1);
+  const [forgotStep, setForgotStep] = useState(1);     // 1 — имэйл, 2 — бүртгэлтэй утаснаас SMS (verify.mn), 3 — шинэ нууц үг
   const [forgotErr, setForgotErr] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
   const [forgotDone, setForgotDone] = useState(false);
+  const [forgotMo, setForgotMo] = useState(null);      // { moText, shortcode, pollToken, expiresAt, masked }
+  const [forgotExpired, setForgotExpired] = useState(false);
   const [verifyErr, setVerifyErr] = useState('');
   const [verifyMasked, setVerifyMasked] = useState('');
   const [mo, setMo] = useState(null);              // verify.mn: { moText, shortcode, pollToken, expiresAt }
   const [moExpired, setMoExpired] = useState(false);
   const [now, setNow] = useState(Date.now());
-  useEffect(() => { if (!verifying) return; const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, [verifying]);
+  const ticking = verifying || (forgotMode && forgotStep === 2);
+  useEffect(() => { if (!ticking) return; const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, [ticking]);
   const moLeft = mo ? Math.max(0, Math.round((Date.parse(mo.expiresAt) - now) / 1000)) : 0;
   // Хэрэглэгч 144773 руу илгээхийг хүлээнэ: 3 сек тутам дараалан асууна (давхар хүсэлтгүй)
   useEffect(() => {
@@ -514,10 +516,31 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
     timer = setTimeout(poll, 2500);
     return () => { stop = true; clearTimeout(timer); };
   }, [verifying, mo, moExpired]);
+  // Нууц үг сэргээх: бүртгэлтэй утаснаас 144773 руу илгээхийг хүлээнэ (3 сек тутам) → баталгаажвал шинэ нууц үгийн алхам
+  const forgotLeft = forgotMo ? Math.max(0, Math.round((Date.parse(forgotMo.expiresAt) - now) / 1000)) : 0;
+  useEffect(() => {
+    if (!forgotMode || forgotStep !== 2 || !forgotMo || forgotExpired) return;
+    let stop = false, timer = null;
+    async function poll() {
+      if (Date.now() > Date.parse(forgotMo.expiresAt)) { setForgotExpired(true); return; }
+      try {
+        const r = await fetch('/api/reset-password', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ pollToken: forgotMo.pollToken }) });
+        const d = await r.json();
+        if (stop) return;
+        if (r.ok && d.status === 'VERIFIED') { setForgotStep(3); setForgotErr(''); return; }
+        if (d.status === 'EXPIRED') { setForgotExpired(true); return; }
+        if (!r.ok) { setForgotErr(d.error || 'Алдаа'); return; }
+      } catch (e) {}                                // сүлжээ тасарвал дараагийн удаа
+      if (!stop) timer = setTimeout(poll, 3000);
+    }
+    timer = setTimeout(poll, 2500);
+    return () => { stop = true; clearTimeout(timer); };
+  }, [forgotMode, forgotStep, forgotMo, forgotExpired]);
   const isPhone = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
   // iOS нь sms:NUM&body=..., Android нь sms:NUM?body=... гэж ойлгодог
   const smsHref = (sc, text) => 'sms:' + sc + (/iPad|iPhone|iPod/.test(navigator.userAgent) ? '&' : '?') + 'body=' + encodeURIComponent(text);
 
+  // Имэйл илгээхгүй: бүртгэлтэй утаснаасаа дэлгэц дээрх кодыг 144773 руу SMS-ээр илгээж баталгаажуулна (verify.mn)
   async function handleForgotSend() {
     if (!forgotEmail) return;
     setForgotLoading(true); setForgotErr('');
@@ -525,22 +548,26 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
       const d = await fetch('/api/forgot-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:forgotEmail})}).then(async r=>{
         const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
       });
+      setForgotMo({ moText: d.moText, shortcode: d.shortcode || '144773', pollToken: d.pollToken, expiresAt: d.expiresAt, masked: d.masked || '' });
+      setForgotExpired(false);
+      setNow(Date.now());
       setForgotStep(2);
     } catch(e) { setForgotErr(e.message); }
     setForgotLoading(false);
   }
 
   async function handleForgotReset() {
-    if (!forgotCode||!forgotNewPass) return;
+    if (!forgotMo||!forgotNewPass) return;
     setForgotLoading(true); setForgotErr('');
     try {
-      const d = await fetch('/api/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email:forgotEmail,code:forgotCode,password:forgotNewPass})}).then(async r=>{
-        const d=await r.json(); if(!r.ok) throw new Error(d.error||'Алдаа'); return d;
+      await fetch('/api/reset-password',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({pollToken:forgotMo.pollToken,password:forgotNewPass})}).then(async r=>{
+        const d=await r.json(); if(!r.ok||!d.ok) throw new Error(d.error||(d.status==='EXPIRED'?'Хугацаа дууссан. Дахин эхлүүлнэ үү.':'Алдаа')); return d;
       });
       setForgotDone(true);
     } catch(e) { setForgotErr(e.message); }
     setForgotLoading(false);
   }
+  function resetForgot() { setForgotStep(1); setForgotDone(false); setForgotErr(''); setForgotNewPass(''); setForgotMo(null); setForgotExpired(false); }
 
   async function handleTeacherLogin() {
     if (!email||!pass) return;
@@ -684,7 +711,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
               <>
               <div style={{display:'flex',background:'#f3f4f6',borderRadius:10,padding:3,marginBottom:18}}>
               {['login','register'].map(tb=>(
-                <button key={tb} onClick={()=>{setTab(tb);setErr('');}}
+                <button key={tb} onClick={()=>{setTab(tb);setErr('');setForgotMode(false);}}
                   style={{flex:1,padding:'8px',border:'none',borderRadius:8,fontWeight:700,fontSize:13,cursor:'pointer',
                     background:tab===tb?'white':'transparent',color:tab===tb?'#1c1f2a':'#9ca3af',
                     boxShadow:tab===tb?'0 1px 4px rgba(0,0,0,.1)':'none'}}>
@@ -698,7 +725,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
                   <div style={{textAlign:'center',padding:'8px 0'}}>
                     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{display:'block',margin:'0 auto 12px'}}><path d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
                     <div style={{fontWeight:800,fontSize:15,marginBottom:4}}>Нууц үг амжилттай солигдлоо!</div>
-                    <button onClick={()=>{setForgotMode(false);setForgotStep(1);setForgotDone(false);setForgotEmail('');setForgotCode('');setForgotNewPass('');setTab('login');}}
+                    <button onClick={()=>{setForgotMode(false);resetForgot();setForgotEmail('');setTab('login');}}
                       style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginTop:8}}>
                       Нэвтрэх
                     </button>
@@ -706,34 +733,65 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
                 ) : forgotStep===1 ? (
                   <div>
                     <div style={{fontWeight:800,fontSize:15,marginBottom:4}}>Нууц үг сэргээх</div>
-                    <div style={{fontSize:12,color:'#6b7280',marginBottom:12}}>Email хаягаа оруулна уу</div>
+                    <div style={{fontSize:12,color:'#6b7280',marginBottom:12}}>Email хаягаа оруулна уу — бүртгэлтэй утаснаасаа SMS илгээж баталгаажуулна</div>
                     {forgotErr&&<div style={{color:'#b3261e',fontSize:12,background:'#fdecec',padding:'6px 10px',borderRadius:6,marginBottom:8}}>{forgotErr}</div>}
                     <input value={forgotEmail} onChange={e=>setForgotEmail(e.target.value)} placeholder="Email хаяг" type="email" style={inp}/>
-                    <button onClick={handleForgotSend} disabled={forgotLoading}
-                      style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8}}>
-                      {forgotLoading?'Илгээж байна...':'Код илгээх'}
+                    <button onClick={handleForgotSend} disabled={forgotLoading||!forgotEmail}
+                      style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8,display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
+                      {forgotLoading&&<Spinner/>} Үргэлжлүүлэх
                     </button>
                     <button onClick={()=>{setForgotMode(false);setForgotErr('');}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12,width:'100%'}}>← Буцах</button>
+                  </div>
+                ) : forgotStep===2 && forgotMo ? (
+                  <div style={{textAlign:'center',padding:'4px 0'}}>
+                    <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:4}}>Утаснаасаа SMS илгээж баталгаажуулна уу</div>
+                    <div style={{fontSize:13,color:'#6b7280',marginBottom:14}}>Доорх кодыг <b>{forgotMo.shortcode}</b> дугаарт SMS-ээр илгээнэ үү</div>
+                    <div style={{border:'2px dashed #d9ccfb',borderRadius:14,background:'#faf8ff',padding:'12px 10px',marginBottom:12}}>
+                      <div style={{fontSize:11,fontWeight:800,color:'#8b7fae',letterSpacing:.5}}>ИЛГЭЭХ КОД</div>
+                      <div style={{fontSize:32,fontWeight:900,color:'#4c23c4',letterSpacing:8,fontFamily:'ui-monospace,Menlo,Consolas,monospace',lineHeight:1.3}}>{forgotMo.moText}</div>
+                      <div style={{fontSize:12,color:'#8b7fae',fontWeight:700}}>{forgotMo.shortcode} дугаарт</div>
+                    </div>
+                    {isPhone && !forgotExpired && (
+                      <a href={smsHref(forgotMo.shortcode, forgotMo.moText)} style={{display:'block',textDecoration:'none',padding:13,background:'#7B52EE',color:'white',borderRadius:10,fontSize:15,fontWeight:800,marginBottom:10}}>SMS бичих</a>
+                    )}
+                    <div style={{fontSize:12,color:'#9ca3af',lineHeight:1.5,marginBottom:12}}>
+                      Бүртгэлтэй <b style={{color:'#6b7280'}}>{forgotMo.masked}</b> дугаараасаа илгээнэ үү. 2 SIM-тэй бол зөв SIM-ээ сонгоорой. SMS-ийн төлбөр энгийн тарифаар.
+                    </div>
+                    {forgotErr && <div style={{color:'#b3261e',fontSize:12,background:'#fdecec',padding:'6px 10px',borderRadius:6,marginBottom:10}}>{forgotErr}</div>}
+                    {forgotExpired ? (
+                      <>
+                        <div style={{fontSize:13,fontWeight:800,color:'#b3261e',marginBottom:8}}>Хугацаа дууслаа — шинэ код аваад дахин илгээнэ үү</div>
+                        <button onClick={handleForgotSend} disabled={forgotLoading}
+                          style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8,marginBottom:8}}>
+                          {forgotLoading&&<Spinner/>} Шинэ код авах
+                        </button>
+                      </>
+                    ) : (
+                      <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:8,fontSize:13,fontWeight:800,color:'#7B52EE'}}>
+                        <span className="pw-dot" style={{background:'#7B52EE'}} />Илгээхийг хүлээж байна…
+                        <span style={{color:'#9ca3af'}}>{Math.floor(forgotLeft/60)}:{String(forgotLeft%60).padStart(2,'0')}</span>
+                      </div>
+                    )}
+                    <div style={{marginTop:12}}><button onClick={resetForgot} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12}}>← Буцах</button></div>
                   </div>
                 ) : (
                   <div>
                     <div style={{fontWeight:800,fontSize:15,marginBottom:4}}>Шинэ нууц үг тохируулах</div>
-                    <div style={{fontSize:12,color:'#6b7280',marginBottom:12}}><b>{forgotEmail}</b> руу код илгээлээ. Spam шалгана уу.</div>
+                    <div style={{fontSize:12,color:'#16a34a',fontWeight:700,marginBottom:12}}>Утас баталгаажлаа. Шинэ нууц үгээ оруулна уу (10 минутын дотор).</div>
                     {forgotErr&&<div style={{color:'#b3261e',fontSize:12,background:'#fdecec',padding:'6px 10px',borderRadius:6,marginBottom:8}}>{forgotErr}</div>}
-                    <input value={forgotCode} onChange={e=>setForgotCode(e.target.value.replace(/\D/g,'').slice(0,6))} placeholder="6 оронтой код" maxLength={6} style={inp}/>
-                    <input value={forgotNewPass} onChange={e=>setForgotNewPass(e.target.value)} placeholder="Шинэ нууц үг" type="password" style={inp}/>
-                    <button onClick={handleForgotReset} disabled={forgotLoading||forgotCode.length!==6||!forgotNewPass}
-                      style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8,opacity:(forgotCode.length!==6||!forgotNewPass)?0.6:1}}>
+                    <input value={forgotNewPass} onChange={e=>setForgotNewPass(e.target.value)} placeholder="Шинэ нууц үг (6+ тэмдэгт)" type="password" autoComplete="new-password" style={inp}/>
+                    <button onClick={handleForgotReset} disabled={forgotLoading||forgotNewPass.length<6}
+                      style={{width:'100%',padding:12,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:14,fontWeight:700,cursor:'pointer',marginBottom:8,opacity:forgotNewPass.length<6?0.6:1}}>
                       {forgotLoading?'Солиж байна...':'Нууц үг солих'}
                     </button>
-                    <button onClick={()=>{setForgotStep(1);setForgotErr('');}} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12,width:'100%'}}>← Буцах</button>
+                    <button onClick={resetForgot} style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12,width:'100%'}}>← Буцах</button>
                   </div>
                 )}
               </div>
             ) : null}
             {!forgotMode && err && <div style={{color:'#b3261e',fontSize:13,background:'#fdecec',padding:'8px 12px',borderRadius:8,border:'1px solid #f6c9c9',marginBottom:12,textAlign:'center'}}>{err}</div>}
             {!forgotMode&&tab==='login'&&(
-              <button onClick={()=>{setForgotMode(true);setForgotEmail(email);setForgotErr('');setForgotStep(1);setForgotDone(false);}}
+              <button onClick={()=>{setForgotMode(true);setForgotEmail(email);resetForgot();}}
                 style={{background:'none',border:'none',color:'#9ca3af',cursor:'pointer',fontSize:12,width:'100%',marginTop:4,textDecoration:'underline'}}>
                 Нууц үгээ мартсан?
               </button>
@@ -746,6 +804,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
                 style={inp} />
               </>
             )}
+            {!forgotMode&&(<>
             <input value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email хаяг" type="email"
               style={inp} />
             <input type="password" value={pass} onChange={e=>setPass(e.target.value)} placeholder="Нууц үг" onKeyDown={e=>e.key==='Enter'&&(tab==='login'?handleTeacherLogin():handleRegister())}
@@ -754,6 +813,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
               style={{width:'100%',padding:13,background:'#7B52EE',color:'white',border:'none',borderRadius:10,fontSize:15,fontWeight:700,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:8}}>
               {loading&&<Spinner/>} {tab==='login'?'Нэвтрэх':'Үргэлжлүүлэх'}
             </button>
+            </>)}
             {tab==='register'&&(
               <div style={{fontSize:11,color:'#9ca3af',textAlign:'center',marginTop:10}}>
                 SMS-ээр баталгаажуулмагц 1 хоног үнэгүй туршина
