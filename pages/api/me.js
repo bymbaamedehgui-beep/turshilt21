@@ -1,4 +1,4 @@
-import { getTeacherById, hasAccess, initDb } from '../../lib/db';
+import { getTeacherById, hasAccess, accessUntil, initDb } from '../../lib/db';
 import { requireAuth } from '../../lib/auth';
 
 export default requireAuth(async function handler(req, res) {
@@ -11,7 +11,7 @@ export default requireAuth(async function handler(req, res) {
     name: teacher.name,
     isAdmin: teacher.is_admin,
     status: teacher.status,
-    paidUntil: teacher.paid_until,
+    paidUntil: accessUntil(teacher),
     hasAccess: hasAccess(teacher),
   });
 });

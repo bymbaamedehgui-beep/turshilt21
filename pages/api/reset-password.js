@@ -17,7 +17,8 @@ export default async function handler(req, res) {
   if (!rows[0]) return res.status(400).json({ error: 'Код буруу эсвэл хугацаа дууссан' });
 
   const passwordHash = await bcrypt.hash(password, 10);
-  await sql`UPDATE teachers SET password_hash=${passwordHash} WHERE email=${email.toLowerCase()}`;
+  // Имэйлээр баталгаажсан шинэ нууц үг — Дасгалын төвийн холбоосыг тасална (lib/cmsso.js: дахин холбохдоо нууц үг асууна)
+  await sql`UPDATE teachers SET password_hash=${passwordHash}, cm_linked=false WHERE email=${email.toLowerCase()}`;
   await sql`DELETE FROM password_resets WHERE email=${email.toLowerCase()}`;
 
   res.json({ ok: true });

@@ -840,7 +840,7 @@ function AdminPage({dark:d=false}) {
         <div style={{flex:1,minWidth:0}}>
           <div style={{fontWeight:700,fontSize:14,color:text}}>{t.name||'—'}</div>
           <div style={{fontSize:12,color:muted}}>{t.email}</div>
-          <div style={{fontSize:11,color:muted}}>{new Date(t.created_at).toLocaleDateString('mn-MN')}{t.phone ? ' · ' + t.phone : ''}</div>
+          <div style={{fontSize:11,color:muted}}>{new Date(t.created_at).toLocaleDateString('mn-MN')}{t.phone ? ' · ' + t.phone : ''}{t.cm_linked ? ' · Дасгалын төв' : ''}</div>
           {!t.is_admin && <div style={{fontSize:12,fontWeight:800,marginTop:2,color:t.paid_until && new Date(t.paid_until) > new Date() ? '#16a34a' : '#b3261e'}}>
             {t.paid_until ? (new Date(t.paid_until) > new Date() ? 'Эрх: ' : 'Дууссан: ') + new Date(t.paid_until).toLocaleDateString('mn-MN') : 'Эрхгүй'}
           </div>}
@@ -2344,7 +2344,10 @@ export default function App() {
       const [ex, st] = await Promise.all([apiFetch('/api/exams'), apiFetch('/api/students')]);
       setExams(ex);
       setStudents(st);
-      if (ex.length) setCurrentExam(cur => cur ? ex.find(e=>e.id===cur.id)||ex[0] : ex[0]);
+      // Дасгалын төвөөс шууд үүсгэсэн шалгалт (/api/cm/sso → /?exam=<id>) — тэр шалгалтыг нээнэ
+      const want = new URLSearchParams(window.location.search).get('exam');
+      if (want) { try { window.history.replaceState(null, '', window.location.pathname); } catch(e) {} }
+      if (ex.length) setCurrentExam(cur => (want && ex.find(e=>e.id===want)) || (cur ? ex.find(e=>e.id===cur.id)||ex[0] : ex[0]));
     } catch(e) { console.error('loadData error:', e); }
     setLoading(false);
   }
