@@ -7,6 +7,8 @@ import { Paywall } from '../components/Paywall';
 import { PLANS, planPrice, fullPrice, perMonth, fmtMNT, fmtDay, TRIAL_DAYS } from '../lib/plans';
 import { StudentPortal } from '../components/StudentPortal';
 import { MaterialsPanel, EeshDateSetting } from '../components/MaterialsPanel';
+import { exportAnalysisXlsx } from '../lib/report-xlsx';
+import { downloadResultsPdf } from '../lib/report-pdf';
 
 const PRACTICE_URL = 'https://cyber-math.com/worksheets.html';
 
@@ -21,11 +23,6 @@ function Ico({d, size=20, color='currentColor', sw=1.5, fill='none'}) {
 
 const SUBJECTS = ['Математик','Физик','Хими','Биологи','Монгол хэл','Түүх','Газарзүй','Англи хэл','Нийгмийн ухаан'];
 
-const SUBJECT_EN = {
-  'Математик':'Mathematics','Физик':'Physics','Хими':'Chemistry',
-  'Биологи':'Biology','Монгол хэл':'Mongolian','Түүх':'History',
-  'Газарзүй':'Geography','Англи хэл':'English','Нийгмийн ухаан':'Social Studies'
-};
 const TOPICS_BY_SUBJECT = {
   'Математик':  ['Алгебр','Геометр','Тригонометр','Статистик','Тооны онол','Анализ','Функц','Бусад'],
   'Физик':      ['Механик','Термодинамик','Цахилгаан','Соронзон','Оптик','Атомын физик','Долгион','Бусад'],
@@ -210,62 +207,6 @@ function exportExcel(exam, students) {
       })
     ]),'Дасгал шинжилгээ');
     XLSX.writeFile(wb, exam.title+'_тайлан.xlsx');
-  });
-}
-
-function exportAnalytics(exam, students) {
-  import('xlsx').then(XLSX => {
-    const wb = XLSX.utils.book_new();
-    const n = students.length;
-    const ss = students.map(s=>s.scaled);
-    const avg = n?(ss.reduce((a,b)=>a+b,0)/n).toFixed(1):0;
-    const pass = students.filter(s=>s.scaled>=60).length;
-    const grades=['A','B','C','D','E','F'];
-    const gradeCounts=grades.map(g=>students.filter(s=>s.grade?.g===g).length);
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
-      ['EYESH Дүн Шинжилгээ — '+exam.title],[],
-      ['Шалгалт:',exam.title],['Хичээл:',exam.subject],['Огноо:',new Date().toLocaleString('mn-MN')],[],
-      ['--- Ерөнхий ---'],
-      ['Нийт сурагч:',n],['Дундаж ЭЕШ:',+avg],
-      ['Хамгийн өндөр:',n?Math.max(...ss):'—'],['Хамгийн бага:',n?Math.min(...ss):'—'],
-      ['Медиан:',[...ss].sort((a,b)=>a-b)[Math.floor(n/2)]||'—'],
-      ['Тэнцсэн (>=60):',pass],['Тэнцэх хувь:',n?+(pass/n*100).toFixed(1):0],[],
-      ['--- Зэрэглэл ---'],['Зэрэглэл','Тоо','Хувь %'],
-      ...grades.map((g,i)=>[g+' ('+['Онц','Сайн','Дунд сайн','Хангалттай','Хангалтгүй','Тэнцээгүй'][i]+')',gradeCounts[i],n?+(gradeCounts[i]/n*100).toFixed(1):0])
-    ]),'Ерөнхий статистик');
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
-      ['#','Нэр','Код','Хувилбар','Зөв','Буруу','Хоосон','Raw','ЭЕШ оноо','Зэрэглэл'],
-      ...[...students].sort((a,b)=>b.scaled-a.scaled).map((s,i)=>[
-        i+1,s.name,s.code,s.version||'—',s.correct,s.wrong,s.blank,
-        s.rawEarned+'/'+s.rawMax,s.scaled,s.grade?.g+' — '+s.grade?.l
-      ])
-    ]),'Сурагчдын жагсаалт');
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
-      ['Дасгал','Зөв хариулт','Оноо','Сэдэв','Зөв тоо','Буруу','Хоосон','Амжилт %','Хүнд байдал'],
-      ...exam.sec1Key.map((key,i)=>{
-        const c=students.filter(s=>s.sec1Results[i]?.st==='ok').length;
-        const bl=students.filter(s=>s.sec1Results[i]?.st==='blank').length;
-        const pct=n?+(c/n*100).toFixed(1):0;
-        return['D'+(i+1),key,exam.sec1Scores?.[i]||1,exam.topics?.[i]||'—',c,n-c-bl,bl,pct,pct>=80?'Хялбар':pct>=50?'Дунд':'Хэцүү'];
-      })
-    ]),'Дасгал шинжилгээ');
-    const topicMap={};
-    exam.sec1Key.forEach((_,i)=>{
-      const t=exam.topics?.[i]||'Бусад';
-      if(!topicMap[t]) topicMap[t]={total:0,correct:0,score:0,maxScore:0};
-      topicMap[t].total+=n;topicMap[t].maxScore+=(exam.sec1Scores?.[i]||1)*n;
-      students.forEach(s=>{if(s.sec1Results[i]?.st==='ok'){topicMap[t].correct++;topicMap[t].score+=(exam.sec1Scores?.[i]||1);}});
-    });
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
-      ['Сэдэв','Нийт асуулт','Зөв хариулт','Амжилт %'],
-      ...Object.entries(topicMap).map(([t,d])=>[t,d.total/n,d.correct/n,n?+(d.correct/d.total*100).toFixed(1):0])
-    ]),'Сэдвийн шинжилгээ');
-    const ranges=[[0,10],[10,20],[20,30],[30,40],[40,50],[50,60],[60,70],[70,80],[80,90],[90,100]];
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
-      ['Онооны интервал','Сурагч тоо','Хувь %'],
-      ...ranges.map(([lo,hi])=>{const cnt=students.filter(s=>s.scaled>=lo&&s.scaled<(hi===100?101:hi)).length;return[lo+'-'+hi,cnt,n?+(cnt/n*100).toFixed(1):0];})
-    ]),'Оноо тархалт');
-    XLSX.writeFile(wb, exam.title+'_анализ.xlsx');
   });
 }
 
@@ -1251,6 +1192,11 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
           ))}
         </div>
       )}
+      {isEdit && (
+        <div style={{background:'#fff7e0',border:'1px solid #fde68a',color:'#7a4b00',borderRadius:12,padding:'10px 14px',marginBottom:12,fontSize:13.5,fontWeight:700,lineHeight:1.45}}>
+          Хадгалахад энэ шалгалтын уншуулсан бүх хуудасны оноо, хувь шинэ зөв хариулт, оноогоор дахин бодогдоно.
+        </div>
+      )}
       <button onClick={handleSave} style={{width:'100%',padding:'14px',background:'#7B52EE',color:'white',border:'none',borderRadius:12,fontSize:16,fontWeight:800,cursor:'pointer'}}>
         {isEdit ? 'Шалгалт Хадгалах (Засвар)' : 'Шалгалт Хадгалах'}
       </button>
@@ -1546,264 +1492,14 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
     setEditBusy(false);
   }
 
+  // Сурагчийн дүнгийн PDF (нэг сурагч эсвэл анги бүхэлдээ) — монгол үсэгтэй (lib/report-pdf.js)
   function exportStudentPDF(student) {
-    import('jspdf').then(({jsPDF})=>{
-      const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-      const W=210, pw=20;
-      const grade = eyeshGrade(student.scaled||0);
-      const gradeLabel = {'Онц':'Excellent','Сайн':'Good','Дунд сайн':'Above Avg','Хангалттай':'Satisfactory','Хангалтгүй':'Poor','Тэнцээгүй':'Fail'}[grade.l]||grade.l;
-
-      const safeStr = s => (s||'').replace(/[^\x00-\x7F]/g, '?');
-      const safeCode = safeStr(student.code);
-      const safeClass = safeStr(student.class);
-      const safeTitle = safeStr(exam.title);
-      const safeSubject = SUBJECT_EN[exam.subject] || safeStr(exam.subject);
-
-      // ── Scores ──
-      const sec1Res = student.sec1Results||[];
-      const sec1Earned = sec1Res.reduce((a,r)=>a+(r.pts||0),0);
-      const sec1Max    = sec1Res.reduce((a,r)=>a+(r.max||0),0);
-      const sec2Ent    = Object.entries(student.sec2Results||{});
-      const sec2Earned = sec2Ent.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.pts||0),0),0);
-      const sec2Max    = sec2Ent.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.max||0),0),0);
-      // Calculate totalMax from exam config (not stored value which may be wrong)
-      const sec1MaxCalc = (exam.sec1Scores||[]).reduce((a,b)=>a+(b||1), 0) || (exam.sec1Count||0);
-      const sec2MaxCalc = sec2Ent.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.max||0),0),0);
-      const totalMax   = sec1MaxCalc + sec2MaxCalc;
-      const totalEarned= student.rawEarned||0;
-
-      let y = 20;
-      const line = (label, value, bold=false) => {
-        doc.setFont('helvetica', bold?'bold':'normal');
-        doc.setFontSize(10);
-        doc.setTextColor(0,0,0);
-        doc.text(label, pw, y);
-        doc.text(String(value), pw+70, y);
-        y += 7;
-      };
-      const divider = () => {
-        doc.setDrawColor(180,180,180);
-        doc.line(pw, y, W-pw, y);
-        y += 5;
-      };
-      const sectionHeader = (title) => {
-        y += 2;
-        doc.setFont('helvetica','bold');
-        doc.setFontSize(11);
-        doc.setTextColor(0,0,0);
-        doc.text(title, pw, y);
-        y += 3;
-        divider();
-      };
-
-      // ── Title ──
-      doc.setFont('helvetica','bold');
-      doc.setFontSize(14);
-      doc.setTextColor(0,0,0);
-      doc.text('EYESH Checker - Student Result Report', pw, y);
-      y += 5;
-      doc.setFont('helvetica','normal');
-      doc.setFontSize(9);
-      doc.setTextColor(100,100,100);
-      doc.text(safeTitle+' | '+safeSubject+'  |  '+new Date().toLocaleDateString('en-CA'), pw, y);
-      y += 6;
-      divider();
-
-      // ── Student Info ──
-      sectionHeader('Student Information');
-      line('Student Code:', safeCode);
-      line('Class:', safeClass||'-');
-      line('Exam:', safeTitle);
-      line('Subject:', safeSubject);
-      y += 2;
-      divider();
-
-      // ── Score Summary ──
-      sectionHeader('Score Summary');
-      // Big performance display
-      doc.setFont('helvetica','bold');
-      doc.setFontSize(36);
-      doc.setTextColor(0,0,0);
-      doc.text((student.scaled||0)+'%', pw, y);
-      doc.setFont('helvetica','normal');
-      doc.setFontSize(12);
-      doc.setTextColor(80,80,80);
-      doc.text(grade.g+' - '+gradeLabel, pw+35, y);
-      y += 10;
-      doc.setDrawColor(200,200,200);
-      doc.line(pw, y, W-pw, y);
-      y += 6;
-      line('Total Score (Max):', totalMax+' pts');
-      line('Total Score (Earned):', totalEarned+' pts');
-      if(sec1Max>0) line('Section 1 Score:', sec1Earned+' / '+sec1Max+' pts');
-      if(sec2Max>0) line('Section 2 Score:', sec2Earned+' / '+sec2Max+' pts');
-      line('Correct Answers:', student.correct);
-      line('Wrong Answers:', student.wrong);
-      line('Blank Answers:', student.blank);
-      y += 2;
-      divider();
-
-      // ── Correct question numbers ──
-      sectionHeader('Correct Questions');
-      const correct = sec1Res.map((r,i)=>r.st==='ok'?i+1:null).filter(Boolean);
-      if(correct.length===0){
-        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
-        doc.text('None', pw, y); y+=7;
-      } else {
-        // Print in rows of 20
-        const perRow=20;
-        for(let i=0;i<correct.length;i+=perRow){
-          doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
-          doc.text(correct.slice(i,i+perRow).join('  '), pw, y);
-          y+=7;
-        }
-      }
-      y+=2; divider();
-
-      // ── Wrong question numbers ──
-      sectionHeader('Wrong Questions');
-      const wrong = sec1Res.map((r,i)=>r.st==='ng'?i+1:null).filter(Boolean);
-      if(wrong.length===0){
-        doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
-        doc.text('None', pw, y); y+=7;
-      } else {
-        const perRow=20;
-        for(let i=0;i<wrong.length;i+=perRow){
-          doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
-          doc.text(wrong.slice(i,i+perRow).join('  '), pw, y);
-          y+=7;
-        }
-      }
-      y+=2; divider();
-
-      // ── Section 2 if exists ──
-      if(sec2Max>0){
-        y+=2; divider();
-        sectionHeader('Section 2 Details');
-        sec2Ent.forEach(([sub,rows])=>{
-          doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(0,0,0);
-          const e2=Object.values(rows).reduce((a,r)=>a+(r.pts||0),0);
-          const m2=Object.values(rows).reduce((a,r)=>a+(r.max||0),0);
-          doc.text(sub+':  '+e2+' / '+m2+' pts', pw, y); y+=7;
-        });
-      }
-
-      // ── Footer ──
-      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,150,150);
-      doc.text('EYESH Checker  |  A>=90  B>=80  C>=70  D>=60  F<60', pw, 290);
-
-      doc.save(safeCode+'_result.pdf');
-    });
+    downloadResultsPdf(exam, [student], (student.name||student.code||'сурагч')+'_'+exam.title+'.pdf').catch(e=>alert('PDF үүсгэж чадсангүй: '+(e.message||e)));
   }
-
-  // Bulk PDF: all students in one multi-page PDF
   function exportClassPDFs(classname) {
-    const clsStudents = classname === '__all__' ? sorted : sorted.filter(s => (s.class||'') === classname);
-    if (!clsStudents.length) return;
-    const safeFilename = classname === '__all__' ? 'all' : classname.replace(/[^\x00-\x7F]/g,'_');
-
-    import('jspdf').then(({jsPDF})=>{
-      const doc = new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
-      const W=210, pw=20;
-      const safeStr = s => (s||'').replace(/[^\x00-\x7F]/g, '?');
-      const safeTitle = safeStr(exam.title);
-      const safeSubject = SUBJECT_EN[exam.subject] || safeStr(exam.subject);
-      const sec1MaxCalc = (exam.sec1Scores||[]).reduce((a,b)=>a+(b||1), 0) || (exam.sec1Count||0);
-
-      clsStudents.forEach((student, idx) => {
-        if (idx > 0) doc.addPage();
-
-        const grade = eyeshGrade(student.scaled||0);
-        const gradeLabel = {'Онц':'Excellent','Сайн':'Good','Дунд сайн':'Above Avg','Хангалттай':'Satisfactory','Хангалтгүй':'Poor','Тэнцээгүй':'Fail'}[grade.l]||grade.l;
-        const safeCode = safeStr(student.code);
-        const safeClass = safeStr(student.class);
-
-        const sec1Res = student.sec1Results||[];
-        const sec1Earned = sec1Res.reduce((a,r)=>a+(r.pts||0),0);
-        const sec1Max    = sec1Res.reduce((a,r)=>a+(r.max||0),0);
-        const sec2Ent    = Object.entries(student.sec2Results||{});
-        const sec2Earned = sec2Ent.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.pts||0),0),0);
-        const sec2Max    = sec2Ent.reduce((a,[,rows])=>a+Object.values(rows).reduce((b,r)=>b+(r.max||0),0),0);
-        const totalMax   = sec1MaxCalc + sec2Max;
-        const totalEarned= student.rawEarned||0;
-
-        let y = 20;
-        const line = (label, value) => {
-          doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0);
-          doc.text(label, pw, y); doc.text(String(value), pw+70, y); y+=7;
-        };
-        const divider = () => { doc.setDrawColor(180,180,180); doc.line(pw,y,W-pw,y); y+=5; };
-        const sectionHeader = (title) => {
-          y+=2; doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(0,0,0);
-          doc.text(title, pw, y); y+=3; divider();
-        };
-
-        // Page number
-        doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,150,150);
-        doc.text((idx+1)+' / '+clsStudents.length, W-pw, 10, {align:'right'});
-
-        // Title
-        doc.setFont('helvetica','bold'); doc.setFontSize(14); doc.setTextColor(0,0,0);
-        doc.text('EYESH Checker - Student Result Report', pw, y); y+=5;
-        doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(100,100,100);
-        doc.text(safeTitle+' | '+safeSubject+'  |  '+new Date().toLocaleDateString('en-CA'), pw, y); y+=6;
-        divider();
-
-        // Student Info
-        sectionHeader('Student Information');
-        line('Student Code:', safeCode);
-        line('Class:', safeClass||'-');
-        line('Exam:', safeTitle);
-        line('Subject:', safeSubject);
-        y+=2; divider();
-
-        // Score Summary
-        sectionHeader('Score Summary');
-        doc.setFont('helvetica','bold'); doc.setFontSize(36); doc.setTextColor(0,0,0);
-        doc.text((student.scaled||0)+'%', pw, y);
-        doc.setFont('helvetica','normal'); doc.setFontSize(12); doc.setTextColor(80,80,80);
-        doc.text(grade.g+' - '+gradeLabel, pw+35, y); y+=10;
-        doc.setDrawColor(200,200,200); doc.line(pw,y,W-pw,y); y+=6;
-        line('Total Score (Max):', totalMax+' pts');
-        line('Total Score (Earned):', totalEarned+' pts');
-        if(sec1Max>0) line('Section 1 Score:', sec1Earned+' / '+sec1Max+' pts');
-        if(sec2Max>0) line('Section 2 Score:', sec2Earned+' / '+sec2Max+' pts');
-        line('Correct Answers:', student.correct);
-        line('Wrong Answers:', student.wrong);
-        line('Blank Answers:', student.blank);
-        y+=2; divider();
-
-        // Correct questions
-        sectionHeader('Correct Questions');
-        const correct = sec1Res.map((r,i)=>r.st==='ok'?i+1:null).filter(Boolean);
-        if(!correct.length){ doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0); doc.text('None',pw,y); y+=7; }
-        else { for(let i=0;i<correct.length;i+=20){ doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0); doc.text(correct.slice(i,i+20).join('  '),pw,y); y+=7; } }
-        y+=2; divider();
-
-        // Wrong questions
-        sectionHeader('Wrong Questions');
-        const wrong = sec1Res.map((r,i)=>r.st==='ng'?i+1:null).filter(Boolean);
-        if(!wrong.length){ doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0); doc.text('None',pw,y); y+=7; }
-        else { for(let i=0;i<wrong.length;i+=20){ doc.setFont('helvetica','normal'); doc.setFontSize(10); doc.setTextColor(0,0,0); doc.text(wrong.slice(i,i+20).join('  '),pw,y); y+=7; } }
-
-        // Section 2
-        if(sec2Max>0){
-          y+=2; divider(); sectionHeader('Section 2 Details');
-          sec2Ent.forEach(([sub,rows])=>{
-            const e2=Object.values(rows).reduce((a,r)=>a+(r.pts||0),0);
-            const m2=Object.values(rows).reduce((a,r)=>a+(r.max||0),0);
-            doc.setFont('helvetica','bold'); doc.setFontSize(10); doc.setTextColor(0,0,0);
-            doc.text(sub+':  '+e2+' / '+m2+' pts', pw, y); y+=7;
-          });
-        }
-
-        // Footer
-        doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(150,150,150);
-        doc.text('EYESH Checker  |  A>=90  B>=80  C>=70  D>=60  F<60', pw, 290);
-      });
-
-      doc.save(safeStr(exam.title)+'_'+safeFilename+'_results.pdf');
-    });
+    const list = classname === '__all__' ? sorted : sorted.filter(s => (s.class||'') === classname);
+    if (!list.length) return;
+    downloadResultsPdf(exam, list, exam.title+'_'+(classname === '__all__' ? 'бүгд' : classname)+'.pdf').catch(e=>alert('PDF үүсгэж чадсангүй: '+(e.message||e)));
   }
 
   const classes = [...new Set(sorted.map(s => s.class||'').filter(Boolean))].sort();
@@ -2072,11 +1768,20 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
 }
 
 // ── Analytics Page ────────────────────────────────────────
-function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
+function AnalyticsPage({exam, students, teacherName, dark:d=false}) {
   const [filterClass, setFilterClass] = useState('');
+  const [school, setSchool] = useState(() => { try { return localStorage.getItem('eyesh_report_school') || ''; } catch(e) { return ''; } });
+  const [xlsxBusy, setXlsxBusy] = useState(false);
   const allClasses = [...new Set(students.map(s=>s.class||'').filter(Boolean))].sort((a,b)=>a.localeCompare(b,'mn'));
   const filtered = filterClass ? students.filter(s=>(s.class||'')===filterClass) : students;
   if (!exam||!students.length) return <div style={{textAlign:'center',padding:80,color:'#9ca3af',fontWeight:600}}>Дүн шинжилгээнд хангалттай өгөгдөл байхгүй</div>;
+  async function exportXlsx() {
+    setXlsxBusy(true);
+    try { localStorage.setItem('eyesh_report_school', school.trim()); } catch(e) {}
+    try { await exportAnalysisXlsx(exam, filtered, { school: school.trim(), teacherName, label: filterClass }); }
+    catch(e) { alert('Excel үүсгэж чадсангүй: '+(e.message||e)); }
+    setXlsxBusy(false);
+  }
   const n=filtered.length||1, ss=filtered.map(s=>s.scaled);
   const avg=(ss.reduce((a,b)=>a+b,0)/n).toFixed(1);
   const pass=filtered.filter(s=>s.scaled>=60).length;
@@ -2107,8 +1812,10 @@ function AnalyticsPage({exam, students, onExportAnalytics, dark:d=false}) {
               <button key={c} onClick={()=>setFilterClass(c)} style={{padding:'6px 12px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:filterClass===c?'#7B52EE':'#f3f4f6',color:filterClass===c?'white':'#374151'}}>{c}</button>
             ))}
           </div>
-          <button onClick={()=>onExportAnalytics(exam,filtered)} style={{padding:'10px 14px',background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer'}}>
-            Анализ Excel татах
+          <input value={school} onChange={e=>setSchool(e.target.value)} placeholder="Сургуулийн нэр (тайлангийн толгойд)" title="Excel тайлангийн толгойд гарна"
+            style={{padding:'9px 12px',border:'1.6px solid #e5e7eb',borderRadius:8,fontSize:13,minWidth:230,outline:'none',background:'#fff',color:'#1c1f2a'}} />
+          <button onClick={exportXlsx} disabled={xlsxBusy} style={{padding:'10px 14px',background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer',opacity:xlsxBusy?.7:1}}>
+            {xlsxBusy ? 'Үүсгэж байна…' : 'Анализ Excel татах'}
           </button>
         </div>
       </div>
@@ -2336,6 +2043,8 @@ export default function App() {
   const [editingExam, setEditingExam] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [me, setMe] = useState(null);             // { hasAccess, paidUntil, … } — /api/me
+  const [notice, setNotice] = useState(null);     // { text, err } — дээд талын түр мэдэгдэл
+  useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(null), 8000); return () => clearTimeout(t); }, [notice]);
 
   // Ямар нэг API 402 (эрх дууссан) буцаавал эрхийн мэдээллийг шинэчилж төлбөрийн дэлгэц гаргана
   useEffect(() => {
@@ -2420,11 +2129,15 @@ export default function App() {
   }
 
   async function handleUpdateExam(exam) {
-    const updated = await apiFetch('/api/exams/'+exam.id, {method:'PUT', body:exam});
+    const { rescored, rescoreError, ...updated } = await apiFetch('/api/exams/'+exam.id, {method:'PUT', body:exam});
     setExams(ex=>ex.map(e=>e.id===exam.id?updated:e));
     setCurrentExam(updated);
     setEditingExam(null);
     setPage('home');
+    // Сервер уншуулсан хуудсуудын дүнг шинэ түлхүүрээр дахин бодсон — жагсаалт, анализыг шинэчилнэ
+    if (rescored) { try { setStudents(await apiFetch('/api/students')); } catch(e) {} }
+    setNotice(rescoreError ? { err:true, text:rescoreError }
+      : rescored ? { text: rescored+' сурагчийн оноо, хувийг шинэ зөв хариултаар дахин бодлоо.' } : null);
   }
 
   async function handleDeleteExam(id) {
@@ -2529,6 +2242,13 @@ export default function App() {
         </div>
       </header>
       <main className="cm-main">
+        {notice && (
+          <div className="no-print" role="status" style={{maxWidth:1160,margin:'12px auto 0',padding:'11px 16px',borderRadius:12,fontSize:14,fontWeight:800,
+            display:'flex',alignItems:'center',gap:10,background:notice.err?'#fdecec':'#e9f8ef',color:notice.err?'#b3261e':'#15803d',border:'1px solid '+(notice.err?'#f6c9c9':'#b7e4c7')}}>
+            <span style={{flex:1}}>{notice.text}</span>
+            <button onClick={()=>setNotice(null)} aria-label="Хаах" style={{border:0,background:'none',color:'inherit',fontSize:18,fontWeight:900,cursor:'pointer'}}>×</button>
+          </div>
+        )}
         {showRenew && daysLeft < 3 && page !== 'billing' && (
           <div className="cm-billbar no-print">
             <span>{daysLeft < 1 ? `Эрх ${Math.max(1, Math.ceil(daysLeft * 24))} цагийн дараа дуусна` : `Эрх ${Math.ceil(daysLeft)} хоногийн дараа дуусна`}</span>
@@ -2542,7 +2262,7 @@ export default function App() {
         {page==='create'&&<CreatePage onCreated={handleAddExam} dark={d} />}
         {page==='edit'&&<CreatePage onCreated={handleUpdateExam} prefill={editingExam} isEdit={true} dark={d} />}
         {page==='board'&&<BoardPage exam={currentExam} students={examStudents} onDeleteStudent={handleDeleteStudent} onExportExcel={exportExcel} onReload={loadData} dark={d} />}
-        {page==='analytics'&&<AnalyticsPage exam={currentExam} students={examStudents} onExportAnalytics={exportAnalytics} dark={d} />}
+        {page==='analytics'&&<AnalyticsPage exam={currentExam} students={examStudents} teacherName={teacher?.name||''} dark={d} />}
         {page==='rating'&&<RatingPage exams={exams} students={students} dark={d} />}
         {page==='students'&&<StudentAccountsPage dark={d} />}
         {page==='materials'&&<div className="mp-page"><h1 className="mp-title">ЭЕШ материал</h1><MaterialsPanel kind="material" classes={[...new Set(students.map(s=>s.class).filter(Boolean))].sort()} /></div>}
