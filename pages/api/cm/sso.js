@@ -1,6 +1,6 @@
 import { initDb, getTeacherByEmail } from '../../../lib/db';
 import { CM_ORIGINS, DEMO_EMAIL, isCode, originOk, redeem, normEmail, normExam, validDate, errPage, linkPage, finish,
-  createCmTeacher, syncCm, pendingSave } from '../../../lib/cmsso';
+  createCmTeacher, findCmTeacher, syncCm, pendingSave } from '../../../lib/cmsso';
 
 // Дасгалын төвийн (cyber-math.com) ЭЕШ хуудсан дээрх «ЭЕШ шалгагч» товч → form POST {code} → энд.
 // Нэвтрэлт + шалгалт үүсгэх дэлгэрэнгүй: lib/cmsso.js
@@ -23,18 +23,21 @@ export default async function handler(req, res) {
   const paidUntil = validDate(r.paidUntil);
   try {
     await initDb();
-    let t = await getTeacherByEmail(email);
-    if (t && t.status === 'disabled') return errPage(res, 403, 'Таны eyeshcheck эрх хаагдсан байна. Admin-тай холбогдоно уу.');
-    // Өмнө нь өөрөө бүртгүүлсэн багш — нууц үгээр нэг удаа холбоно (имэйлийн эзэмшлийг Дасгалын төв батлахгүй)
-    if (t && !t.cm_linked) return linkPage(res, { email, token: await pendingSave({ email, name: r.name, paidUntil, exam }) });
+    // Энэ Дасгалын төвийн имэйлтэй холбосон данс (eyeshcheck-ийн имэйл нь өөр байж болно)
+    let t = await findCmTeacher(email);
     if (!t) {
+      const own = await getTeacherByEmail(email);
+      if (own && own.status === 'disabled') return errPage(res, 403, 'Таны eyeshcheck эрх хаагдсан байна. Admin-тай холбогдоно уу.');
+      // Өмнө нь өөрөө бүртгүүлсэн багш — нэг удаа холбоно (имэйлийн эзэмшлийг Дасгалын төв батлахгүй): /api/cm/link
+      if (own) return linkPage(res, { email, token: await pendingSave({ email, name: r.name, paidUntil, exam }) });
       t = await createCmTeacher({ email, name: r.name, paidUntil });
       if (!t) {   // зэрэг хүсэлт үүсгэсэн
-        t = await getTeacherByEmail(email);
-        if (!t || !t.cm_linked) return errPage(res, 409, 'Түр алдаа гарлаа. Дасгалын төвөөс дахин оролдоно уу.');
+        t = await findCmTeacher(email);
+        if (!t) return errPage(res, 409, 'Түр алдаа гарлаа. Дасгалын төвөөс дахин оролдоно уу.');
       }
     }
-    t = await syncCm(t.id, paidUntil, false);
+    if (t.status === 'disabled') return errPage(res, 403, 'Таны eyeshcheck эрх хаагдсан байна. Admin-тай холбогдоно уу.');
+    t = await syncCm(t.id, paidUntil);
     if (!t) return errPage(res, 500, 'Түр алдаа гарлаа. Дахин оролдоно уу.');
     return await finish(res, t, exam);
   } catch (e) {
