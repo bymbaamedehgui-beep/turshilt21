@@ -14,7 +14,9 @@ export default requirePaid(async function handler(req, res) {
     if (!exam) return res.status(404).json({ error: 'Олдсонгүй' });
     // Зөв хариулт, оноо засагдвал энэ шалгалтын уншуулсан бүх хуудасны дүнг шинэ тохиргоогоор дахин бодно
     try {
-      const students = await getStudents(exam.id);
+      // асуулт бүрийн хариу хадгалагдаагүй (зөвхөн нийт оноотой) мөрийг хөндөхгүй — тэглэхээс сэргийлнэ
+      const students = (await getStudents(exam.id))
+        .filter(s => (s.sec1Results && s.sec1Results.length) || (s.sec2Results && Object.keys(s.sec2Results).length));
       const rescored = await updateStudentScores(exam.id, students.map(s => ({ id: s.id, ...rescoreSaved(s, exam) })));
       return res.json({ ...exam, rescored });
     } catch (e) {
