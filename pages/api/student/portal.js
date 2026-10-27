@@ -1,8 +1,8 @@
 import { initDb, getStudentResults, getExams, getMaterials, getGoals, getSetting } from '../../../lib/db';
 import { requireStudent } from '../../../lib/auth';
-import { SEC2_SUBS, SEC2_ROWS } from '../../../lib/eyesh';
+import { SEC2_SUBS, SEC2_ROWS, hideAnswers } from '../../../lib/eyesh';
 
-// Сурагчийн хэсгийн бүх мэдээлэл нэг дор: дүнгийн түүх, онлайнаар өгөх шалгалт (хариугүй),
+// Сурагчийн хэсгийн бүх мэдээлэл нэг дор: дүнгийн түүх, багшийн онлайнаар нээсэн шалгалт (хариугүй),
 // сурах бичиг, багшийн материал, зорилго, ЭЕШ-ийн огноо
 function examOutline(e) {
   const sec2 = {};
@@ -28,10 +28,12 @@ export default requireStudent(async function handler(req, res) {
     getSetting('eesh_date'),
   ]);
   const taken = new Set(results.map(r => r.examId));
+  // Хариу нь нээгдээгүй (эсвэл олдохгүй) шалгалтын дүнд асуулт бүрийн мөр явахгүй
+  const answersOpen = new Set(exams.filter(e => e.answersOpen).map(e => e.id));
   res.json({
     student: { id: s.id, name: s.name, code: s.code, class: s.class },
-    results,
-    exams: exams.filter(e => !taken.has(e.id)).map(examOutline),
+    results: results.map(r => (answersOpen.has(r.examId) ? r : hideAnswers(r))),
+    exams: exams.filter(e => e.onlineOpen && !taken.has(e.id)).map(examOutline),
     textbooks,
     materials: materials.filter(m => !m.class || m.class === s.class),
     goals,

@@ -1,6 +1,6 @@
 import { initDb, getExam, createStudent, hasStudentResult } from '../../../lib/db';
 import { requireStudent } from '../../../lib/auth';
-import { calcScore, SEC1_CHOICES } from '../../../lib/eyesh';
+import { calcScore, SEC1_CHOICES, hideAnswers } from '../../../lib/eyesh';
 
 // Онлайнаар өгсөн шалгалт: зөвхөн сонгосон хариултыг хүлээж аваад оноог СЕРВЕР түлхүүрээр бодно
 // (өмнө нь клиентийн тооцсон оноог шууд хадгалдаг байсан — сурагч дураараа оноо илгээж болох байв)
@@ -12,6 +12,8 @@ export default requireStudent(async function handler(req, res) {
   const s = req.student;
   const exam = await getExam(String(req.body?.examId || ''), s.teacher_id);
   if (!exam) return res.status(404).json({ error: 'Шалгалт олдсонгүй' });
+  // Багш онлайнаар нээгээгүй (цаасаар авах) шалгалт
+  if (!exam.onlineOpen) return res.status(403).json({ error: 'Багш энэ шалгалтыг онлайнаар нээгээгүй байна' });
   if (await hasStudentResult(s.code, exam.id)) return res.status(409).json({ error: 'Та энэ шалгалтыг өгсөн байна' });
 
   const sec1 = Array.isArray(req.body?.sec1) ? req.body.sec1 : [];
@@ -33,5 +35,6 @@ export default requireStudent(async function handler(req, res) {
     submittedAt: new Date().toISOString(),
   }, s.teacher_id);
   if (!row) return res.status(404).json({ error: 'Шалгалт олдсонгүй' });
-  res.status(201).json(row);
+  // Бусад нь өгч дуусаагүй байж болно — хариуг багш нээх хүртэл зөвхөн оноо
+  res.status(201).json(exam.answersOpen ? row : hideAnswers(row));
 });

@@ -1,4 +1,4 @@
-import { getExams, createExam, initDb, getTeacherById } from '../../../lib/db';
+import { getExams, createExam, setExamFlags, initDb, getTeacherById } from '../../../lib/db';
 import { requirePaid } from '../../../lib/auth';
 import { neon } from '@neondatabase/serverless';
 
@@ -22,6 +22,11 @@ export default requirePaid(async function handler(req, res) {
     }
     const exam = await createExam(req.body, req.teacherId);
     return res.json(exam);
+  }
+  // Картан дээрх товч: { id, onlineOpen } ба/эсвэл { id, answersOpen } — зөвхөн сурагчийн хэсгийн тохиргоо
+  if (req.method === 'PATCH') {
+    const exam = await setExamFlags(String(req.body?.id || ''), req.body || {}, req.teacherId);
+    return exam ? res.json(exam) : res.status(404).json({ error: 'Олдсонгүй' });
   }
   res.status(405).end();
 });

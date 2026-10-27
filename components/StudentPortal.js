@@ -251,14 +251,18 @@ function ResultDetail({ r, onBack }) {
             <i className="sp-cnt"><em className="ok">✓ {r.correct}</em><em className="ng">✗ {r.wrong - r.blank}</em><em className="bl">○ {r.blank}</em></i>
           </div>
         </div>
-        <div className="sp-sec-h"><b>1-р хэсэг</b><span>зөв хариулт нь доор</span></div>
-        <div className="sp-grid">
-          {(r.sec1Results || []).map(q => (
-            <div key={q.q} className={'sp-q ' + q.st}>
-              <i>{q.q}</i><b>{q.sel === 'BLANK' ? '—' : q.sel}</b>{q.st !== 'ok' && q.key && q.key !== '?' && <s>{q.key}</s>}
-            </div>
-          ))}
-        </div>
+        {/* Багш хариуг нээгээгүй: сервер асуулт бүрийн мөрийг явуулаагүй (api/student/portal, submit) */}
+        {r.answersHidden && <div className="sp-empty">🔒 Зөв хариулт, асуулт бүрийн дүн багш нээсний дараа энд гарна.</div>}
+        {!r.answersHidden && <>
+          <div className="sp-sec-h"><b>1-р хэсэг</b><span>зөв хариулт нь доор</span></div>
+          <div className="sp-grid">
+            {(r.sec1Results || []).map(q => (
+              <div key={q.q} className={'sp-q ' + q.st}>
+                <i>{q.q}</i><b>{q.sel === 'BLANK' ? '—' : q.sel}</b>{q.st !== 'ok' && q.key && q.key !== '?' && <s>{q.key}</s>}
+              </div>
+            ))}
+          </div>
+        </>}
         {sec2.length > 0 && <>
           <div className="sp-sec-h"><b>2-р хэсэг</b></div>
           <div className="sp-grid">
