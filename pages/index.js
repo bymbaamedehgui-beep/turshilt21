@@ -987,7 +987,20 @@ function AdminPage({dark:d=false}) {
 }
 
 // ── Home Page ─────────────────────────────────────────────
-function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onNavigate, onEditExam, dark:d=false}) {
+// Шалгалтын карт дээрх сурагчийн хэсгийн тохиргоо (асаалттай = ногоон)
+function ExamFlag({on, label, hint, onClick}) {
+  return (
+    <button role="switch" aria-checked={!!on} title={hint} onClick={onClick}
+      style={{display:'inline-flex',alignItems:'center',gap:7,padding:'5px 10px',background:on?'#dcfce7':'#f3f4f6',border:'1px solid '+(on?'#86efac':'#e5e7eb'),borderRadius:999,fontSize:12,fontWeight:800,color:on?'#15803d':'#6b7280',cursor:'pointer'}}>
+      <i style={{position:'relative',width:26,height:15,borderRadius:99,background:on?'#16a34a':'#d1d5db',flexShrink:0,transition:'background .15s'}}>
+        <i style={{position:'absolute',top:2,left:on?13:2,width:11,height:11,borderRadius:'50%',background:'white',transition:'left .15s'}} />
+      </i>
+      {label}
+    </button>
+  );
+}
+
+function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onNavigate, onEditExam, onExamFlag, dark:d=false}) {
   // Subject filter — group exams by subject
   const [filterSubject, setFilterSubject] = useState('all');
   const examSubjects = [...new Set(exams.map(e=>e.subject||'Бусад').filter(Boolean))].sort((a,b)=>a.localeCompare(b,'mn'));
@@ -1094,6 +1107,14 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
                   {avgS&&<div><div style={{fontSize:20,fontWeight:800,color:eyeshGrade(pf(avgS)).c}}>{avgS}</div><div style={{fontSize:11,color:'#9ca3af'}}>Дундаж ЭЕШ</div></div>}
                   <div style={{flex:1,textAlign:'right',fontSize:11,color:'#9ca3af'}}>{new Date(exam.createdAt).toLocaleDateString('mn-MN')}</div>
                 </div>
+                <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:12}}>
+                  <ExamFlag on={exam.onlineOpen} label="Онлайнаар өгөх"
+                    hint={exam.onlineOpen?'Сурагчид онлайнаар өгч болно — дарж хаана':'Сурагчдад харагдахгүй — дарж онлайнаар нээнэ'}
+                    onClick={e=>{e.stopPropagation();onExamFlag(exam,'onlineOpen');}} />
+                  <ExamFlag on={exam.answersOpen} label="Хариу харуулах"
+                    hint={exam.answersOpen?'Сурагчид зөв хариултаа харж байна — дарж нууна':'Сурагч зөвхөн оноогоо харна — дарж зөв хариултыг нээнэ'}
+                    onClick={e=>{e.stopPropagation();if(!exam.answersOpen&&!confirm('"'+exam.title+'" — сурагчид асуулт бүрийн зөв хариултыг харах болно. Бүх анги өгч дууссан уу?'))return;onExamFlag(exam,'answersOpen');}} />
+                </div>
                 <div style={{display:'flex',gap:8,marginTop:12}}>
                   <button className="cm-btn" style={{flex:1,padding:'.6rem .8rem',fontSize:13.5}} onClick={e=>{e.stopPropagation();onSelectExam(exam);onNavigate('scan');}}>Шалгах</button>
                   <button className="cm-btn ghost" style={{flex:1,padding:'.6rem .8rem',fontSize:13.5}} onClick={e=>{e.stopPropagation();onSelectExam(exam);onNavigate('sheets');}}>Хуудас хэвлэх</button>
@@ -1122,6 +1143,9 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
   const [sec2Keys,setSec2Keys]=useState(()=>{const o={};SEC2_SUBS.forEach(s=>{o[s]={};SEC2_ROWS.forEach(r=>{o[s][r]=prefill?.sec2Config?.[s]?.[r]||'';});});return o;});
   const [bulkScore,setBulkScore]=useState(2);
   const [bulkTopic,setBulkTopic]=useState(()=>getTopics(prefill?.subject||SUBJECTS[0])[0]);
+  // Сурагчийн хэсэг: шинэ шалгалт хоёулаа хаалттай (цаасаар авах шалгалтын хариу урьдчилж гарахгүй)
+  const [onlineOpen,setOnlineOpen]=useState(!!prefill?.onlineOpen);
+  const [answersOpen,setAnswersOpen]=useState(!!prefill?.answersOpen);
 
   function handleCntChange(v) {
     const n=Math.max(1,parseInt(v)||1);
@@ -1145,7 +1169,7 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
       id: isEdit&&prefill?.id ? prefill.id : uid(),
       title:title.trim(), subject, sec1Count:cnt,
       sec1Key:keys, sec1Scores:scores, topics, useSec2,
-      sec2Score, sec2Config, createdAt:prefill?.createdAt||new Date().toISOString()
+      sec2Score, sec2Config, onlineOpen, answersOpen, createdAt:prefill?.createdAt||new Date().toISOString()
     };
     onCreated(exam);
   }
@@ -1189,6 +1213,23 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
             </div>
           </div>
         )}
+        <div style={{display:'flex',flexDirection:'column',gap:10,marginTop:14,paddingTop:14,borderTop:'1px solid #e5e7eb'}}>
+          <div style={{fontSize:13,fontWeight:700,color:'#374151'}}>Сурагчийн хэсэг</div>
+          <label style={{display:'flex',alignItems:'flex-start',gap:10,cursor:'pointer'}}>
+            <input type="checkbox" checked={onlineOpen} onChange={e=>setOnlineOpen(e.target.checked)} style={{width:18,height:18,marginTop:2,flexShrink:0}} />
+            <span>
+              <span style={{display:'block',fontSize:14,fontWeight:700,color:'#374151'}}>Сурагчид онлайнаар өгнө</span>
+              <span style={{display:'block',fontSize:12,color:'#6b7280',marginTop:2}}>Чагталбал сурагчийн хэсэгт «Онлайнаар өгөх» жагсаалтад гарна. Цаасаар авах шалгалтад чагтлахгүй.</span>
+            </span>
+          </label>
+          <label style={{display:'flex',alignItems:'flex-start',gap:10,cursor:'pointer'}}>
+            <input type="checkbox" checked={answersOpen} onChange={e=>setAnswersOpen(e.target.checked)} style={{width:18,height:18,marginTop:2,flexShrink:0}} />
+            <span>
+              <span style={{display:'block',fontSize:14,fontWeight:700,color:'#374151'}}>Сурагчид зөв хариултаа харна</span>
+              <span style={{display:'block',fontSize:12,color:'#6b7280',marginTop:2}}>Асуулт бүрийн ✓/✗ ба зөв хариулт. Бүх анги өгч дууссаны дараа нээнэ — түүнээс өмнө сурагч зөвхөн оноогоо харна.</span>
+            </span>
+          </label>
+        </div>
       </div>
 
       <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
@@ -2434,6 +2475,15 @@ export default function App() {
     setCurrentExam(cur=>cur?.id===id?null:cur);
   }
 
+  // Картан дээрх «Онлайнаар өгөх» / «Хариу харуулах» товч
+  async function handleExamFlag(exam, field) {
+    try {
+      const updated = await apiFetch('/api/exams', {method:'PATCH', body:{id:exam.id, [field]:!exam[field]}});
+      setExams(ex=>ex.map(e=>e.id===exam.id?updated:e));
+      setCurrentExam(cur=>cur?.id===exam.id?updated:cur);
+    } catch(e) { alert(e.message); }
+  }
+
   async function handleAddStudent(student) {
     const created = await apiFetch('/api/students', {method:'POST', body:student});
     setStudents(st=>[...st, created]);
@@ -2536,7 +2586,7 @@ export default function App() {
           </div>
         )}
         {page==='billing'&&<Paywall me={me} renew onPaid={paid} onClose={()=>go('home')} />}
-        {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={go} onEditExam={e=>{setEditingExam(e);go('edit');}} dark={d} />}
+        {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={go} onEditExam={e=>{setEditingExam(e);go('edit');}} onExamFlag={handleExamFlag} dark={d} />}
         {page==='scan'&&<ScanPage exam={currentExam} exams={exams} students={examStudents} onSelectExam={setCurrentExam} onAddStudent={handleAddStudent} onNavigate={go} />}
         {page==='sheets'&&<SheetsPage exam={currentExam} onNavigate={go} dark={d} />}
         {page==='create'&&<CreatePage onCreated={handleAddExam} dark={d} />}
