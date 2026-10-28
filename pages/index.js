@@ -12,6 +12,7 @@ import { downloadResultsPdf } from '../lib/report-pdf';
 import { AdminPanel } from '../components/AdminPanel';
 
 const PRACTICE_URL = 'https://cyber-math.com/worksheets.html';
+const TUTORIAL_VIDEO = '0x_sZEEofts';   // YouTube «eyeshcheck танилцуулга» (CyberMath Mongolia) — нүүр хуудас, ☰ цэс
 
 // ── Global SVG Icon ───────────────────────────────────────
 function Ico({d, size=20, color='currentColor', sw=1.5, fill='none'}) {
@@ -67,6 +68,7 @@ const NAV_ICON = {
   sun:['M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z','M12 1v2','M12 21v2','M4.2 4.2l1.4 1.4','M18.4 18.4l1.4 1.4','M1 12h2','M21 12h2','M4.2 19.8l1.4-1.4','M18.4 5.6l1.4-1.4'],
   logout:['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4','M16 17l5-5-5-5','M21 12H9'],
   book:['M4 19.5A2.5 2.5 0 0 1 6.5 17H20','M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'],
+  play:['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z','M10 8.5v7l6-3.5z'],
 };
 
 
@@ -236,8 +238,8 @@ function Badge({children, color='#7B52EE'}) {
 
 // ── Landing Page ──────────────────────────────────────────
 function LandingPage({onEnter}) {
-  // Хуучин (улаан) загварыг харуулдаг тул шинэ видео бичих хүртэл нуув. Буцаах: 'aUggJeMlQ8E'
-  const YOUTUBE_ID = '';
+  // Шинэ загвартай танилцуулга (хуучин улаан загвартай нь 'aUggJeMlQ8E' байсан)
+  const YOUTUBE_ID = TUTORIAL_VIDEO;
 
   const features = [
     { icon: ['M3 7V5a2 2 0 0 1 2-2h2','M17 3h2a2 2 0 0 1 2 2v2','M21 17v2a2 2 0 0 1-2 2h-2','M7 21H5a2 2 0 0 1-2-2v-2','M7 12h10'], title:'Камераар шуурхай шалгах', desc:'Хуудсаа утасны камерт барихад автоматаар уншиж, оноог шууд гаргана. Дараагийн хуудас руу шууд шилжинэ.' },
@@ -317,7 +319,7 @@ function LandingPage({onEnter}) {
             <div style={h2}>Танилцуулга видео</div>
             <div style={sub}>Системийг хэрхэн ашиглах тайлбар</div>
             <div style={{position:'relative',paddingBottom:'56.25%',borderRadius:18,overflow:'hidden',boxShadow:'0 20px 50px -24px rgba(60,30,120,.6)'}}>
-              <iframe src={`https://www.youtube.com/embed/${YOUTUBE_ID}`} title="Танилцуулга"
+              <iframe src={`https://www.youtube-nocookie.com/embed/${YOUTUBE_ID}`} title="eyeshcheck танилцуулга" loading="lazy"
                 style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',border:'none'}}
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
             </div>
@@ -2231,6 +2233,7 @@ export default function App() {
                 </button>
               ))}
               <a href={PRACTICE_URL}><Ico d={NAV_ICON.book} size={21} sw={2}/>Дасгалын төв<i>↗</i></a>
+              <a href={`https://youtu.be/${TUTORIAL_VIDEO}`} target="_blank" rel="noopener noreferrer"><Ico d={NAV_ICON.play} size={21} sw={2}/>Видео заавар<i>↗</i></a>
             </nav>
             <div className="cm-drawer-foot">
               <button onClick={toggleDark}><Ico d={d?NAV_ICON.sun:NAV_ICON.moon} size={19} sw={2}/>{d?'Цайвар горим':'Бараан горим'}</button>
