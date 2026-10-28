@@ -308,6 +308,7 @@ body.dark .qs-q.pend{background:#2a2108}
   .cm-keyst button{width:38px!important;height:38px!important;font-size:18px!important;border-radius:10px!important}
   .cm-keyst span{min-width:26px!important;font-size:16px!important}
   .cm-keytp{height:40px;font-size:14px!important;padding:6px 10px!important}
+  .cm-cols{display:none!important}   /* энд мөрүүд аль хэдийн 1 баганаар */
   .cm-s2key input{width:44px!important;height:44px!important;font-size:18px!important}
 }
 
