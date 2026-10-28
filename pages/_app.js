@@ -4,9 +4,10 @@ import '../styles/cm.css';
 
 export default function MyApp({ Component, pageProps }) {
   useEffect(() => {
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('/sw.js').catch(() => {});
-    }
+    if (!('serviceWorker' in navigator)) return;
+    // public/sw.js (интернэтгүй нээх кэш) зөвхөн production-д. next dev-д кэш хуучин код гаргах тул бүртгэлийг цуцална.
+    if (process.env.NODE_ENV === 'production') navigator.serviceWorker.register('/sw.js').catch(() => {});
+    else navigator.serviceWorker.getRegistrations().then(rs => rs.forEach(r => r.unregister())).catch(() => {});
   }, []);
 
   return (

@@ -9,6 +9,7 @@ import { StudentPortal } from '../components/StudentPortal';
 import { MaterialsPanel, EeshDateSetting } from '../components/MaterialsPanel';
 import { exportAnalysisXlsx } from '../lib/report-xlsx';
 import { downloadResultsPdf } from '../lib/report-pdf';
+import { cacheGet, cacheSet, cacheClear, queueList, queueAdd, queueRemove, queueRetry, postStudent, sendQueued, isNetworkError } from '../lib/offline';
 
 const PRACTICE_URL = 'https://cyber-math.com/worksheets.html';
 
@@ -1496,6 +1497,15 @@ function RatingPage({exams, students, dark:d=false}) {
 }
 
 // ── Board Page ────────────────────────────────────────────
+// Утсанд хадгалагдсан, хараахан илгээгдээгүй дүнгийн тэмдэг (lib/offline.js)
+const PENDING_EDIT = 'Энэ хуудас хараахан илгээгдээгүй (утсанд хадгалагдсан) байна. Илгээгдсэний дараа засна уу.';
+function PendingTag({ s }) {
+  if (!s._pending) return null;
+  return s._error
+    ? <i className="cm-pend err" title={s._error}>илгээгдсэнгүй</i>
+    : <i className="cm-pend" title="Интернэт орж ирэхэд автоматаар илгээгдэнэ">илгээгээгүй</i>;
+}
+
 function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, dark:d=false}) {
   if (!exam) return <div style={{textAlign:'center',padding:80,color:'#9ca3af',fontWeight:600}}>Шалгалт сонгоно уу</div>;
   const sorted=[...students].sort((a,b)=>b.scaled-a.scaled);
@@ -1629,12 +1639,12 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
               <div key={s.id} className="cm-srow">
                 <div className="cm-srow-top">
                   <span className="cm-srank">{i+1}</span>
-                  <div className="cm-sinfo"><b>{s.name}</b><span>{[s.class,s.code,s.version&&s.version!=='—'?'Хув. '+s.version:''].filter(Boolean).join(' · ')||'—'}</span></div>
+                  <div className="cm-sinfo"><b>{s.name}</b><span>{[s.class,s.code,s.version&&s.version!=='—'?'Хув. '+s.version:''].filter(Boolean).join(' · ')||'—'}<PendingTag s={s} /></span></div>
                   <div className="cm-sscore" style={{color:g.c}}><b>{s.scaled}</b><span>{g.g} · {g.l}</span></div>
                 </div>
                 <div className="cm-schips"><i className="ok">✓ {s.correct} зөв</i><i className="ng">✗ {s.wrong} буруу</i><i>○ {s.blank} хоосон</i></div>
                 <div className="cm-sacts">
-                  <button className="e" onClick={()=>openEdit(s,'sec1')}>✏️ Засах</button>
+                  <button className="e" onClick={()=>s._pending?alert(PENDING_EDIT):openEdit(s,'sec1')}>✏️ Засах</button>
                   <button className="p" onClick={()=>exportStudentPDF(s)}>PDF</button>
                   <button className="x" onClick={()=>{const c=prompt(s.name+' устгахын тулд УСТГАХ гэж бичнэ үү:');if(c==='УСТГАХ')onDeleteStudent(s.id);}}>Устгах</button>
                 </div>
@@ -1657,7 +1667,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
                 return (
                   <tr key={s.id} style={{borderBottom:'1px solid '+(d?'#1c1f2a':'#f3f4f6'),background:d?'#1c1f2a':'white'}}>
                     <td style={{padding:'10px 14px',fontSize:13,color:'#9ca3af'}}>{i+1}</td>
-                    <td style={{padding:'10px 14px',fontSize:14,fontWeight:700,color:d?'#f3f4f6':'#1c1f2a'}}>{s.name}</td>
+                    <td style={{padding:'10px 14px',fontSize:14,fontWeight:700,color:d?'#f3f4f6':'#1c1f2a'}}>{s.name}<PendingTag s={s} /></td>
                     <td style={{padding:'10px 14px',fontSize:13,color:'#6b7280'}}>{s.code}</td>
                     <td style={{padding:'10px 14px',fontSize:13,color:d?'#9ca3af':'#6b7280'}}>{s.version}</td>
                     <td style={{padding:'10px 14px',fontSize:13,color:'#16a34a',fontWeight:600}}>{s.correct}</td>
@@ -1665,7 +1675,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
                     <td style={{padding:'10px 14px',fontSize:13,color:'#9ca3af'}}>{s.blank}</td>
                     <td style={{padding:'10px 14px',fontSize:16,fontWeight:800,color:g.c}}>{s.scaled}%</td>
                     <td style={{padding:'10px 14px'}}>
-                      <button onClick={()=>openEdit(s,'sec1')}
+                      <button onClick={()=>s._pending?alert(PENDING_EDIT):openEdit(s,'sec1')}
                         style={{padding:'3px 8px',background:'#dbeafe',border:'none',borderRadius:6,fontSize:11,color:'#1e40af',cursor:'pointer',fontWeight:700}}>✏️ Засах</button>
                     </td>
                     <td style={{padding:'10px 14px'}}>
@@ -2119,6 +2129,12 @@ export default function App() {
   const [me, setMe] = useState(null);             // { hasAccess, paidUntil, … } — /api/me
   const [notice, setNotice] = useState(null);     // { text, err } — дээд талын түр мэдэгдэл
   useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(null), 8000); return () => clearTimeout(t); }, [notice]);
+  // Интернэтгүй уншуулах (lib/offline.js): илгээгдээгүй хуудсууд утсанд хадгалагдаж, интернэт орж ирэхэд илгээгдэнэ
+  const [queue, setQueue] = useState([]);           // утсанд хадгалсан, хараахан илгээгдээгүй хуудсууд
+  const [offline, setOffline] = useState(false);    // сүүлийн оролдлого сүлжээгүйгээс бүтэлгүйтсэн
+  const [dataReady, setDataReady] = useState(false); // өгөгдөл серверээс эсвэл утсан дахь хуулбараас ачаалагдсан
+  const queueRef = useRef([]); queueRef.current = queue;
+  const offlineRef = useRef(false); offlineRef.current = offline;
 
   // Ямар нэг API 402 (эрх дууссан) буцаавал эрхийн мэдээллийг шинэчилж төлбөрийн дэлгэц гаргана
   useEffect(() => {
@@ -2178,22 +2194,88 @@ export default function App() {
     else setLoading(false);
   }, []);
 
-  async function loadData() {
-    setLoading(true);
+  // Серверийн жагсаалтад хараахан ороогүй (утсанд хадгалсан) хуудсуудыг нэмнэ
+  function withPending(list, q) {
+    const have = new Set(list.map(s => s.id));
+    return [...list, ...q.filter(x => !have.has(x.id)).map(x => ({ ...x.body, _pending: true, _error: x.error || null }))];
+  }
+  async function refreshQueue() { const q = await queueList(); setQueue(q); return q; }
+
+  // Утсанд хадгалсан хуудсуудыг илгээнэ: интернэт орж ирэхэд, 25 секунд тутам, апп руу буцаж ороход
+  async function sendPending() {
+    const r = await sendQueued({
+      onSent: (item, saved) => setStudents(st => st.some(s => s.id === item.id) ? st.map(s => s.id === item.id ? saved : s) : [...st, saved]),
+      onFailed: (item, msg) => setStudents(st => st.map(s => s.id === item.id ? { ...s, _error: msg } : s)),
+    });
+    const q = await refreshQueue();
+    if (r.sent) setNotice({ text: `Утсанд хадгалсан ${r.sent} хуудас илгээгдлээ ✓` });
+    if (r.stopped === 'offline') setOffline(true);
+    else if (r.sent || !q.length) setOffline(false);
+    if (r.stopped === 'auth') setNotice({ err: true, text: 'Нэвтрэх хугацаа дууссан. Гараад дахин нэвтэрвэл утсанд хадгалсан хуудсууд илгээгдэнэ.' });
+    if (r.stopped === 'paywall') window.dispatchEvent(new Event('eyesh:paywall'));
+    return r;
+  }
+
+  async function loadData(opts={}) {
+    if (!opts.quiet) setLoading(true);
+    // Сүлжээ маш сул бол удаан хүлээлгэхгүй: хариу ирэхгүй бол утсан дахь хуулбараар нээгээд, дараа нь дахин оролдоно
+    const ctl = typeof AbortController!=='undefined' ? new AbortController() : null;
+    const timer = ctl && setTimeout(() => ctl.abort(), opts.quiet ? 30000 : 8000);
     try {
-      const m = await apiFetch('/api/me');
+      const m = await apiFetch('/api/me', ctl ? { signal: ctl.signal } : {});
+      clearTimeout(timer);
       setMe(m);
       if (!m.hasAccess) { setLoading(false); return; }
       const [ex, st] = await Promise.all([apiFetch('/api/exams'), apiFetch('/api/students')]);
+      const q = await refreshQueue();
       setExams(ex);
-      setStudents(st);
+      setStudents(withPending(st, q));
+      setOffline(false); setDataReady(true);
       // Дасгалын төвөөс шууд үүсгэсэн шалгалт (/api/cm/sso → /?exam=<id>) — тэр шалгалтыг нээнэ
       const want = new URLSearchParams(window.location.search).get('exam');
       if (want) { try { window.history.replaceState(null, '', window.location.pathname); } catch(e) {} }
       if (ex.length) setCurrentExam(cur => (want && ex.find(e=>e.id===want)) || (cur ? ex.find(e=>e.id===cur.id)||ex[0] : ex[0]));
-    } catch(e) { console.error('loadData error:', e); }
+      if (q.some(x => !x.error)) sendPending();
+    } catch(e) {
+      clearTimeout(timer);
+      console.error('loadData error:', e);
+      // Интернэтгүй: утсанд хадгалсан сүүлийн мэдээллээр ажиллана, уншуулсан хуудас утсанд хадгалагдана
+      if (isNetworkError(e)) {
+        setOffline(true);
+        const c = !opts.quiet && await cacheGet('data');
+        if (c) {
+          const q = await refreshQueue();
+          setMe(cur => cur || c.me);
+          setExams(c.exams || []);
+          setStudents(withPending(c.students || [], q));
+          setDataReady(true);
+          if ((c.exams || []).length) setCurrentExam(cur => (cur && c.exams.find(x=>x.id===cur.id)) || c.exams[0]);
+        }
+      }
+    }
     setLoading(false);
   }
+
+  // Апп интернэтгүй нээгдэхэд ашиглах хуулбар: шалгалт, дүн өөрчлөгдөх бүрт утсанд хадгална
+  useEffect(() => {
+    if (!authed || !dataReady || !me || !me.hasAccess) return;
+    const t = setTimeout(() => cacheSet('data', { me, exams, students: students.filter(s => !s._pending), savedAt: new Date().toISOString() }), 1000);
+    return () => clearTimeout(t);
+  }, [authed, dataReady, me, exams, students]);
+
+  // Интернэт орж ирэх, апп руу буцаж орох, 25 секунд тутамд: хүлээгдэж буй хуудсыг илгээж, офлайнаар нээгдсэн бол шинэчилнэ
+  useEffect(() => {
+    if (!authed) return;
+    const back = () => {
+      if (document.visibilityState === 'hidden') return;
+      if (offlineRef.current) loadData({ quiet: true });   // амжилттай бол дараа нь өөрөө илгээнэ — хоёр зэрэг явуулахгүй
+      else if (queueRef.current.some(x => !x.error)) sendPending();
+    };
+    window.addEventListener('online', back);
+    document.addEventListener('visibilitychange', back);
+    const iv = setInterval(back, 25000);
+    return () => { window.removeEventListener('online', back); document.removeEventListener('visibilitychange', back); clearInterval(iv); };
+  }, [authed]);
 
   async function handleAddExam(exam) {
     const created = await apiFetch('/api/exams', {method:'POST', body:exam});
@@ -2221,14 +2303,53 @@ export default function App() {
     setCurrentExam(cur=>cur?.id===id?null:cur);
   }
 
+  // Уншуулсан хуудсыг хадгална. Интернэтгүй, сул сүлжээ (5 сек), серверийн алдаа, нэвтрэх/эрхийн асуудалтай үед
+  // хуудсыг утсанд хадгалж дараа нь илгээнэ — уншуулсан хуудас хэзээ ч алдагдахгүй. Өмнөх хуудас хүлээгдэж байвал шууд утсанд.
   async function handleAddStudent(student) {
-    const created = await apiFetch('/api/students', {method:'POST', body:student});
-    setStudents(st=>[...st, created]);
+    const tryNow = !queueRef.current.some(x => !x.error) && navigator.onLine !== false;
+    if (tryNow) {
+      let res = null, net = false;
+      try { res = await postStudent(student); } catch (e) { net = true; }
+      if (res && res.ok) { const created = await res.json(); setStudents(st=>[...st, created]); setOffline(false); return { queued:false }; }
+      if (res && res.status < 500 && ![401,402,408,429].includes(res.status)) {
+        const e = await res.json().catch(()=>({}));
+        throw new Error(e.error || 'Хадгалж чадсангүй');
+      }
+      if (net) setOffline(true);
+      if (res && res.status === 401) setNotice({ err:true, text:'Нэвтрэх хугацаа дууссан. Хуудас утсанд хадгалагдлаа — гараад дахин нэвтэрвэл илгээгдэнэ.' });
+      if (res && res.status === 402) window.dispatchEvent(new Event('eyesh:paywall'));
+    }
+    await queueAdd(student);   // утсанд хадгалж чадаагүй бол алдаа нь үр дүнгийн цонхонд гарна
+    setStudents(st=>[...st, { ...student, _pending:true }]);
+    await refreshQueue();
+    if (navigator.onLine === false) setOffline(true);
+    else if (!tryNow && !offlineRef.current) sendPending();   // өмнөх хуудсуудтай хамт ард нь илгээнэ
+    return { queued:true };
   }
 
   async function handleDeleteStudent(id) {
+    if (students.find(s=>s.id===id)?._pending) {   // зөвхөн утсанд байгаа — дарааллаас хасна
+      await queueRemove(id);
+      setStudents(st=>st.filter(s=>s.id!==id));
+      await refreshQueue();
+      return;
+    }
     await apiFetch('/api/students/'+id, {method:'DELETE'});
     setStudents(st=>st.filter(s=>s.id!==id));
+  }
+
+  async function retryFailed() {
+    await queueRetry();
+    setStudents(st=>st.map(s=>s._error?{...s,_error:null}:s));
+    await refreshQueue();
+    sendPending();
+  }
+  async function discardFailed() {
+    const bad = queue.filter(x=>x.error);
+    if (!bad.length || !window.confirm(`Илгээгдээгүй ${bad.length} хуудсыг утаснаас устгах уу? Тэдгээрийг дахин уншуулах шаардлагатай болно.`)) return;
+    await queueRemove(bad.map(x=>x.id));
+    setStudents(st=>st.filter(s=>!bad.some(b=>b.id===s.id)));
+    await refreshQueue();
   }
 
   const [demoSecsLeft, setDemoSecsLeft] = useState(null);
@@ -2272,7 +2393,13 @@ export default function App() {
   const examStudents = students.filter(s=>s.examId===currentExam?.id);
   const navIds = PAGE_IDS.filter(id => id!=='admin' || teacher?.isAdmin);
   function go(id) { setPage(id); setMenuOpen(false); if (typeof window!=='undefined') window.scrollTo(0,0); }
-  function logout() { localStorage.removeItem('eyesh_token');localStorage.removeItem('eyesh_teacher');setAuthed(false);setTeacher(null);setMe(null);setMenuOpen(false); }
+  async function logout() {
+    // Илгээгдээгүй хуудсууд утсанд үлдэж, энэ багш дахин нэвтрэхэд илгээгдэнэ; сүүлд татсан мэдээллийн хуулбарыг устгана
+    if (queue.length && !window.confirm(`${queue.length} хуудас хараахан илгээгдээгүй байна. Гарсан ч утсанд хадгалагдаж, дахин нэвтрэхэд илгээгдэнэ. Гарах уу?`)) return;
+    await cacheClear();   // токен устахаас өмнө — багшийн id-г токеноос авдаг
+    localStorage.removeItem('eyesh_token');localStorage.removeItem('eyesh_teacher');setAuthed(false);setTeacher(null);setMe(null);setMenuOpen(false);
+    setDataReady(false); setExams([]); setStudents([]); setQueue([]); setOffline(false);
+  }
   const daysLeft = me?.paidUntil ? (new Date(me.paidUntil) - Date.now()) / 86400000 : null;
   const showRenew = me && me.hasAccess && !me.isAdmin && daysLeft !== null;
   function paid(r) { setMe(m => ({ ...m, hasAccess: true, paidUntil: r.paidUntil })); }
@@ -2321,6 +2448,24 @@ export default function App() {
             display:'flex',alignItems:'center',gap:10,background:notice.err?'#fdecec':'#e9f8ef',color:notice.err?'#b3261e':'#15803d',border:'1px solid '+(notice.err?'#f6c9c9':'#b7e4c7')}}>
             <span style={{flex:1}}>{notice.text}</span>
             <button onClick={()=>setNotice(null)} aria-label="Хаах" style={{border:0,background:'none',color:'inherit',fontSize:18,fontWeight:900,cursor:'pointer'}}>×</button>
+          </div>
+        )}
+        {(offline || queue.some(x=>!x.error)) && (
+          <div className="cm-offbar no-print" role="status">
+            <span>
+              {offline && <b>Интернэтгүй байна. </b>}
+              {queue.some(x=>!x.error)
+                ? `Утсанд хадгалсан ${queue.filter(x=>!x.error).length} хуудас интернэт орж ирэхэд автоматаар илгээгдэнэ.`
+                : 'Сүүлд татсан мэдээллээр ажиллаж байна — уншуулсан хуудас утсанд хадгалагдана.'}
+            </span>
+            {queue.some(x=>!x.error) && <button onClick={sendPending}>Одоо илгээх</button>}
+          </div>
+        )}
+        {queue.some(x=>x.error) && (
+          <div className="cm-offbar err no-print" role="alert">
+            <span>{queue.filter(x=>x.error).length} хуудас илгээгдсэнгүй: {queue.find(x=>x.error).error}</span>
+            <button onClick={retryFailed}>Дахин оролдох</button>
+            <button onClick={discardFailed}>Устгах</button>
           </div>
         )}
         {showRenew && daysLeft < 3 && page !== 'billing' && (
