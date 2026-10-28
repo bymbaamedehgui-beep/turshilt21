@@ -55,11 +55,22 @@ export function AdminPanel({dark:d=false, embed=false}) {
     } catch(e) { alert(e.message); }
   }
 
+  // Утас солих/арилгах — «Нууц үгээ мартсан»-ы SMS код энэ дугаар руу очно
+  async function editPhone(t) {
+    const v = window.prompt(`«${t.name||t.email}» — шинэ утасны дугаар (8 оронтой). Хоосон үлдээвэл утсыг арилгана.\nДугаарыг тухайн хүнтэй ярьж баталгаажуулсны дараа солино уу: «Нууц үгээ мартсан»-ы SMS код энэ дугаар руу очно.`, t.phone || '');
+    if (v === null) return;
+    try {
+      const r = await apiFetch('/api/admin/teachers', { method:'PATCH', body:{ id:t.id, phone:v.trim() } });
+      setTeachers(ts => ts.map(x => x.id===t.id ? {...x, phone:r.phone} : x));
+    } catch(e) { alert(e.message); }
+  }
+
   const ql = q.trim().toLowerCase();
   const shown = ql ? teachers.filter(t => [t.name, t.email, t.phone].some(v => String(v||'').toLowerCase().includes(ql))) : teachers;
   const pending  = shown.filter(t => t.status==='pending');
   const active   = shown.filter(t => t.status==='active' && !t.is_admin);
   const disabled = shown.filter(t => t.status==='disabled');
+  const admins   = shown.filter(t => t.is_admin);
 
   const bg   = d ? '#1c1f2a' : 'white';
   const text = d ? '#f3f4f6' : '#1c1f2a';
@@ -75,7 +86,7 @@ export function AdminPanel({dark:d=false, embed=false}) {
         <div style={{flex:'1 1 180px',minWidth:0}}>
           <div style={{fontWeight:700,fontSize:14,color:text}}>{t.name||'—'}</div>
           <div style={{fontSize:12,color:muted,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{t.email}</div>
-          <div style={{fontSize:11,color:muted}}>{new Date(t.created_at).toLocaleDateString('mn-MN')}{t.phone ? ' · ' + t.phone : ''}{t.cm_linked ? ' · Дасгалын төв' : ''}</div>
+          <div style={{fontSize:11,color:muted}}>{new Date(t.created_at).toLocaleDateString('mn-MN')}{t.phone ? ' · ' + t.phone : ' · утасгүй'}{t.cm_linked ? ' · Дасгалын төв' : ''}</div>
           {!t.is_admin && <div style={{fontSize:12,fontWeight:800,marginTop:2,color:t.paid_until && new Date(t.paid_until) > new Date() ? '#16a34a' : '#b3261e'}}>
             {t.paid_until ? (new Date(t.paid_until) > new Date() ? 'Эрх: ' : 'Дууссан: ') + new Date(t.paid_until).toLocaleDateString('mn-MN') : 'Эрхгүй'}
           </div>}
@@ -88,6 +99,7 @@ export function AdminPanel({dark:d=false, embed=false}) {
   }
 
   const btnStyle = (bg2,c) => ({padding:'6px 14px',border:'none',borderRadius:7,fontWeight:700,fontSize:12,cursor:'pointer',background:bg2,color:c});
+  const phoneBtn = t => <button style={btnStyle(d?'#2a2440':'#eef2ff',d?'#c4b1ff':'#4338ca')} onClick={()=>editPhone(t)} title="Утас солих">Утас</button>;
 
   return (
     <div style={{maxWidth:800,margin:'0 auto',padding:embed?'4px 2px 24px':'24px 20px'}}>
@@ -115,6 +127,7 @@ export function AdminPanel({dark:d=false, embed=false}) {
           </div>
           {pending.map(t=>(
             <TeacherRow key={t.id} t={t} actions={<>
+              {phoneBtn(t)}
               <button style={btnStyle('#16a34a','white')} onClick={()=>updateStatus(t.id,'active')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z' size={14} color='white'/>Зөвшөөрөх</span></button>
               <button style={btnStyle('#fdecec','#b3261e')} onClick={()=>removeTeacher(t.id,t.email)}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z' size={14} color='#b3261e'/>Татгалзах</span></button>
             </>}/>
@@ -132,6 +145,7 @@ export function AdminPanel({dark:d=false, embed=false}) {
           ? <div style={{padding:'24px',textAlign:'center',color:muted,fontSize:13}}>{ql ? 'Хайлтад тохирох багш алга' : 'Одоохондоо байхгүй'}</div>
           : active.map(t=>(
             <TeacherRow key={t.id} t={t} actions={<>
+              {phoneBtn(t)}
               <button style={btnStyle('#e1f4e9','#16a34a')} onClick={()=>extend(t.id,1)}>+1 сар</button>
               <button style={btnStyle('#f3f4f6','#374151')} onClick={()=>updateStatus(t.id,'disabled')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636' size={14} color='#374151'/>Хаах</span></button>
               <button style={btnStyle('#fdecec','#b3261e')} onClick={()=>removeTeacher(t.id,t.email)}><Ico d='M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0' size={14} color='#b3261e'/></button>
@@ -149,9 +163,23 @@ export function AdminPanel({dark:d=false, embed=false}) {
           </div>
           {disabled.map(t=>(
             <TeacherRow key={t.id} t={t} actions={<>
+              {phoneBtn(t)}
               <button style={btnStyle('#dcfce7','#16a34a')} onClick={()=>updateStatus(t.id,'active')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z' size={14} color='#16a34a'/>Нээх</span></button>
               <button style={btnStyle('#fdecec','#b3261e')} onClick={()=>removeTeacher(t.id,t.email)}><Ico d='M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0' size={14} color='#b3261e'/></button>
             </>}/>
+          ))}
+        </div>
+      )}
+
+      {/* Admin дансууд — зөвхөн утас солино (эрх, устгах нь хамгаалагдсан) */}
+      {admins.length>0 && (
+        <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginTop:16}}>
+          <div style={{padding:'12px 16px',borderBottom:'1px solid '+border,display:'flex',alignItems:'center',gap:8}}>
+            <span style={{fontSize:16}}>🛡️</span>
+            <span style={{fontWeight:800,fontSize:14,color:text}}>Админ — {admins.length}</span>
+          </div>
+          {admins.map(t=>(
+            <TeacherRow key={t.id} t={t} actions={phoneBtn(t)}/>
           ))}
         </div>
       )}
