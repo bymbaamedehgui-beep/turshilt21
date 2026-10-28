@@ -237,6 +237,23 @@ function Badge({children, color='#7B52EE'}) {
 
 
 // ── Landing Page ──────────────────────────────────────────
+// YouTube видео: эхэндээ зөвхөн зураг (хуудас хурдан ачаална), дармагц тоглуулагч
+function VideoPlayer({id, title}) {
+  const [play, setPlay] = useState(false);
+  const [thumb, setThumb] = useState(`https://i.ytimg.com/vi/${id}/maxresdefault.jpg`);
+  return (
+    <div className="lp-video">
+      {play
+        ? <iframe src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`} title={title}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+        : <button type="button" onClick={()=>setPlay(true)} aria-label={title+' — тоглуулах'}>
+            <img src={thumb} alt="" onError={()=>setThumb(`https://i.ytimg.com/vi/${id}/hqdefault.jpg`)} />
+            <span className="lp-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" style={{marginLeft:4}}><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg></span>
+          </button>}
+    </div>
+  );
+}
+
 function LandingPage({onEnter}) {
   // Шинэ загвартай танилцуулга (хуучин улаан загвартай нь 'aUggJeMlQ8E' байсан)
   const YOUTUBE_ID = TUTORIAL_VIDEO;
@@ -271,17 +288,25 @@ function LandingPage({onEnter}) {
         </div>
       </div>
       <div style={{maxWidth:980,margin:'0 auto',padding:'18px 16px 40px'}}>
-        <div className="cm-hero" style={{padding:'30px 22px',textAlign:'center'}}>
-          <img src="/chick.svg" alt="" style={{width:104,height:104,filter:'drop-shadow(0 10px 16px rgba(0,0,0,.25))',animation:'bob 3.4s ease-in-out infinite',position:'relative',zIndex:1}} />
-          <div className="cm-hero-t" style={{marginTop:10}}>
-            <span className="cm-eyebrow">CyberMath · Дасгалын төвийн хэрэгсэл</span>
-            <h1 style={{fontSize:30}}>ЭЕШ хариултын хуудас шалгагч</h1>
-            <p style={{maxWidth:520,margin:'8px auto 0',fontSize:15}}>Хариултын хуудсыг утасны камераар уншуулж, оноо, анализ, рейтингийг хэдхэн секундэд гаргана.</p>
+        <div className={'cm-hero'+(YOUTUBE_ID?' lp-hero':'')} style={{padding:'30px 22px'}}>
+          <div style={{textAlign:'center'}}>
+            <img src="/chick.svg" alt="" style={{width:104,height:104,filter:'drop-shadow(0 10px 16px rgba(0,0,0,.25))',animation:'bob 3.4s ease-in-out infinite',position:'relative',zIndex:1}} />
+            <div className="cm-hero-t" style={{marginTop:10}}>
+              <span className="cm-eyebrow">CyberMath · Дасгалын төвийн хэрэгсэл</span>
+              <h1 style={{fontSize:30}}>ЭЕШ хариултын хуудас шалгагч</h1>
+              <p style={{maxWidth:520,margin:'8px auto 0',fontSize:15}}>Хариултын хуудсыг утасны камераар уншуулж, оноо, анализ, рейтингийг хэдхэн секундэд гаргана.</p>
+            </div>
+            <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap',position:'relative',zIndex:1}}>
+              <button className="cm-btn amber" style={{padding:'.85rem 1.6rem',fontSize:16}} onClick={onEnter}>Нэвтрэх / Бүртгүүлэх →</button>
+              <button className="cm-btn ghost" style={{padding:'.85rem 1.6rem',fontSize:16}} onClick={()=>document.getElementById('demo-section').scrollIntoView({behavior:'smooth'})}>Demo үзэх</button>
+            </div>
           </div>
-          <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap',position:'relative',zIndex:1}}>
-            <button className="cm-btn amber" style={{padding:'.85rem 1.6rem',fontSize:16}} onClick={onEnter}>Нэвтрэх / Бүртгүүлэх →</button>
-            <button className="cm-btn ghost" style={{padding:'.85rem 1.6rem',fontSize:16}} onClick={()=>document.getElementById('demo-section').scrollIntoView({behavior:'smooth'})}>Demo үзэх</button>
-          </div>
+          {YOUTUBE_ID && (
+            <div className="lp-hero-v">
+              <VideoPlayer id={YOUTUBE_ID} title="eyeshcheck танилцуулга" />
+              <div className="lp-hero-cap">Видео заавар — хэрхэн ашиглахыг алхам алхмаар</div>
+            </div>
+          )}
         </div>
 
         <div style={sec}>
@@ -314,17 +339,6 @@ function LandingPage({onEnter}) {
           </div>
         </div>
 
-        {YOUTUBE_ID && (
-          <div style={sec}>
-            <div style={h2}>Танилцуулга видео</div>
-            <div style={sub}>Системийг хэрхэн ашиглах тайлбар</div>
-            <div style={{position:'relative',paddingBottom:'56.25%',borderRadius:18,overflow:'hidden',boxShadow:'0 20px 50px -24px rgba(60,30,120,.6)'}}>
-              <iframe src={`https://www.youtube-nocookie.com/embed/${YOUTUBE_ID}`} title="eyeshcheck танилцуулга" loading="lazy"
-                style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',border:'none'}}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-            </div>
-          </div>
-        )}
 
         <div style={sec}>
           <div style={h2}>Үнэ</div>
