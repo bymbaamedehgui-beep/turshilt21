@@ -37,6 +37,15 @@ const TOPICS_BY_SUBJECT = {
 function getTopics(subject) {
   return TOPICS_BY_SUBJECT[subject] || TOPICS_BY_SUBJECT['Математик'];
 }
+// Хичээлийн үндсэн агуулга + багшийн нэмсэн агуулга («Бусад»-ын өмнө) + энэ шалгалтад сонгогдсон ч жагсаалтад байхгүй агуулга
+function topicOptions(subject, mine=[], used=[]) {
+  const base=getTopics(subject), last=base[base.length-1];
+  const other=last==='Бусад'||last==='Other'?last:null;
+  const list=base.filter(t=>t!==other);
+  [...mine,...used].forEach(t=>{ if(t&&t!==other&&!list.includes(t)) list.push(t); });
+  if(other) list.push(other);
+  return list;
+}
 const TOPIC_COLORS = ['#3b82f6','#8b5cf6','#f59e0b','#06b6d4','#10b981','#ef4444','#f97316','#6366f1'];
 const PAGE_IDS = ['home','scan','board','analytics','rating','create','sheets','students','materials','admin'];   // ☰ цэсний дараалал
 const NAV_ICON = {
@@ -1063,6 +1072,45 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
   const [sec2Keys,setSec2Keys]=useState(()=>{const o={};SEC2_SUBS.forEach(s=>{o[s]={};SEC2_ROWS.forEach(r=>{o[s][r]=prefill?.sec2Config?.[s]?.[r]||'';});});return o;});
   const [bulkScore,setBulkScore]=useState(2);
   const [bulkTopic,setBulkTopic]=useState(()=>getTopics(prefill?.subject||SUBJECTS[0])[0]);
+  const [myTopics,setMyTopics]=useState({});   // багшийн нэмсэн агуулга { хичээл: [...] } — бүх шалгалтад гарна
+  useEffect(()=>{ apiFetch('/api/topics').then(d=>setMyTopics(d||{})).catch(()=>{}); },[]);
+  const topicList=topicOptions(subject,myTopics[subject],topics);
+  const [cols,setCols]=useState(2);   // хариултын мөр 1 эсвэл 2 баганаар — хөтөч санана
+  useEffect(()=>{ try{ if(localStorage.getItem('eyesh_key_cols')==='1') setCols(1); }catch(e){} },[]);
+  function pickCols(n){ setCols(n); try{ localStorage.setItem('eyesh_key_cols',String(n)); }catch(e){} }
+  // Хэсэг бүрийн авах оноо — calcScore-той ижил: 2-р хэсэгт зөв хариулт бичсэн мөр л тооцогдоно (оноо өгөөгүй бол 1)
+  const sec1Total=scores.slice(0,cnt).reduce((s,v)=>s+(Number(v)||1),0);
+  const sec2Total=!useSec2?0:SEC2_SUBS.reduce((s,sub,si)=>!sec2EnabledSubs[si]?s:s+SEC2_ROWS.reduce((t,row)=>{
+    const v=sec2Keys[sub]?.[row], ans=typeof v==='object'?v.ans:v;
+    if(ans===undefined||ans===null||ans==='') return t;
+    return t+(typeof v==='object'&&v.score!=null?(parseFloat(v.score)||0):1);
+  },0),0);
+  const fmtPts=x=>Math.round(x*10)/10;
+
+  function handleSubjectChange(s) {
+    setSubject(s);
+    // шинэ хичээлийн жагсаалтад байхгүй агуулгыг тэр хичээлийн эхний агуулгаар солино
+    const ok=topicOptions(s,myTopics[s]);
+    setTopics(t=>t.map(x=>ok.includes(x)?x:ok[0]));
+  }
+
+  async function addTopic(row) {
+    const name=(window.prompt(`«${subject}» хичээлд шинэ агуулга нэмэх.\nНэмсэн агуулга дараагийн шалгалтуудад ч гарна.`,'')||'').replace(/\s+/g,' ').trim();
+    if(!name) return;
+    if(name.length>60) return alert('Агуулгын нэр 60 тэмдэгтээс урт байж болохгүй');
+    let chosen=topicOptions(subject,myTopics[subject]).find(t=>t.toLowerCase()===name.toLowerCase());
+    if(!chosen) {
+      try { setMyTopics(await apiFetch('/api/topics',{method:'POST',body:{subject,name}})); chosen=name; }
+      catch(e) { return alert(e.message||'Агуулга нэмж чадсангүй'); }
+    }
+    if(row!=null) setTopics(t=>{const n=[...t];n[row]=chosen;return n;});
+  }
+
+  async function removeTopic(name) {
+    if(!window.confirm(`«${name}» агуулгыг жагсаалтаас хасах уу?\nӨмнөх шалгалтуудад өөрчлөлт орохгүй.`)) return;
+    try { setMyTopics(await apiFetch(`/api/topics?subject=${encodeURIComponent(subject)}&name=${encodeURIComponent(name)}`,{method:'DELETE'})); }
+    catch(e) { alert(e.message||'Агуулга хасаж чадсангүй'); }
+  }
 
   function handleCntChange(v) {
     const n=Math.max(1,parseInt(v)||1);
@@ -1103,7 +1151,7 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
         <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:12}}>
           <div>
             <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>Хичээл</label>
-            <select value={subject} onChange={e=>setSubject(e.target.value)}
+            <select value={subject} onChange={e=>handleSubjectChange(e.target.value)}
               style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none'}}>
               {SUBJECTS.map(s=><option key={s}>{s}</option>)}
             </select>
@@ -1133,9 +1181,34 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
       </div>
 
       <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
-        <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:12}}>2. Зөв хариулт, оноо, сэдэв</div>
+        <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:12}}>
+          <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginRight:4}}>2. Зөв хариулт, оноо, сэдэв</div>
+          <span className="cm-pts" style={{fontSize:12.5,fontWeight:700,color:'#374151',background:'#f3f4f6',borderRadius:999,padding:'4px 10px'}}>1-р хэсэг: <b>{fmtPts(sec1Total)}</b> оноо</span>
+          {useSec2&&<span className="cm-pts" style={{fontSize:12.5,fontWeight:700,color:'#374151',background:'#f3f4f6',borderRadius:999,padding:'4px 10px'}}>2-р хэсэг: <b>{fmtPts(sec2Total)}</b> оноо</span>}
+          {useSec2&&<span className="cm-pts" style={{fontSize:12.5,fontWeight:700,color:'white',background:'#7B52EE',borderRadius:999,padding:'4px 10px'}}>Нийт: <b>{fmtPts(sec1Total+sec2Total)}</b> оноо</span>}
+          <div className="cm-cols" role="group" aria-label="Мөрийн багана" style={{marginLeft:'auto',display:'flex',gap:2,padding:2,background:'#f3f4f6',borderRadius:10}}>
+            {[1,2].map(n=>(
+              <button key={n} onClick={()=>pickCols(n)} aria-pressed={cols===n}
+                style={{padding:'5px 10px',border:'none',borderRadius:8,fontSize:12,fontWeight:800,cursor:'pointer',background:cols===n?'white':'transparent',color:cols===n?'#7B52EE':'#6b7280',boxShadow:cols===n?'0 1px 3px rgba(17,24,39,.12)':'none'}}>{n} багана</button>
+            ))}
+          </div>
+        </div>
+        <div className="cm-mytp" style={{display:'flex',flexWrap:'wrap',alignItems:'center',gap:6,marginBottom:12}}>
+          <span style={{fontSize:12.5,fontWeight:700,color:'#6b7280',marginRight:2}}>
+            {(myTopics[subject]||[]).length ? 'Таны нэмсэн агуулга:' : 'Жагсаалтад байхгүй агуулгыг нэмж болно — дараагийн шалгалтуудад ч гарна.'}
+          </span>
+          {(myTopics[subject]||[]).map(tp=>(
+            <span key={tp} style={{display:'inline-flex',alignItems:'center',gap:4,padding:'3px 4px 3px 10px',background:'#f3f0ff',color:'#5b3fd0',borderRadius:999,fontSize:12,fontWeight:700}}>
+              {tp}
+              <button onClick={()=>removeTopic(tp)} title="Жагсаалтаас хасах" aria-label={`«${tp}» агуулгыг хасах`}
+                style={{width:20,height:20,border:'none',borderRadius:999,background:'transparent',color:'#7c6bb8',fontSize:15,lineHeight:1,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0}}>×</button>
+            </span>
+          ))}
+          <button onClick={()=>addTopic(null)}
+            style={{padding:'4px 10px',border:'1.5px dashed #c4b5fd',borderRadius:999,background:'white',color:'#7B52EE',fontWeight:800,fontSize:12,cursor:'pointer'}}>+ Агуулга нэмэх</button>
+        </div>
 
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(340px,1fr))',gap:6}}>
+        <div style={{display:'grid',gridTemplateColumns:cols===1?'minmax(0,1fr)':'repeat(auto-fill,minmax(340px,1fr))',gap:6}}>
           {Array.from({length:cnt},(_,i)=>(
             <div key={i} className="cm-keyrow" style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px',background:'#f9fafb',borderRadius:8,border:'1px solid #e5e7eb'}}>
               <span className="cm-keyno" style={{fontSize:11,fontWeight:700,color:'#9ca3af',minWidth:26,textAlign:'right'}}>D{i+1}</span>
@@ -1152,11 +1225,12 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
                 <button onClick={()=>setScores(s=>{const n=[...s];n[i]=Math.min(10,n[i]+1);return n;})}
                   style={{width:20,height:20,border:'1px solid #e5e7eb',borderRadius:4,fontSize:12,cursor:'pointer',background:'#f3f4f6',display:'flex',alignItems:'center',justifyContent:'center',fontWeight:700,color:'#6b7280'}}>+</button>
               </div>
-              <select className="cm-keytp" value={topics[i]} onChange={e=>setTopics(t=>{const n=[...t];n[i]=e.target.value;return n;})}
-                style={{flex:1,padding:'4px 8px',border:'none',borderRadius:8,fontWeight:700,fontSize:11,cursor:'pointer',background:TOPIC_COLORS[getTopics(subject).indexOf(topics[i])%8]+'22',color:TOPIC_COLORS[getTopics(subject).indexOf(topics[i])%8],outline:'none',minWidth:0}}>
-                {getTopics(subject).map(tp=>(
+              <select className="cm-keytp" value={topics[i]} onChange={e=>{const v=e.target.value;if(v==='__add__')return addTopic(i);setTopics(t=>{const n=[...t];n[i]=v;return n;});}}
+                style={{flex:1,padding:'4px 8px',border:'none',borderRadius:8,fontWeight:700,fontSize:11,cursor:'pointer',background:TOPIC_COLORS[topicList.indexOf(topics[i])%8]+'22',color:TOPIC_COLORS[topicList.indexOf(topics[i])%8],outline:'none',minWidth:0}}>
+                {topicList.map(tp=>(
                   <option key={tp} value={tp}>{tp}</option>
                 ))}
+                <option value="__add__">+ Агуулга нэмэх…</option>
               </select>
             </div>
           ))}
