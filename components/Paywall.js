@@ -12,7 +12,6 @@ export function Paywall({ me, renew, onPaid, onClose, onLogout }) {
   const [checking, setChecking] = useState(false);
   const [done, setDone] = useState(null);         // { paidUntil, days? }
   const [err, setErr] = useState('');
-  const [promoOpen, setPromoOpen] = useState(false);
   const [promoInput, setPromoInput] = useState('');
   const [promo, setPromo] = useState(null);       // { code, kind:'percent'|'days', value } — /api/promo шалгасан
   const [promoBusy, setPromoBusy] = useState(false);
@@ -115,12 +114,12 @@ export function Paywall({ me, renew, onPaid, onClose, onLogout }) {
           </div>
 
           <div className="pw-promo">
-            {!promo && !promoOpen && <button className="cm-link" onClick={() => setPromoOpen(true)}>Промо код байна уу?</button>}
-            {!promo && promoOpen && (
+            <div className="pw-promo-t">Промо код ашиглах</div>
+            {!promo && (
               <form className="pw-promo-f" onSubmit={checkPromo}>
-                <input value={promoInput} onChange={e => setPromoInput(e.target.value)} placeholder="Промо код" aria-label="Промо код"
-                  autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={40} autoFocus />
-                <button className="cm-btn" disabled={promoBusy || !promoInput.trim()}>{promoBusy ? 'Шалгаж байна…' : 'Шалгах'}</button>
+                <input value={promoInput} onChange={e => setPromoInput(e.target.value)} placeholder="Кодоо бичнэ үү" aria-label="Промо код"
+                  autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={40} />
+                <button className="cm-btn" disabled={promoBusy || !promoInput.trim()}>{promoBusy ? 'Шалгаж байна…' : 'Ашиглах'}</button>
               </form>
             )}
             {promo && (
