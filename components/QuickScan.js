@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { apiFetch, uid, calcScore, SEC2_SUBS } from '../lib/eyesh';
+import { cacheGet, cacheSet } from '../lib/offline';
 import { sheetLayout, readSheet, readKey, toDet, toGray, S1_CHOICES, S2_OPTS, S1_MAX } from '../lib/omr';
 
 // ── ZipGrade маягийн хурдан шалгалт ────────────────────────────────────────
@@ -91,7 +92,7 @@ function StudentPicker({ roster, cls, onClass, scanned, onPick, onClose }) {
 }
 
 // ── Камер ──────────────────────────────────────────────────────────────────
-function Scanner({ layout, paused, lastKey, examTitle, savedCount, recent, student, needStudent, onPick, onCapture, onClose }) {
+function Scanner({ layout, paused, lastKey, examTitle, savedCount, pendingCount, recent, student, needStudent, onPick, onCapture, onClose }) {
   const videoRef = useRef(), overlayRef = useRef(), streamRef = useRef(), lastOk = useRef(null);
   const [status, setStatus] = useState('start');
   const [found, setFound] = useState(false);
@@ -187,7 +188,7 @@ function Scanner({ layout, paused, lastKey, examTitle, savedCount, recent, stude
       <canvas ref={overlayRef} className="qs-overlay" />
       <div className="qs-top">
         <button className="qs-round" onClick={onClose} aria-label="Хаах">✕</button>
-        <div className="qs-title"><b>{examTitle}</b><span>Шалгасан: {savedCount}</span></div>
+        <div className="qs-title"><b>{examTitle}</b><span>Шалгасан: {savedCount}{pendingCount ? ` · утсанд ${pendingCount}` : ''}</span></div>
         {torch !== null
           ? <button className={'qs-round' + (torch ? ' on' : '')} onClick={toggleTorch} aria-label="Гэрэл">
               <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 2h6l-1 7h4l-8 13 1-9H7z"/></svg>
@@ -441,7 +442,12 @@ export function ScanPage({ exam, exams, students, onSelectExam, onAddStudent, on
   const [picker, setPicker] = useState(false);
   const fileRef = useRef();
 
-  useEffect(() => { apiFetch('/api/student-accounts').then(setRoster).catch(() => {}); }, []);
+  // Сурагчдын жагсаалт: интернэтгүй үед утсанд хадгалсан сүүлийн хуулбарыг ашиглана
+  useEffect(() => {
+    apiFetch('/api/student-accounts')
+      .then(list => { setRoster(list); cacheSet('roster', list); })
+      .catch(async () => { const c = await cacheGet('roster'); if (c) setRoster(c); });
+  }, []);
   useEffect(() => {
     document.body.classList.toggle('qs-lock', camera || !!review);
     return () => document.body.classList.remove('qs-lock');
@@ -496,7 +502,7 @@ export function ScanPage({ exam, exams, students, onSelectExam, onAddStudent, on
   }
 
   async function save(student, key) {
-    await onAddStudent(student);
+    await onAddStudent(student);                     // интернэтгүй бол утсанд хадгалагдана (pages/index.js)
     setSession(s => [{ name: student.name, scaled: student.scaled }, ...s]);
     setLastKey(key);
     setReview(null);
@@ -506,6 +512,7 @@ export function ScanPage({ exam, exams, students, onSelectExam, onAddStudent, on
 
   const recent = students.slice().sort((a, b) => String(b.submittedAt).localeCompare(String(a.submittedAt))).slice(0, 8);
   const tooMany = (exam.sec1Count || 0) > S1_MAX;
+  const pendingCount = students.filter(s => s._pending).length;   // утсанд хадгалагдсан, хараахан илгээгдээгүй
 
   return (
     <div className="cm-page">
@@ -513,7 +520,7 @@ export function ScanPage({ exam, exams, students, onSelectExam, onAddStudent, on
         <div className="cm-hero-t">
           <span className="cm-eyebrow">Шалгах</span>
           <h1>{exam.title}</h1>
-          <p>{exam.sec1Count} дасгал{exam.useSec2 ? ' · 2-р хэсэгтэй' : ''} · шалгасан {students.length}</p>
+          <p>{exam.sec1Count} дасгал{exam.useSec2 ? ' · 2-р хэсэгтэй' : ''} · шалгасан {students.length}{pendingCount ? ` (${pendingCount} нь утсанд, илгээгдээгүй)` : ''}</p>
         </div>
         <button className="cm-btn amber big" disabled={tooMany} onClick={openCamera}>
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
@@ -543,7 +550,7 @@ export function ScanPage({ exam, exams, students, onSelectExam, onAddStudent, on
           <li><b>Сурагчид бөглөнө.</b> Харандаа эсвэл хар үзгээр дугуйг бүрэн будна.</li>
           <li><b>Камераар уншуул.</b> 6 хар дөрвөлжин дэлгэцэнд багтмагц автоматаар уншиж, оноог шууд гаргана.</li>
         </ol>
-        <div className="cm-note">AI ашиглахгүй — хуудсыг пикселээр нь уншдаг тул интернэтгүй ч, хэдэн мянган хуудас ч үнэгүй. Эргэлзээтэй мөрийг (олон будсан, бүдэг, арилгасан) таньж танаас асууна.</div>
+        <div className="cm-note">AI ашиглахгүй — хуудсыг пикселээр нь уншдаг тул интернэтгүй ч, хэдэн мянган хуудас ч үнэгүй. Эргэлзээтэй мөрийг (олон будсан, бүдэг, арилгасан) таньж танаас асууна. Интернэтгүй үед уншуулсан хуудас утсанд хадгалагдаж, интернэт орж ирэхэд автоматаар илгээгдэнэ.</div>
       </div>
 
       {recent.length > 0 && (
@@ -551,7 +558,7 @@ export function ScanPage({ exam, exams, students, onSelectExam, onAddStudent, on
           <div className="cm-h3">Сүүлд шалгасан</div>
           {recent.map(s => (
             <div key={s.id} className="cm-res">
-              <div><b>{s.name}</b><span>{s.class ? s.class + ' · ' : ''}{s.code || '—'}</span></div>
+              <div><b>{s.name}</b><span>{s.class ? s.class + ' · ' : ''}{s.code || '—'}{s._pending && <i className={'cm-pend' + (s._error ? ' err' : '')}>{s._error ? 'илгээгдсэнгүй' : 'илгээгээгүй'}</i>}</span></div>
               <em style={{ color: s.grade?.c }}>{s.scaled}</em>
             </div>
           ))}
@@ -561,7 +568,7 @@ export function ScanPage({ exam, exams, students, onSelectExam, onAddStudent, on
 
       {camera && (
         <Scanner layout={layout} paused={!!review || picker || (hasRoster && !pick)} lastKey={lastKey} examTitle={exam.title}
-          savedCount={session.length} recent={session}
+          savedCount={session.length} pendingCount={pendingCount} recent={session}
           student={pick} needStudent={hasRoster && !pick} onPick={hasRoster ? () => setPicker(true) : null}
           onCapture={r => setReview({ ...r, fromCamera: true })} onClose={() => { setCamera(false); setPicker(false); }} />
       )}
