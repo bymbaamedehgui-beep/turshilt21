@@ -15,6 +15,7 @@ export default async function handler(req, res) {
     return errPage(res, 502, 'Дасгалын төвтэй холбогдож чадсангүй. Түр хүлээгээд дахин оролдоно уу.');
   }
   if (!r) return errPage(res, 400, 'Холбоосны хугацаа дууссан эсвэл аль хэдийн ашиглагдсан байна. Дасгалын төвөөс «ЭЕШ шалгагч» товчийг дахин дарна уу.');
+  if (r.kind === 'admin') return errPage(res, 400, 'Холбоос буруу байна. Дасгалын төвөөс «ЭЕШ шалгагч» товчийг дахин дарна уу.');   // админы код — /api/cm/admin-session
   const email = normEmail(r.email);
   if (!email) return errPage(res, 400, 'Дасгалын төвийн бүртгэлийн имэйл буруу байна.');
   if (email === DEMO_EMAIL) return errPage(res, 403, 'Энэ бүртгэлээр нэвтрэх боломжгүй.');
