@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       const own = await getTeacherByEmail(email);
       if (own && own.status === 'disabled') return errPage(res, 403, 'Таны eyeshcheck эрх хаагдсан байна. Admin-тай холбогдоно уу.');
       // Өмнө нь өөрөө бүртгүүлсэн багш — нэг удаа холбоно (имэйлийн эзэмшлийг Дасгалын төв батлахгүй): /api/cm/link
-      if (own) return linkPage(res, { email, token: await pendingSave({ email, name: r.name, paidUntil, exam }) });
+      if (own) return linkPage(res, { email, token: await pendingSave({ email, name: r.name, paidUntil, exam, material: r.material }) });
       t = await createCmTeacher({ email, name: r.name, paidUntil });
       if (!t) {   // зэрэг хүсэлт үүсгэсэн
         t = await findCmTeacher(email);
@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     if (t.status === 'disabled') return errPage(res, 403, 'Таны eyeshcheck эрх хаагдсан байна. Admin-тай холбогдоно уу.');
     t = await syncCm(t.id, paidUntil);
     if (!t) return errPage(res, 500, 'Түр алдаа гарлаа. Дахин оролдоно уу.');
-    return await finish(res, t, exam);
+    return await finish(res, t, exam, exam ? r.material : null);
   } catch (e) {
     console.error('[cm/sso]', e.message);
     return errPage(res, 500, 'Түр алдаа гарлаа. Дасгалын төвөөс дахин оролдоно уу.');

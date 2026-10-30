@@ -24,14 +24,14 @@ export default async function handler(req, res) {
       if (!(await pendingDel(token))) return errPage(res, 409, 'Энэ холбоос аль хэдийн ашиглагдсан байна.');
       const t2 = await linkTeacher(teacher.id, email, paidUntil);
       if (!t2) return errPage(res, 500, 'Түр алдаа гарлаа. Дахин оролдоно уу.');
-      return finish(res, t2, exam);
+      return finish(res, t2, exam, p.material || null);
     };
     const t = await getTeacherByEmail(email);
     if (!t) {   // хооронд нь данс устгагдсан — шинээр үүсгэнэ
       await pendingDel(token);
       const nt = await createCmTeacher({ email, name: p.name, paidUntil });
       if (!nt) return errPage(res, 409, 'Түр алдаа гарлаа. Дасгалын төвөөс дахин оролдоно уу.');
-      return await finish(res, nt, exam);
+      return await finish(res, nt, exam, p.material || null);
     }
     if (act === 'pwform') return linkPage(res, { email, token });
     if (await linkCount(email, 'fail') >= LINK_FAIL_DAY)

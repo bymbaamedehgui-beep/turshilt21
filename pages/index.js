@@ -913,6 +913,17 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
                     <div style={{fontSize:15.5,fontWeight:900,color:'#1c1f2a',lineHeight:1.3}}>{exam.title}</div>
                     <div style={{fontSize:12,color:'#6b7280',marginTop:2}}>{exam.subject} · {exam.sec1Count} дасгал · Raw max: {rm}{examVariants(exam).length>1?' · '+examVariants(exam).join('/')+' хувилбар':''}</div>
                     {exam.useSec2&&<div style={{fontSize:11,color:'#059669',marginTop:1}}>2-р хэсэг</div>}
+                    {/* Дасгалын төвөөс хадгалсан шалгалтын материал (хувилбаруудын хуудас, хариу) — зөвхөн багшид */}
+                    {exam.materials?.length>0&&(
+                      <div style={{display:'flex',gap:6,flexWrap:'wrap',marginTop:7}}>
+                        {exam.materials.map(m=>{const p=/(\d)-р хэсэг/.exec(m.title||'');return(
+                          <a key={m.url} href={m.url} target="_blank" rel="noopener noreferrer" onClick={e=>e.stopPropagation()} title={m.title}
+                            style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 9px',background:'#f3f0ff',border:'1px solid #ddd3fd',borderRadius:8,fontSize:11.5,fontWeight:800,color:'#5B3BD9',textDecoration:'none'}}>
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>
+                            Материал{exam.materials.length>1&&p?' · '+p[1]+'-р хэсэг':''}
+                          </a>);})}
+                      </div>
+                    )}
                   </div>
                   <div style={{display:'flex',gap:6,alignItems:'center'}}>
                     {act&&<Badge>Идэвхтэй</Badge>}

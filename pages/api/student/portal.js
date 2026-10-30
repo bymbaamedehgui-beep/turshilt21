@@ -40,7 +40,8 @@ export default requireStudent(async function handler(req, res) {
     results,
     exams: exams.filter(e => !taken.has(e.id)).map(examOutline),
     textbooks,
-    materials: materials.filter(m => !m.class || m.class === s.class),
+    // Дасгалын төвөөс хадгалсан шалгалтын материал (examId) — зөвхөн багшид
+    materials: materials.filter(m => !m.examId && (!m.class || m.class === s.class)),
     goals,
     eeshDate,
   });

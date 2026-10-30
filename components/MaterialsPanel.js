@@ -78,7 +78,7 @@ export function MaterialsPanel({ kind, classes = [] }) {
       {items.map(m => (
         <div key={m.id} className="mp-item">
           <a href={m.url} target="_blank" rel="noopener noreferrer"><b>{m.title}</b>
-            <span>{[m.subject, m.class, fmtSize(m.size), new Date(m.createdAt).toLocaleDateString('en-CA')].filter(Boolean).join(' · ')}</span></a>
+            <span>{[m.examId ? 'Шалгалтын материал · зөвхөн танд' : '', m.subject, m.class, fmtSize(m.size), new Date(m.createdAt).toLocaleDateString('en-CA')].filter(Boolean).join(' · ')}</span></a>
           <button onClick={() => remove(m)} aria-label="Устгах">Устгах</button>
         </div>
       ))}
