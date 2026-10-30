@@ -53,12 +53,12 @@ self.addEventListener('fetch', e => {
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;
 
   if (req.mode === 'navigate') {
-    const shell = url.pathname.startsWith('/student') ? '/student' : '/';
+    // интернэтгүй үед зөвхөн апп-ын хоёр хуудсыг кэшээс өгнө (/cm-admin г.м. бусад хуудас интернэт шаарддаг)
+    const shell = url.pathname === '/' ? '/' : url.pathname.startsWith('/student') ? '/student' : null;
     e.respondWith(fetch(req).then(res => {
       if (res.ok && SHELL.includes(url.pathname)) keep(e, cachePage(url.pathname, res.clone()).then(trimStatic));
       return res;
-    }).catch(async () =>
-      (await caches.match(shell, { cacheName: PAGES })) || (await caches.match('/', { cacheName: PAGES })) || Response.error()));
+    }).catch(async () => (shell && (await caches.match(shell, { cacheName: PAGES }))) || Response.error()));
     return;
   }
 
