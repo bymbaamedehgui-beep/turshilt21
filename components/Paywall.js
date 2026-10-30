@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../lib/eyesh';
-import { PLANS, MONTH_PRICE, planPrice, fullPrice, perMonth, fmtMNT, fmtDay as fmtDate } from '../lib/plans';
+import { PLANS, MONTH_PRICE, planPrice, fullPrice, perMonth, promoPrice, fmtMNT, fmtDay as fmtDate } from '../lib/plans';
 
 // ── Эрх авах / сунгах (QPay) ───────────────────────────────────────────────
 const POLL_MS = 4000, POLL_MAX_MS = 10 * 60 * 1000;
@@ -10,18 +10,44 @@ export function Paywall({ me, renew, onPaid, onClose, onLogout }) {
   const [inv, setInv] = useState(null);           // QPay нэхэмжлэх
   const [busy, setBusy] = useState(false);
   const [checking, setChecking] = useState(false);
-  const [done, setDone] = useState(null);         // { paidUntil }
+  const [done, setDone] = useState(null);         // { paidUntil, days? }
   const [err, setErr] = useState('');
+  const [promoInput, setPromoInput] = useState('');
+  const [promo, setPromo] = useState(null);       // { code, kind:'percent'|'days', value } — /api/promo шалгасан
+  const [promoBusy, setPromoBusy] = useState(false);
+  const [promoErr, setPromoErr] = useState('');
   const pollStart = useRef(0);
 
   const expired = !renew && me?.paidUntil && !me?.hasAccess;   // туршилт эсвэл төлсөн хугацаа дууссан
   const isMobile = typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+  const pct = promo?.kind === 'percent' ? promo.value : 0;
+  const priceOf = m => pct ? promoPrice(m, pct) : planPrice(m);
 
   async function create() {
     setBusy(true); setErr('');
-    try { setInv(await apiFetch('/api/pay/create', { method: 'POST', body: { months } })); pollStart.current = Date.now(); }
+    try {
+      const r = await apiFetch('/api/pay/create', { method: 'POST', body: { months, ...(pct ? { promo: promo.code } : {}) } });
+      if (r.free) { setDone({ paidUntil: r.paidUntil }); onPaid && onPaid(r); }   // 100% хөнгөлөлт — QPay-гүйгээр
+      else { setInv(r); pollStart.current = Date.now(); }
+    }
     catch (e) { setErr(e.message); }
     setBusy(false);
+  }
+  async function checkPromo(e) {
+    e.preventDefault();
+    setPromoBusy(true); setPromoErr('');
+    try { const r = await apiFetch('/api/promo', { method: 'POST', body: { action: 'check', code: promoInput } }); setPromo(r); }
+    catch (e2) { setPromoErr(e2.message); }
+    setPromoBusy(false);
+  }
+  async function redeemDays() {
+    setPromoBusy(true); setPromoErr('');
+    try {
+      const r = await apiFetch('/api/promo', { method: 'POST', body: { action: 'redeem', code: promo.code } });
+      setDone({ paidUntil: r.paidUntil, days: r.days }); onPaid && onPaid(r);
+    }
+    catch (e) { setPromoErr(e.message); }
+    setPromoBusy(false);
   }
   async function check(manual) {
     if (!inv || done) return;
@@ -44,8 +70,8 @@ export function Paywall({ me, renew, onPaid, onClose, onLogout }) {
     <div className="pw">
       <div className="pw-card pw-done">
         <div className="pw-ok">✓</div>
-        <h2>Төлбөр амжилттай!</h2>
-        <p>Таны эрх <b>{fmtDate(done.paidUntil)}</b> хүртэл нээгдлээ.</p>
+        <h2>{done.days ? 'Промо код идэвхжлээ!' : 'Төлбөр амжилттай!'}</h2>
+        <p>{done.days ? <>{done.days} хоног нэмэгдлээ. </> : null}Таны эрх <b>{fmtDate(done.paidUntil)}</b> хүртэл нээгдлээ.</p>
         <button className="cm-btn big" onClick={onClose}>Үргэлжлүүлэх →</button>
       </div>
     </div>
@@ -67,24 +93,45 @@ export function Paywall({ me, renew, onPaid, onClose, onLogout }) {
         <>
           <div className="pw-plans" role="radiogroup" aria-label="Багц">
             {PLANS.map(p => {
-              const price = planPrice(p.months), full = fullPrice(p.months);
+              const price = priceOf(p.months), full = fullPrice(p.months), off = pct ? Math.round((1 - price / full) * 100) : p.off;
               return (
                 <button key={p.months} role="radio" aria-checked={months === p.months}
                   className={'pw-plan' + (months === p.months ? ' on' : '') + (p.best ? ' best' : '')} onClick={() => setMonths(p.months)}>
                   {p.best && <span className="pw-ribbon">Хамгийн ашигтай</span>}
                   <span className="pw-radio" />
-                  <span className="pw-plan-m"><b>{p.months} сар</b>{p.off > 0 && <em>−{p.off}%</em>}</span>
+                  <span className="pw-plan-m"><b>{p.months} сар</b>{off > 0 && <em>−{off}%</em>}</span>
                   <span className="pw-plan-p">
-                    <b>{fmtMNT(price)}</b>
-                    {p.off > 0 && <s>{fmtMNT(full)}</s>}
+                    <b>{price === 0 ? 'Үнэгүй' : fmtMNT(price)}</b>
+                    {off > 0 && <s>{fmtMNT(full)}</s>}
                   </span>
                   <span className="pw-plan-n">
-                    {p.off > 0 ? <>сард <b>{fmtMNT(perMonth(p.months))}</b> · <i>{fmtMNT(full - price)} хэмнэнэ</i></> : <>сард {fmtMNT(MONTH_PRICE)}</>}
+                    {pct ? <>промо кодоор <i>{fmtMNT(full - price)} хэмнэнэ</i></>
+                      : p.off > 0 ? <>сард <b>{fmtMNT(perMonth(p.months))}</b> · <i>{fmtMNT(full - price)} хэмнэнэ</i></> : <>сард {fmtMNT(MONTH_PRICE)}</>}
                   </span>
                 </button>
               );
             })}
           </div>
+
+          <div className="pw-promo">
+            <div className="pw-promo-t">Промо код ашиглах</div>
+            {!promo && (
+              <form className="pw-promo-f" onSubmit={checkPromo}>
+                <input value={promoInput} onChange={e => setPromoInput(e.target.value)} placeholder="Кодоо бичнэ үү" aria-label="Промо код"
+                  autoCapitalize="characters" autoComplete="off" spellCheck={false} maxLength={40} />
+                <button className="cm-btn" disabled={promoBusy || !promoInput.trim()}>{promoBusy ? 'Шалгаж байна…' : 'Ашиглах'}</button>
+              </form>
+            )}
+            {promo && (
+              <div className="pw-promo-ok">
+                <span>🎟️ <b>{promo.code}</b> — {promo.kind === 'percent' ? `${promo.value}% хөнгөлөлт` : `${promo.value} хоногийн үнэгүй эрх`}</span>
+                {promo.kind === 'days' && <button className="cm-btn" disabled={promoBusy} onClick={redeemDays}>{promoBusy ? 'Идэвхжүүлж байна…' : 'Идэвхжүүлэх'}</button>}
+                <button className="cm-link" onClick={() => { setPromo(null); setPromoInput(''); setPromoErr(''); }}>Хасах</button>
+              </div>
+            )}
+            {promoErr && <div className="cm-alert soft">{promoErr}</div>}
+          </div>
+
           <ul className="pw-feats">
             <li>Камераар хязгааргүй шалгалт шалгах</li>
             <li>Хариултын хуудас хэвлэх, анализ, рейтинг, PDF/Excel</li>
@@ -92,13 +139,13 @@ export function Paywall({ me, renew, onPaid, onClose, onLogout }) {
           </ul>
           {err && <div className="cm-alert">{err}</div>}
           <button className="cm-btn big pw-cta" disabled={busy} onClick={create}>
-            {busy ? 'Нэхэмжлэх үүсгэж байна…' : <>QPay-ээр төлөх · {fmtMNT(planPrice(months))}</>}
+            {busy ? 'Нэхэмжлэх үүсгэж байна…' : priceOf(months) === 0 ? 'Промо кодоор үнэгүй идэвхжүүлэх' : <>QPay-ээр төлөх · {fmtMNT(priceOf(months))}</>}
           </button>
         </>
       ) : (
         <div className="pw-card pw-inv">
           <div className="pw-inv-h">
-            <div><b>{inv.months} сарын эрх</b><span>QPay нэхэмжлэх</span></div>
+            <div><b>{inv.months} сарын эрх</b><span>QPay нэхэмжлэх{pct ? ` · ${promo.code}` : ''}</span></div>
             <strong>{fmtMNT(inv.amount)}</strong>
           </div>
           {inv.qr_image && <img className="pw-qr" src={`data:image/png;base64,${inv.qr_image}`} alt="QPay QR код" />}

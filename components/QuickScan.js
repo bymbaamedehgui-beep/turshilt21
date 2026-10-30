@@ -341,7 +341,8 @@ function Review({ exam, layout, result, roster, existing, chosen, onChangeStuden
 
         {!tagAck && (
           <div className="qs-warn red">
-            <span>Энэ хуудас «{exam.title}» шалгалтынх биш байж магадгүй (хуудасны код таарахгүй).</span>
+            <span>Энэ хуудас «{exam.title}» шалгалтынх биш байж магадгүй (хуудасны код таарахгүй).
+              {/^ws:/.test(exam.cmRef || '') && ' Өөр хувилбарын хуудас байж болно — хуудасны баруун дээд буланд хэвлэсэн «Хувилбарын код»-ыг шалгалтын нэр дэх кодтой тулгана уу.'}</span>
             <button onClick={() => setTagAck(true)}>Энэ шалгалтынх мөн</button>
           </div>
         )}

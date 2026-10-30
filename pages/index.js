@@ -6,12 +6,14 @@ import { SheetsPage } from '../components/AnswerSheet';
 import { Paywall } from '../components/Paywall';
 import { PLANS, planPrice, fullPrice, perMonth, fmtMNT, fmtDay, TRIAL_DAYS } from '../lib/plans';
 import { StudentPortal } from '../components/StudentPortal';
-import { MaterialsPanel, EeshDateSetting } from '../components/MaterialsPanel';
+import { MaterialsPanel } from '../components/MaterialsPanel';
 import { exportAnalysisXlsx } from '../lib/report-xlsx';
 import { downloadResultsPdf } from '../lib/report-pdf';
+import { AdminPanel } from '../components/AdminPanel';
 import { cacheGet, cacheSet, cacheClear, queueList, queueAdd, queueRemove, queueRetry, postStudent, sendQueued, isNetworkError } from '../lib/offline';
 
 const PRACTICE_URL = 'https://cyber-math.com/worksheets.html';
+const TUTORIAL_VIDEO = '0x_sZEEofts';   // YouTube «eyeshcheck танилцуулга» (CyberMath Mongolia) — нүүр хуудас, ☰ цэс
 
 // ── Global SVG Icon ───────────────────────────────────────
 function Ico({d, size=20, color='currentColor', sw=1.5, fill='none'}) {
@@ -67,6 +69,7 @@ const NAV_ICON = {
   sun:['M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z','M12 1v2','M12 21v2','M4.2 4.2l1.4 1.4','M18.4 18.4l1.4 1.4','M1 12h2','M21 12h2','M4.2 19.8l1.4-1.4','M18.4 5.6l1.4-1.4'],
   logout:['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4','M16 17l5-5-5-5','M21 12H9'],
   book:['M4 19.5A2.5 2.5 0 0 1 6.5 17H20','M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'],
+  play:['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z','M10 8.5v7l6-3.5z'],
 };
 
 
@@ -235,9 +238,26 @@ function Badge({children, color='#7B52EE'}) {
 
 
 // ── Landing Page ──────────────────────────────────────────
+// YouTube видео: эхэндээ зөвхөн зураг (хуудас хурдан ачаална), дармагц тоглуулагч
+function VideoPlayer({id, title}) {
+  const [play, setPlay] = useState(false);
+  const [thumb, setThumb] = useState(`https://i.ytimg.com/vi/${id}/maxresdefault.jpg`);
+  return (
+    <div className="lp-video">
+      {play
+        ? <iframe src={`https://www.youtube-nocookie.com/embed/${id}?autoplay=1&rel=0`} title={title}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
+        : <button type="button" onClick={()=>setPlay(true)} aria-label={title+' — тоглуулах'}>
+            <img src={thumb} alt="" onError={()=>setThumb(`https://i.ytimg.com/vi/${id}/hqdefault.jpg`)} />
+            <span className="lp-play" aria-hidden="true"><svg viewBox="0 0 24 24" width="30" height="30" style={{marginLeft:4}}><path d="M7 4.5v15l13-7.5z" fill="currentColor"/></svg></span>
+          </button>}
+    </div>
+  );
+}
+
 function LandingPage({onEnter}) {
-  // Хуучин (улаан) загварыг харуулдаг тул шинэ видео бичих хүртэл нуув. Буцаах: 'aUggJeMlQ8E'
-  const YOUTUBE_ID = '';
+  // Шинэ загвартай танилцуулга (хуучин улаан загвартай нь 'aUggJeMlQ8E' байсан)
+  const YOUTUBE_ID = TUTORIAL_VIDEO;
 
   const features = [
     { icon: ['M3 7V5a2 2 0 0 1 2-2h2','M17 3h2a2 2 0 0 1 2 2v2','M21 17v2a2 2 0 0 1-2 2h-2','M7 21H5a2 2 0 0 1-2-2v-2','M7 12h10'], title:'Камераар шуурхай шалгах', desc:'Хуудсаа утасны камерт барихад автоматаар уншиж, оноог шууд гаргана. Дараагийн хуудас руу шууд шилжинэ.' },
@@ -269,17 +289,25 @@ function LandingPage({onEnter}) {
         </div>
       </div>
       <div style={{maxWidth:980,margin:'0 auto',padding:'18px 16px 40px'}}>
-        <div className="cm-hero" style={{padding:'30px 22px',textAlign:'center'}}>
-          <img src="/chick.svg" alt="" style={{width:104,height:104,filter:'drop-shadow(0 10px 16px rgba(0,0,0,.25))',animation:'bob 3.4s ease-in-out infinite',position:'relative',zIndex:1}} />
-          <div className="cm-hero-t" style={{marginTop:10}}>
-            <span className="cm-eyebrow">CyberMath · Дасгалын төвийн хэрэгсэл</span>
-            <h1 style={{fontSize:30}}>ЭЕШ хариултын хуудас шалгагч</h1>
-            <p style={{maxWidth:520,margin:'8px auto 0',fontSize:15}}>Хариултын хуудсыг утасны камераар уншуулж, оноо, анализ, рейтингийг хэдхэн секундэд гаргана.</p>
+        <div className={'cm-hero'+(YOUTUBE_ID?' lp-hero':'')} style={{padding:'30px 22px'}}>
+          <div style={{textAlign:'center'}}>
+            <img src="/chick.svg" alt="" style={{width:104,height:104,filter:'drop-shadow(0 10px 16px rgba(0,0,0,.25))',animation:'bob 3.4s ease-in-out infinite',position:'relative',zIndex:1}} />
+            <div className="cm-hero-t" style={{marginTop:10}}>
+              <span className="cm-eyebrow">CyberMath · Дасгалын төвийн хэрэгсэл</span>
+              <h1 style={{fontSize:30}}>ЭЕШ хариултын хуудас шалгагч</h1>
+              <p style={{maxWidth:520,margin:'8px auto 0',fontSize:15}}>Хариултын хуудсыг утасны камераар уншуулж, оноо, анализ, рейтингийг хэдхэн секундэд гаргана.</p>
+            </div>
+            <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap',position:'relative',zIndex:1}}>
+              <button className="cm-btn amber" style={{padding:'.85rem 1.6rem',fontSize:16}} onClick={onEnter}>Нэвтрэх / Бүртгүүлэх →</button>
+              <button className="cm-btn ghost" style={{padding:'.85rem 1.6rem',fontSize:16}} onClick={()=>document.getElementById('demo-section').scrollIntoView({behavior:'smooth'})}>Demo үзэх</button>
+            </div>
           </div>
-          <div style={{display:'flex',gap:10,justifyContent:'center',flexWrap:'wrap',position:'relative',zIndex:1}}>
-            <button className="cm-btn amber" style={{padding:'.85rem 1.6rem',fontSize:16}} onClick={onEnter}>Нэвтрэх / Бүртгүүлэх →</button>
-            <button className="cm-btn ghost" style={{padding:'.85rem 1.6rem',fontSize:16}} onClick={()=>document.getElementById('demo-section').scrollIntoView({behavior:'smooth'})}>Demo үзэх</button>
-          </div>
+          {YOUTUBE_ID && (
+            <div className="lp-hero-v">
+              <VideoPlayer id={YOUTUBE_ID} title="eyeshcheck танилцуулга" />
+              <div className="lp-hero-cap">Видео заавар — хэрхэн ашиглахыг алхам алхмаар</div>
+            </div>
+          )}
         </div>
 
         <div style={sec}>
@@ -312,17 +340,6 @@ function LandingPage({onEnter}) {
           </div>
         </div>
 
-        {YOUTUBE_ID && (
-          <div style={sec}>
-            <div style={h2}>Танилцуулга видео</div>
-            <div style={sub}>Системийг хэрхэн ашиглах тайлбар</div>
-            <div style={{position:'relative',paddingBottom:'56.25%',borderRadius:18,overflow:'hidden',boxShadow:'0 20px 50px -24px rgba(60,30,120,.6)'}}>
-              <iframe src={`https://www.youtube.com/embed/${YOUTUBE_ID}`} title="Танилцуулга"
-                style={{position:'absolute',top:0,left:0,width:'100%',height:'100%',border:'none'}}
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-            </div>
-          </div>
-        )}
 
         <div style={sec}>
           <div style={h2}>Үнэ</div>
@@ -789,149 +806,6 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
             </button>
           </>
         )}
-      </div>
-    </div>
-  );
-}
-
-// ── Admin Page ────────────────────────────────────────────
-function AdminPage({dark:d=false}) {
-  const [teachers, setTeachers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [err, setErr] = useState('');
-
-  useEffect(()=>{ load(); }, []);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const data = await apiFetch('/api/admin/teachers');
-      setTeachers(data);
-    } catch(e) { setErr(e.message); }
-    setLoading(false);
-  }
-
-  async function updateStatus(id, status) {
-    try {
-      await apiFetch('/api/admin/teachers', { method:'PATCH', body:{ id, status } });
-      setTeachers(ts => ts.map(t => t.id===id ? {...t, status} : t));
-    } catch(e) { alert(e.message); }
-  }
-
-  async function extend(id, months) {
-    try {
-      const r = await apiFetch('/api/admin/teachers', { method:'PATCH', body:{ id, extendMonths: months } });
-      setTeachers(ts => ts.map(t => t.id===id ? {...t, paid_until: r.paidUntil} : t));
-    } catch(e) { alert(e.message); }
-  }
-
-  async function removeTeacher(id, email) {
-    if (!confirm(`"${email}" устгах уу?`)) return;
-    try {
-      await apiFetch('/api/admin/teachers', { method:'DELETE', body:{ id } });
-      setTeachers(ts => ts.filter(t => t.id!==id));
-    } catch(e) { alert(e.message); }
-  }
-
-  const pending  = teachers.filter(t => t.status==='pending');
-  const active   = teachers.filter(t => t.status==='active' && !t.is_admin);
-  const disabled = teachers.filter(t => t.status==='disabled');
-
-  const bg   = d ? '#1c1f2a' : 'white';
-  const text = d ? '#f3f4f6' : '#1c1f2a';
-  const muted= d ? '#9ca3af' : '#6b7280';
-  const border= d ? '#2a2e38' : '#e5e7eb';
-
-  function TeacherRow({t, actions}) {
-    return (
-      <div style={{display:'flex',alignItems:'center',gap:12,padding:'12px 16px',borderBottom:'1px solid '+border}}>
-        <div style={{width:36,height:36,borderRadius:'50%',background:'#7B52EE',color:'white',fontWeight:900,fontSize:14,display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-          {(t.name||t.email||'?')[0].toUpperCase()}
-        </div>
-        <div style={{flex:1,minWidth:0}}>
-          <div style={{fontWeight:700,fontSize:14,color:text}}>{t.name||'—'}</div>
-          <div style={{fontSize:12,color:muted}}>{t.email}</div>
-          <div style={{fontSize:11,color:muted}}>{new Date(t.created_at).toLocaleDateString('mn-MN')}{t.phone ? ' · ' + t.phone : ''}{t.cm_linked ? ' · Дасгалын төв' : ''}</div>
-          {!t.is_admin && <div style={{fontSize:12,fontWeight:800,marginTop:2,color:t.paid_until && new Date(t.paid_until) > new Date() ? '#16a34a' : '#b3261e'}}>
-            {t.paid_until ? (new Date(t.paid_until) > new Date() ? 'Эрх: ' : 'Дууссан: ') + new Date(t.paid_until).toLocaleDateString('mn-MN') : 'Эрхгүй'}
-          </div>}
-        </div>
-        <div style={{display:'flex',gap:6,flexShrink:0}}>
-          {actions}
-        </div>
-      </div>
-    );
-  }
-
-  const btnStyle = (bg2,c) => ({padding:'6px 14px',border:'none',borderRadius:7,fontWeight:700,fontSize:12,cursor:'pointer',background:bg2,color:c});
-
-  return (
-    <div style={{maxWidth:800,margin:'0 auto',padding:'24px 20px'}}>
-      {/* Header */}
-      <div style={{background:'linear-gradient(135deg,#1c1f2a,#2a2e38)',borderRadius:20,padding:'24px 28px',color:'white',marginBottom:20}}>
-        <div style={{fontSize:11,letterSpacing:2,opacity:.7,marginBottom:4}}>CYBERMATH · ЭЕШ</div>
-        <div style={{fontSize:26,fontWeight:900}}>Admin панель</div>
-        <div style={{opacity:.8,fontSize:13,marginTop:4}}>Багш нарын хандалтыг удирдах</div>
-      </div>
-
-      {err && <div style={{background:'#fdecec',color:'#b3261e',padding:'10px 14px',borderRadius:10,marginBottom:16,fontSize:13}}>{err}</div>}
-      {loading && <div style={{textAlign:'center',padding:40,color:muted}}><Spinner/></div>}
-
-      {/* Pending */}
-      {pending.length>0 && (
-        <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
-          <div style={{padding:'12px 16px',background:'#fef9c3',borderBottom:'1px solid #fde68a',display:'flex',alignItems:'center',gap:8}}>
-            <span style={{fontSize:16}}>⏳</span>
-            <span style={{fontWeight:800,fontSize:14,color:'#92400e'}}>Хүлээгдэж буй хүсэлтүүд — {pending.length}</span>
-          </div>
-          {pending.map(t=>(
-            <TeacherRow key={t.id} t={t} actions={<>
-              <button style={btnStyle('#16a34a','white')} onClick={()=>updateStatus(t.id,'active')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z' size={14} color='white'/>Зөвшөөрөх</span></button>
-              <button style={btnStyle('#fdecec','#b3261e')} onClick={()=>removeTeacher(t.id,t.email)}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z' size={14} color='#b3261e'/>Татгалзах</span></button>
-            </>}/>
-          ))}
-        </div>
-      )}
-
-      {/* Active */}
-      <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
-        <div style={{padding:'12px 16px',borderBottom:'1px solid '+border,display:'flex',alignItems:'center',gap:8}}>
-          <span style={{fontSize:16}}>✅</span>
-          <span style={{fontWeight:800,fontSize:14,color:text}}>Идэвхтэй багш нар — {active.length}</span>
-        </div>
-        {active.length===0
-          ? <div style={{padding:'24px',textAlign:'center',color:muted,fontSize:13}}>Одоохондоо байхгүй</div>
-          : active.map(t=>(
-            <TeacherRow key={t.id} t={t} actions={<>
-              <button style={btnStyle('#e1f4e9','#16a34a')} onClick={()=>extend(t.id,1)}>+1 сар</button>
-              <button style={btnStyle('#f3f4f6','#374151')} onClick={()=>updateStatus(t.id,'disabled')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M18.364 18.364A9 9 0 005.636 5.636m12.728 12.728A9 9 0 015.636 5.636m12.728 12.728L5.636 5.636' size={14} color='#374151'/>Хаах</span></button>
-              <button style={btnStyle('#fdecec','#b3261e')} onClick={()=>removeTeacher(t.id,t.email)}><Ico d='M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0' size={14} color='#b3261e'/></button>
-            </>}/>
-          ))
-        }
-      </div>
-
-      {/* Disabled */}
-      {disabled.length>0 && (
-        <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
-          <div style={{padding:'12px 16px',borderBottom:'1px solid '+border,display:'flex',alignItems:'center',gap:8}}>
-            <span style={{fontSize:16}}>🚫</span>
-            <span style={{fontWeight:800,fontSize:14,color:muted}}>Хаагдсан — {disabled.length}</span>
-          </div>
-          {disabled.map(t=>(
-            <TeacherRow key={t.id} t={t} actions={<>
-              <button style={btnStyle('#dcfce7','#16a34a')} onClick={()=>updateStatus(t.id,'active')}><span style={{display:'flex',alignItems:'center',gap:4}}><Ico d='M13.5 10.5V6.75a4.5 4.5 0 119 0v3.75M3.75 21.75h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H3.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z' size={14} color='#16a34a'/>Нээх</span></button>
-              <button style={btnStyle('#fdecec','#b3261e')} onClick={()=>removeTeacher(t.id,t.email)}><Ico d='M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0' size={14} color='#b3261e'/></button>
-            </>}/>
-          ))}
-        </div>
-      )}
-
-      {/* Сурагчийн хэсэг: ЭЕШ-ийн огноо, 12-р ангийн сурах бичиг */}
-      <div style={{marginTop:24}}>
-        <div style={{fontSize:18,fontWeight:900,color:text,margin:'0 2px 10px'}}>Сурагчийн хэсэг</div>
-        <EeshDateSetting />
-        <MaterialsPanel kind="textbook" />
       </div>
     </div>
   );
@@ -2485,7 +2359,7 @@ export default function App() {
         {page==='rating'&&<RatingPage exams={exams} students={students} dark={d} />}
         {page==='students'&&<StudentAccountsPage dark={d} />}
         {page==='materials'&&<div className="mp-page"><h1 className="mp-title">ЭЕШ материал</h1><MaterialsPanel kind="material" classes={[...new Set(students.map(s=>s.class).filter(Boolean))].sort()} /></div>}
-        {page==='admin'&&teacher?.isAdmin&&<AdminPage dark={d} />}
+        {page==='admin'&&teacher?.isAdmin&&<AdminPanel dark={d} />}
       </main>
       <footer className="cm-foot no-print">
         CyberMath · ЭЕШ шалгагч · <a href={PRACTICE_URL}>Дасгалын төв →</a>
@@ -2518,6 +2392,7 @@ export default function App() {
                 </button>
               ))}
               <a href={PRACTICE_URL}><Ico d={NAV_ICON.book} size={21} sw={2}/>Дасгалын төв<i>↗</i></a>
+              <a href={`https://youtu.be/${TUTORIAL_VIDEO}`} target="_blank" rel="noopener noreferrer"><Ico d={NAV_ICON.play} size={21} sw={2}/>Видео заавар<i>↗</i></a>
             </nav>
             <div className="cm-drawer-foot">
               <button onClick={toggleDark}><Ico d={d?NAV_ICON.sun:NAV_ICON.moon} size={19} sw={2}/>{d?'Цайвар горим':'Бараан горим'}</button>
