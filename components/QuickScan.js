@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { apiFetch, uid, calcScore, SEC2_SUBS } from '../lib/eyesh';
+import { apiFetch, uid, calcScore, SEC2_SUBS, examVariants, examForVersion } from '../lib/eyesh';
 import { sheetLayout, readSheet, readKey, toDet, toGray, S1_CHOICES, S2_OPTS, S1_MAX } from '../lib/omr';
 
 // ── ZipGrade маягийн хурдан шалгалт ────────────────────────────────────────
@@ -224,8 +224,10 @@ function Scanner({ layout, paused, lastKey, examTitle, savedCount, recent, stude
 function Review({ exam, layout, result, roster, existing, chosen, onChangeStudent, onSave, onRetake, onClose }) {
   const { read, frame } = result;
   const groups = layout.groups;
+  // Олон хувилбартай шалгалт: хуудсан дээр будсан «ХУВИЛБАР»-ын түлхүүрээр дүгнэнэ; будаагүй/байхгүй бол багш сонгоно
+  const vers = examVariants(exam), multi = vers.length > 1;
   const [ans, setAns] = useState(() => Object.fromEntries(groups.map(g => [g.id, read.groups[g.id]?.sel || ''])));
-  const [pending, setPending] = useState(() => new Set(groups.filter(g => g.kind !== 'id' && read.groups[g.id]?.flag).map(g => g.id)));
+  const [pending, setPending] = useState(() => new Set(groups.filter(g => g.kind !== 'id' && (multi || g.kind !== 'ver') && read.groups[g.id]?.flag).map(g => g.id)));
   const [editing, setEditing] = useState(null);
   const [tagAck, setTagAck] = useState(read.tagOk);
   const picked = chosen && chosen !== 'manual' ? chosen : null;   // багш урьдчилан сонгосон сурагч
@@ -251,17 +253,20 @@ function Review({ exam, layout, result, roster, existing, chosen, onChangeStuden
     if (m) { setName(m.name || ''); setCls(m.class || ''); }
   }, [code, roster]);
 
+  const ver = String(ans.ver || '').toUpperCase();
+  const verOk = !multi || vers.includes(ver);
+  const ex = useMemo(() => examForVersion(exam, ver), [exam, ver]);
   const vExam = useMemo(() => {
-    const sec2Enabled = {}; SEC2_SUBS.forEach(s => { sec2Enabled[s] = exam.sec2Config?.[s]?._enabled || false; });
-    return { ...exam, sec2Config: exam.sec2Config || {}, sec2Enabled };
-  }, [exam]);
+    const sec2Enabled = {}; SEC2_SUBS.forEach(s => { sec2Enabled[s] = ex.sec2Config?.[s]?._enabled || false; });
+    return { ...ex, sec2Config: ex.sec2Config || {}, sec2Enabled };
+  }, [ex]);
   const scored = useMemo(() => {
     const r = { ...read, groups: Object.fromEntries(groups.map(g => [g.id, { sel: ans[g.id], flag: pending.has(g.id) ? 'p' : null }])) };
     return calcScore(toDet(r, layout), vExam);
-  }, [ans, pending]);
+  }, [ans, pending, vExam]);
 
-  const keyOf = g => g.kind === 's1' ? exam.sec1Key?.[g.q - 1]
-    : g.kind === 's2' ? (v => (v && typeof v === 'object' ? v.ans : v))(exam.sec2Config?.[g.sub]?.[g.row]) : null;
+  const keyOf = g => g.kind === 's1' ? ex.sec1Key?.[g.q - 1]
+    : g.kind === 's2' ? (v => (v && typeof v === 'object' ? v.ans : v))(ex.sec2Config?.[g.sub]?.[g.row]) : null;
 
   // Зураг + давхарлага
   useEffect(() => {
@@ -271,16 +276,16 @@ function Review({ exam, layout, result, roster, existing, chosen, onChangeStuden
     const sc = (() => { const [a, b] = read.map(100, 150), [p, q] = read.map(101, 150); return Math.hypot(p - a, q - b); })();
     for (const g of groups) {
       if (g.kind !== 's1' && g.kind !== 's2') continue;
-      const sel = ans[g.id], key = String(keyOf(g) ?? '');
+      const sel = ans[g.id], key = verOk ? String(keyOf(g) ?? '') : null;   // хувилбар сонгоогүй бол зөв/буруу будахгүй
       g.options.forEach(o => {
         const [px, py] = read.map(o.x, o.y), r = g.r * sc;
         if (pending.has(g.id) && (read.groups[g.id].cand || []).includes(o.v)) {
           x.strokeStyle = '#f59e0b'; x.lineWidth = Math.max(2, r * 0.45); x.beginPath(); x.arc(px, py, r * 1.35, 0, 7); x.stroke();
         }
         if (o.v === sel) {
-          x.fillStyle = sel === key ? 'rgba(22,163,74,.55)' : 'rgba(220,38,38,.55)';
+          x.fillStyle = key === null ? 'rgba(123,82,238,.5)' : sel === key ? 'rgba(22,163,74,.55)' : 'rgba(220,38,38,.55)';
           x.beginPath(); x.arc(px, py, r * 1.15, 0, 7); x.fill();
-        } else if (o.v === key && sel !== key) {
+        } else if (key !== null && o.v === key && sel !== key) {
           x.strokeStyle = '#16a34a'; x.lineWidth = Math.max(2, r * 0.35); x.beginPath(); x.arc(px, py, r * 1.15, 0, 7); x.stroke();
         }
       });
@@ -293,7 +298,7 @@ function Review({ exam, layout, result, roster, existing, chosen, onChangeStuden
     setEditing(null);
   }
   const dup = existing.find(s => (code && s.code === code) || (!code && name && s.name === name));
-  const ready = pending.size === 0 && tagAck && clashOk && !saving;
+  const ready = pending.size === 0 && verOk && tagAck && clashOk && !saving;
 
   async function save() {
     if (!ready) return;
@@ -311,7 +316,7 @@ function Review({ exam, layout, result, roster, existing, chosen, onChangeStuden
   const grade = scored.grade || {};
   const chip = g => {
     const sel = ans[g.id], key = String(keyOf(g) ?? '');
-    const st = pending.has(g.id) ? 'pend' : !sel ? 'blank' : sel === key ? 'ok' : 'ng';
+    const st = pending.has(g.id) ? 'pend' : !sel ? 'blank' : !verOk ? 'nokey' : sel === key ? 'ok' : 'ng';
     return { st, sel };
   };
 
@@ -324,18 +329,25 @@ function Review({ exam, layout, result, roster, existing, chosen, onChangeStuden
       </div>
       <div className="qs-rbody">
         <div className="qs-score">
-          <div className="qs-ring" style={{ '--c': grade.c || '#7B52EE', '--p': Math.min(100, scored.scaled || 0) }}>
-            <b>{scored.scaled}</b><span>ЭЕШ оноо</span>
+          <div className="qs-ring" style={{ '--c': verOk ? grade.c || '#7B52EE' : '#9ca3af', '--p': verOk ? Math.min(100, scored.scaled || 0) : 0 }}>
+            <b>{verOk ? scored.scaled : '—'}</b><span>ЭЕШ оноо</span>
           </div>
-          <div className="qs-sinfo">
-            <div className="qs-grade" style={{ color: grade.c }}>{grade.g} · {grade.l}</div>
-            <div className="qs-raw">{scored.rawEarned}/{scored.rawMax} оноо</div>
-            <div className="qs-cnt">
-              <span className="ok">✓ {scored.correct}</span>
-              <span className="ng">✗ {scored.wrong - scored.blank}</span>
-              <span className="bl">○ {scored.blank}</span>
+          {verOk ? (
+            <div className="qs-sinfo">
+              <div className="qs-grade" style={{ color: grade.c }}>{grade.g} · {grade.l}</div>
+              <div className="qs-raw">{scored.rawEarned}/{scored.rawMax} оноо{multi ? ` · ${ver} хувилбар` : ''}</div>
+              <div className="qs-cnt">
+                <span className="ok">✓ {scored.correct}</span>
+                <span className="ng">✗ {scored.wrong - scored.blank}</span>
+                <span className="bl">○ {scored.blank}</span>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="qs-sinfo">
+              <div className="qs-grade" style={{ color: '#9ca3af' }}>Хувилбар сонгоогүй</div>
+              <div className="qs-raw">Оноог хувилбарын зөв хариултаар бодно</div>
+            </div>
+          )}
         </div>
 
         {!tagAck && (
@@ -349,6 +361,12 @@ function Review({ exam, layout, result, roster, existing, chosen, onChangeStuden
           <div className="qs-warn">
             <span><b>{pending.size}</b> мөр эргэлзээтэй (шар). Дугуйг нь зургаас харж зөвийг сонгоно уу.</span>
             <button onClick={() => setPending(new Set())}>Санал болгосноор батлах</button>
+          </div>
+        )}
+        {multi && (
+          <div className={'qs-ver' + (!verOk || pending.has('ver') ? ' bad' : '')}>
+            <span>Хувилбар{!ver ? ' — хуудсан дээр будаагүй, сонгоно уу' : !verOk ? ` ${ver} — энэ шалгалтад алга, сонгоно уу` : pending.has('ver') ? ' — эргэлзээтэй' : ''}</span>
+            <div>{vers.map(L => <button key={L} className={ver === L ? 'on' : ''} onClick={() => choose('ver', L)}>{L}</button>)}</div>
           </div>
         )}
 
@@ -409,7 +427,7 @@ function Review({ exam, layout, result, roster, existing, chosen, onChangeStuden
           <div className="qs-ch-h">
             {ed.kind === 's1' ? ed.q + '-р асуулт' : ed.sub + ' · ' + ed.row}
             {read.groups[ed.id]?.flag && <em>{FLAG_LABEL[read.groups[ed.id].flag]}</em>}
-            <span>Зөв: <b>{String(keyOf(ed) ?? '')}</b></span>
+            <span>Зөв: <b>{verOk ? String(keyOf(ed) ?? '') : '—'}</b></span>
           </div>
           <div className="qs-ch-o">
             {(ed.kind === 's1' ? S1_CHOICES : S2_OPTS).map(v => (
@@ -421,7 +439,7 @@ function Review({ exam, layout, result, roster, existing, chosen, onChangeStuden
       )}
       <div className="qs-bar">
         <button className="cm-btn big" disabled={!ready} onClick={save}>
-          {saving ? 'Хадгалж байна…' : pending.size ? `${pending.size} эргэлзээтэйг шийднэ үү` : !clashOk ? 'Кодын зөрүүг шийднэ үү' : !tagAck ? 'Шалгалтын кодыг батална уу' : 'Хадгалаад дараагийн →'}
+          {saving ? 'Хадгалж байна…' : pending.size ? `${pending.size} эргэлзээтэйг шийднэ үү` : !verOk ? 'Хувилбарыг сонгоно уу' : !clashOk ? 'Кодын зөрүүг шийднэ үү' : !tagAck ? 'Шалгалтын кодыг батална уу' : 'Хадгалаад дараагийн →'}
         </button>
       </div>
     </div>
@@ -514,7 +532,7 @@ export function ScanPage({ exam, exams, students, onSelectExam, onAddStudent, on
         <div className="cm-hero-t">
           <span className="cm-eyebrow">Шалгах</span>
           <h1>{exam.title}</h1>
-          <p>{exam.sec1Count} дасгал{exam.useSec2 ? ' · 2-р хэсэгтэй' : ''} · шалгасан {students.length}</p>
+          <p>{exam.sec1Count} дасгал{exam.useSec2 ? ' · 2-р хэсэгтэй' : ''}{examVariants(exam).length > 1 ? ` · ${examVariants(exam).join('/')} хувилбар` : ''} · шалгасан {students.length}</p>
         </div>
         <button className="cm-btn amber big" disabled={tooMany} onClick={openCamera}>
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
