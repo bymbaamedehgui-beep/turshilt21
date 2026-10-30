@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
-import { SEC1_CHOICES, SEC2_ROWS, SEC2_SUBS, uid, pf, eyeshGrade, toScaled, getToken, apiFetch, calcScore } from '../lib/eyesh';
+import { SEC1_CHOICES, SEC2_ROWS, SEC2_SUBS, uid, pf, eyeshGrade, toScaled, getToken, apiFetch, calcScore, VARIANTS, examVariants, examForVersion, studentVariant } from '../lib/eyesh';
 import { ScanPage } from '../components/QuickScan';
 import { SheetsPage } from '../components/AnswerSheet';
 import { Paywall } from '../components/Paywall';
@@ -158,10 +158,14 @@ function exportExcel(exam, students) {
     const avg = n?(ss.reduce((a,b)=>a+b,0)/n).toFixed(1):0;
     const pass = students.filter(s=>s.scaled>=60).length;
     const rm = (exam.sec1Scores||[]).reduce((a,b)=>a+(b||1),0) || exam.sec1Count||0;
+    // Олон хувилбартай бол дүн нэгдсэн, дасгалын шинжилгээ хувилбар бүрээр
+    const vers = examVariants(exam), multi = vers.length>1;
+    const ofVer = L => multi ? students.filter(s=>studentVariant(exam,s.version)===L) : students;
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
       ['EYESH Шалгалтын Тайлан'],[],
       ['Шалгалтын нэр:',exam.title],['Хичээл:',exam.subject],
       ['1-р хэсэг дасгал:',exam.sec1Count],['Raw дээд оноо:',rm],
+      ...(multi?[['Хувилбар:',vers.map(L=>L+' — '+ofVer(L).length+' сурагч').join(', ')]]:[]),
       ['Оролцогч:',n],['Дундаж ЭЕШ:',avg],
       ['Тэнцсэн >=60:',(pass+'/'+n+' ('+n?(Math.round(pass/n*100))+'%':'0%')+')'],
       ['Хамгийн өндөр:',n?Math.max(...ss):'—'],['Хамгийн бага:',n?Math.min(...ss):'—'],
@@ -199,7 +203,9 @@ function exportExcel(exam, students) {
     ]),'Хариулт 1-р хэсэг');
     if(exam.useSec2){
       const sec2Cols=[];
-      SEC2_SUBS.forEach(sub=>{if(exam.sec2Config?.[sub]?._enabled) SEC2_ROWS.forEach(row=>{const kv=exam.sec2Config[sub][row];if(kv!==undefined&&kv!==null&&(typeof kv==='object'?kv.ans:kv)!=='') sec2Cols.push({sub,row});});});
+      const cfgs=[exam.sec2Config||{},...Object.values(exam.variants||{}).map(v=>v?.sec2Config||{})];
+      const has=(c,sub,row)=>{const kv=c[sub]?.[row];const a=kv&&typeof kv==='object'?kv.ans:kv;return a!==undefined&&a!==null&&a!=='';};
+      SEC2_SUBS.forEach(sub=>{if(exam.sec2Config?.[sub]?._enabled) SEC2_ROWS.forEach(row=>{if(cfgs.some(c=>has(c,sub,row))) sec2Cols.push({sub,row});});});
       if(sec2Cols.length>0){
         XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
           ['Нэр','Код',...sec2Cols.map(c=>c.sub+c.row),'2-р хэсэг оноо'],
@@ -210,14 +216,17 @@ function exportExcel(exam, students) {
         ]),'Хариулт 2-р хэсэг');
       }
     }
-    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
-      ['Дасгал','Зөв хариулт','Оноо','Сэдэв','Зөв','Буруу','Хоосон','Амжилт %'],
-      ...exam.sec1Key.map((key,i)=>{
-        const c=students.filter(s=>s.sec1Results[i]?.st==='ok').length;
-        const bl=students.filter(s=>s.sec1Results[i]?.st==='blank').length;
-        return['D'+(i+1),key,exam.sec1Scores?.[i]||1,exam.topics?.[i]||'—',c,n-c-bl,bl,n?(c/n*100).toFixed(1)+'%':'0%'];
-      })
-    ]),'Дасгал шинжилгээ');
+    vers.forEach(L=>{
+      const ve=examForVersion(exam,L), vs=ofVer(L), vn=vs.length;
+      XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
+        ['Дасгал','Зөв хариулт','Оноо','Сэдэв','Зөв','Буруу','Хоосон','Амжилт %'],
+        ...(ve.sec1Key||[]).map((key,i)=>{
+          const c=vs.filter(s=>s.sec1Results?.[i]?.st==='ok').length;
+          const bl=vs.filter(s=>s.sec1Results?.[i]?.st==='blank').length;
+          return['D'+(i+1),key,ve.sec1Scores?.[i]||1,ve.topics?.[i]||'—',c,vn-c-bl,bl,vn?(c/vn*100).toFixed(1)+'%':'0%'];
+        })
+      ]),multi?'Дасгал шинжилгээ '+L:'Дасгал шинжилгээ');
+    });
     XLSX.writeFile(wb, exam.title+'_тайлан.xlsx');
   });
 }
@@ -902,7 +911,7 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
                 <div style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',gap:8,marginBottom:10}}>
                   <div style={{flex:'1 1 100%',minWidth:0}}>
                     <div style={{fontSize:15.5,fontWeight:900,color:'#1c1f2a',lineHeight:1.3}}>{exam.title}</div>
-                    <div style={{fontSize:12,color:'#6b7280',marginTop:2}}>{exam.subject} · {exam.sec1Count} дасгал · Raw max: {rm}</div>
+                    <div style={{fontSize:12,color:'#6b7280',marginTop:2}}>{exam.subject} · {exam.sec1Count} дасгал · Raw max: {rm}{examVariants(exam).length>1?' · '+examVariants(exam).join('/')+' хувилбар':''}</div>
                     {exam.useSec2&&<div style={{fontSize:11,color:'#059669',marginTop:1}}>2-р хэсэг</div>}
                   </div>
                   <div style={{display:'flex',gap:6,alignItems:'center'}}>
@@ -944,6 +953,20 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
   const [sec2Score,setSec2Score]=useState(prefill?.sec2Score||1);
   const [sec2EnabledSubs,setSec2EnabledSubs]=useState(()=>SEC2_SUBS.map(s=>prefill?.sec2Config?.[s]?._enabled??true));
   const [sec2Keys,setSec2Keys]=useState(()=>{const o={};SEC2_SUBS.forEach(s=>{o[s]={};SEC2_ROWS.forEach(r=>{o[s][r]=prefill?.sec2Config?.[s]?.[r]||'';});});return o;});
+  // Олон хувилбар (A, B, C…): хуудасны бүтэц (дасгалын тоо, 2-р хэсгийн дэд хэсгүүд) нэг, зөв хариулт/оноо/сэдэв хувилбар бүрт тусдаа.
+  // Идэвхтэй хувилбарынх дээрх keys/scores/topics/sec2Keys-д, бусдынх vstore-д хадгалагдана.
+  const [vlist,setVlist]=useState(()=>examVariants(prefill));
+  const [vcur,setVcur]=useState('A');
+  const [vstore,setVstore]=useState(()=>{
+    const o={};
+    Object.entries(prefill?.variants||{}).forEach(([L,v])=>{
+      if(!v) return;
+      const s2={};SEC2_SUBS.forEach(s=>{s2[s]={};SEC2_ROWS.forEach(r=>{s2[s][r]=v.sec2Config?.[s]?.[r]||'';});});
+      o[L]={keys:Array.from({length:cnt0},(_,i)=>v.sec1Key?.[i]||''),scores:Array.from({length:cnt0},(_,i)=>v.sec1Scores?.[i]||2),
+        topics:Array.from({length:cnt0},(_,i)=>v.topics?.[i]||getTopics(prefill?.subject||SUBJECTS[0])[0]),sec2Keys:s2};
+    });
+    return o;
+  });
   const [bulkScore,setBulkScore]=useState(2);
   const [bulkTopic,setBulkTopic]=useState(()=>getTopics(prefill?.subject||SUBJECTS[0])[0]);
   const [myTopics,setMyTopics]=useState({});   // багшийн нэмсэн агуулга { хичээл: [...] } — бүх шалгалтад гарна
@@ -966,6 +989,30 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
     // шинэ хичээлийн жагсаалтад байхгүй агуулгыг тэр хичээлийн эхний агуулгаар солино
     const ok=topicOptions(s,myTopics[s]);
     setTopics(t=>t.map(x=>ok.includes(x)?x:ok[0]));
+    setVstore(st=>Object.fromEntries(Object.entries(st).map(([L,t])=>[L,{...t,topics:t.topics.map(x=>ok.includes(x)?x:ok[0])}])));
+  }
+
+  const snapVariant=()=>({keys,scores,topics,sec2Keys});
+  function loadVariant(t){ setKeys(t.keys); setScores(t.scores); setTopics(t.topics); setSec2Keys(t.sec2Keys); }
+  function switchVariant(L){
+    if(L===vcur||!vstore[L]) return;
+    setVstore(s=>({...s,[vcur]:snapVariant()}));
+    loadVariant(vstore[L]); setVcur(L);
+  }
+  function addVariant(){
+    const L=VARIANTS.find(x=>!vlist.includes(x)); if(!L) return;
+    // шинэ хувилбар: оноо, сэдэв одоогийнхоос хуулна; зөв хариултыг багш заавал бөглөнө
+    const s2={};SEC2_SUBS.forEach(s=>{s2[s]={};SEC2_ROWS.forEach(r=>{const v=sec2Keys[s]?.[r];s2[s][r]={ans:'',score:(typeof v==='object'&&v.score)||1};});});
+    setVstore(s=>({...s,[vcur]:snapVariant()}));
+    loadVariant({keys:Array(cnt).fill(''),scores:[...scores],topics:[...topics],sec2Keys:s2});
+    setVlist(l=>VARIANTS.filter(x=>l.includes(x)||x===L)); setVcur(L);
+  }
+  function removeVariant(L){
+    if(L==='A'||L!==vcur) return;
+    if(!window.confirm(`${L} хувилбарыг хасах уу?`+(isEdit?`\n${L} хувилбараар уншуулсан хуудсууд A хувилбарын зөв хариултаар дахин бодогдоно.`:''))) return;
+    loadVariant(vstore.A); setVcur('A');
+    setVstore(s=>{const n={...s};delete n[L];return n;});
+    setVlist(l=>l.filter(x=>x!==L));
   }
 
   async function addTopic(row) {
@@ -989,26 +1036,43 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
   function handleCntChange(v) {
     const n=Math.max(1,parseInt(v)||1);
     setCnt(n);
-    setKeys(k=>Array.from({length:n},(_,i)=>k[i]||'A'));
+    // A-д шинэ дасгал 'A' хариутай (өмнөх шиг), бусад хувилбарт хоосон — багш бөглөнө
+    const resize=(t,L)=>({...t,
+      keys:Array.from({length:n},(_,i)=>t.keys[i]||(L==='A'?'A':'')),
+      scores:Array.from({length:n},(_,i)=>t.scores[i]||2),
+      topics:Array.from({length:n},(_,i)=>t.topics[i]||getTopics(subject)[0])});
+    setKeys(k=>Array.from({length:n},(_,i)=>k[i]||(vcur==='A'?'A':'')));
     setScores(s=>Array.from({length:n},(_,i)=>s[i]||2));
     setTopics(t=>Array.from({length:n},(_,i)=>t[i]||getTopics(subject)[0]));
+    setVstore(st=>Object.fromEntries(Object.entries(st).map(([L,t])=>[L,resize(t,L)])));
   }
 
   function handleSave() {
     if(!title.trim()) return alert('Шалгалтын нэр оруулна уу');
-    const sec2Config={};
-    SEC2_SUBS.forEach((sub,si)=>{
-      sec2Config[sub]={_enabled:sec2EnabledSubs[si]};
-      SEC2_ROWS.forEach(row=>{
-        const v=sec2Keys[sub]?.[row];
-        sec2Config[sub][row]=typeof v==='object'?v:{ans:v||'',score:1};
+    const all={...vstore,[vcur]:snapVariant()};
+    for(const L of vlist.slice(1)){
+      const miss=all[L].keys.slice(0,cnt).findIndex(k=>!k);
+      if(miss>=0){ switchVariant(L); return alert(`${L} хувилбарын ${miss+1}-р дасгалын зөв хариултыг сонгоно уу`); }
+    }
+    const toSec2=sk=>{
+      const sec2Config={};
+      SEC2_SUBS.forEach((sub,si)=>{
+        sec2Config[sub]={_enabled:sec2EnabledSubs[si]};
+        SEC2_ROWS.forEach(row=>{
+          const v=sk[sub]?.[row];
+          sec2Config[sub][row]=typeof v==='object'?v:{ans:v||'',score:1};
+        });
       });
-    });
+      return sec2Config;
+    };
+    const A=all.A;
+    const variants=vlist.length>1?Object.fromEntries(vlist.slice(1).map(L=>[L,
+      {sec1Key:all[L].keys,sec1Scores:all[L].scores,topics:all[L].topics,sec2Config:toSec2(all[L].sec2Keys)}])):null;
     const exam = {
       id: isEdit&&prefill?.id ? prefill.id : uid(),
       title:title.trim(), subject, sec1Count:cnt,
-      sec1Key:keys, sec1Scores:scores, topics, useSec2,
-      sec2Score, sec2Config, createdAt:prefill?.createdAt||new Date().toISOString()
+      sec1Key:A.keys, sec1Scores:A.scores, topics:A.topics, useSec2,
+      sec2Score, sec2Config:toSec2(A.sec2Keys), variants, createdAt:prefill?.createdAt||new Date().toISOString()
     };
     onCreated(exam);
   }
@@ -1055,8 +1119,26 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
       </div>
 
       <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+        <div className="cm-vtabs" style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:6,marginBottom:14,paddingBottom:12,borderBottom:'1px solid #f0f1f4'}}>
+          <span style={{fontSize:13,fontWeight:800,color:'#374151',marginRight:2}}>Хувилбар</span>
+          {vlist.map(L=>(
+            <span key={L} style={{display:'inline-flex',alignItems:'center',gap:2}}>
+              <button onClick={()=>switchVariant(L)} aria-pressed={vcur===L}
+                style={{minWidth:38,height:34,padding:'0 12px',border:'1.5px solid '+(vcur===L?'#7B52EE':'#e5e7eb'),borderRadius:10,fontWeight:900,fontSize:14,cursor:'pointer',background:vcur===L?'#7B52EE':'white',color:vcur===L?'white':'#374151'}}>{L}</button>
+              {vcur===L&&L!=='A'&&<button onClick={()=>removeVariant(L)} title={`${L} хувилбарыг хасах`} aria-label={`${L} хувилбарыг хасах`}
+                style={{width:24,height:24,border:'none',borderRadius:999,background:'#f3f4f6',color:'#6b7280',fontSize:15,lineHeight:1,cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',padding:0}}>×</button>}
+            </span>
+          ))}
+          {vlist.length<VARIANTS.length&&<button onClick={addVariant}
+            style={{height:34,padding:'0 12px',border:'1.5px dashed #c4b5fd',borderRadius:10,background:'white',color:'#7B52EE',fontWeight:800,fontSize:12.5,cursor:'pointer'}}>+ Хувилбар нэмэх</button>}
+          <span style={{flexBasis:'100%',fontSize:12,fontWeight:600,color:'#6b7280',lineHeight:1.45}}>
+            {vlist.length>1
+              ? `Сурагч хариултын хуудасны «ХУВИЛБАР» нүдэнд ${vlist.join(', ')}-ийн аль нэгийг будна — тэр хувилбарын зөв хариултаар шалгагдана. Дүн, дундаж нэг шалгалтад нэгдэж, анализ хувилбараар ялгагдана.`
+              : 'Нэг шалгалтыг A, B, C… хувилбартай авах бол хувилбар нэмээд, тус бүрийн зөв хариултыг оруулна.'}
+          </span>
+        </div>
         <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:12}}>
-          <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginRight:4}}>2. Зөв хариулт, оноо, сэдэв</div>
+          <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginRight:4}}>2. Зөв хариулт, оноо, сэдэв{vlist.length>1?` · ${vcur} хувилбар`:''}</div>
           <span className="cm-pts" style={{fontSize:12.5,fontWeight:700,color:'#374151',background:'#f3f4f6',borderRadius:999,padding:'4px 10px'}}>1-р хэсэг: <b>{fmtPts(sec1Total)}</b> оноо</span>
           {useSec2&&<span className="cm-pts" style={{fontSize:12.5,fontWeight:700,color:'#374151',background:'#f3f4f6',borderRadius:999,padding:'4px 10px'}}>2-р хэсэг: <b>{fmtPts(sec2Total)}</b> оноо</span>}
           {useSec2&&<span className="cm-pts" style={{fontSize:12.5,fontWeight:700,color:'white',background:'#7B52EE',borderRadius:999,padding:'4px 10px'}}>Нийт: <b>{fmtPts(sec1Total+sec2Total)}</b> оноо</span>}
@@ -1084,7 +1166,7 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
 
         <div style={{display:'grid',gridTemplateColumns:cols===1?'minmax(0,1fr)':'repeat(auto-fill,minmax(340px,1fr))',gap:6}}>
           {Array.from({length:cnt},(_,i)=>(
-            <div key={i} className="cm-keyrow" style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px',background:'#f9fafb',borderRadius:8,border:'1px solid #e5e7eb'}}>
+            <div key={i} className="cm-keyrow" style={{display:'flex',alignItems:'center',gap:6,padding:'7px 10px',background:'#f9fafb',borderRadius:8,border:'1px solid '+(keys[i]?'#e5e7eb':'#fca5a5')}}>
               <span className="cm-keyno" style={{fontSize:11,fontWeight:700,color:'#9ca3af',minWidth:26,textAlign:'right'}}>D{i+1}</span>
               <div className="cm-keych" style={{display:'flex',gap:2}}>
                 {SEC1_CHOICES.map(c=>(
@@ -1112,7 +1194,15 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
       </div>
       {useSec2&&(
         <div style={{background:'white',borderRadius:16,padding:24,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
-          <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a',marginBottom:12}}>3. 2-р хэсгийн зөв хариулт, оноо</div>
+          <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:12}}>
+            <div style={{fontWeight:800,fontSize:16,color:'#1c1f2a'}}>3. 2-р хэсгийн зөв хариулт, оноо{vlist.length>1?` · ${vcur} хувилбар`:''}</div>
+            {vlist.length>1&&<div style={{marginLeft:'auto',display:'flex',gap:4}}>
+              {vlist.map(L=>(
+                <button key={L} onClick={()=>switchVariant(L)} aria-pressed={vcur===L}
+                  style={{minWidth:32,height:30,border:'1.5px solid '+(vcur===L?'#7B52EE':'#e5e7eb'),borderRadius:8,fontWeight:900,fontSize:13,cursor:'pointer',background:vcur===L?'#7B52EE':'white',color:vcur===L?'white':'#374151'}}>{L}</button>
+              ))}
+            </div>}
+          </div>
           {SEC2_SUBS.filter((_,i)=>sec2EnabledSubs[i]).map(sub=>(
             <div key={sub} style={{marginBottom:20}}>
               <div style={{fontWeight:700,fontSize:14,color:'#7B52EE',marginBottom:8}}>Дэд хэсэг {sub}</div>
@@ -1399,6 +1489,10 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
   const [editBusy, setEditBusy] = useState(false);
   const [editErr, setEditErr] = useState('');
   const [editTab, setEditTab] = useState('sec1');
+  // Олон хувилбартай шалгалт: засах цонхонд сурагчийн хувилбарыг сольж болно — түлхүүр нь тэр хувилбарынх
+  const vers = examVariants(exam), multiVer = vers.length > 1;
+  const [editVer, setEditVer] = useState('A');
+  const ex = examForVersion(exam, editVer);
   function openEdit(student, defaultTab='sec1') {
     // Sec1 — seed from existing answers
     const N = exam.sec1Count || (exam.sec1Key||[]).length || 36;
@@ -1409,21 +1503,20 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
       const v = byQ[i+1];
       s1.push((v && v !== 'BLANK') ? String(v) : '');
     }
-    // Sec2 — seed from existing answers
+    // Sec2 — seed from existing answers (аль нэг хувилбарт хариутай мөр бүр — хувилбар солиход хэрэгтэй)
     const s2 = {};
-    const cfg = exam.sec2Config || {};
+    const cfgs = [exam.sec2Config || {}, ...Object.values(exam.variants || {}).map(v => v?.sec2Config || {})];
+    const hasAns = (c, sub, rk) => { const item = c[sub]?.[rk]; const ans = item && typeof item==='object' ? item.ans : item; return !(ans===undefined||ans===null||ans===''); };
     ['2.1','2.2','2.3','2.4'].forEach(sub=>{
-      if (!cfg[sub]?._enabled) return;
+      if (!exam.sec2Config?.[sub]?._enabled) return;
       s2[sub] = {};
       ['a','b','c','d','e','f','g','h'].forEach(rk=>{
-        const item = cfg[sub][rk];
-        if (!item) return;
-        const ans = typeof item==='object'?item.ans:item;
-        if (ans===undefined||ans===null||ans==='') return;
+        if (!cfgs.some(c => hasAns(c, sub, rk))) return;
         const cur = student.sec2Results?.[sub]?.[rk]?.sel;
         s2[sub][rk] = (cur && cur!=='BLANK') ? String(cur) : '';
       });
     });
+    setEditVer(studentVariant(exam, student.version));
     setSec1Vals(s1); setSec2Vals(s2); setEditErr(''); setEditTab(defaultTab); setEditStu(student);
   }
   async function saveEdit() {
@@ -1432,7 +1525,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
     try {
       await apiFetch('/api/students/sec2', {
         method:'PATCH',
-        body: { studentId: editStu.id, sec1: sec1Vals, sec2: sec2Vals }
+        body: { studentId: editStu.id, sec1: sec1Vals, sec2: sec2Vals, ...(multiVer ? { version: editVer } : {}) }
       });
       if (onReload) await onReload();
       setEditStu(null);
@@ -1618,6 +1711,16 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
               </h2>
               <button onClick={()=>!editBusy&&setEditStu(null)} style={{border:'none',background:'none',fontSize:22,cursor:'pointer',color:'#9ca3af'}}>×</button>
             </div>
+            {multiVer && (
+              <div style={{display:'flex',alignItems:'center',gap:6,marginBottom:12,flexWrap:'wrap'}}>
+                <span style={{fontSize:13,fontWeight:800,color:d?'#d1d5db':'#374151'}}>Хувилбар</span>
+                {vers.map(L=>(
+                  <button key={L} onClick={()=>setEditVer(L)} aria-pressed={editVer===L}
+                    style={{minWidth:34,height:32,border:'1.5px solid '+(editVer===L?'#7B52EE':(d?'#4b5563':'#e5e7eb')),borderRadius:8,fontWeight:900,fontSize:13,cursor:'pointer',background:editVer===L?'#7B52EE':(d?'#1c1f2a':'white'),color:editVer===L?'white':(d?'#f3f4f6':'#374151')}}>{L}</button>
+                ))}
+                {editVer!==studentVariant(exam, editStu.version) && <span style={{fontSize:12,color:'#b45309',fontWeight:700}}>Хадгалахад {editVer} хувилбарын зөв хариултаар дахин бодно</span>}
+              </div>
+            )}
             {/* Tabs */}
             <div style={{display:'flex',gap:4,marginBottom:14,borderBottom:'1px solid '+(d?'#2a2e38':'#e5e7eb')}}>
               <button onClick={()=>setEditTab('sec1')}
@@ -1640,8 +1743,8 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(180px,1fr))',gap:8}}>
                   {sec1Vals.map((val,i)=>{
-                    const key = exam.sec1Key?.[i] || '';
-                    const pts = exam.sec1Scores?.[i] || 1;
+                    const key = ex.sec1Key?.[i] || '';
+                    const pts = ex.sec1Scores?.[i] || 1;
                     return (
                       <div key={i} style={{padding:8,border:'1px solid '+(d?'#2a2e38':'#e5e7eb'),borderRadius:8,background:d?'#0f1115':'#f9fafb',display:'flex',alignItems:'center',gap:6}}>
                         <div style={{fontSize:11,fontWeight:700,color:d?'#d1d5db':'#6b7280',width:32}}>Q{i+1}</div>
@@ -1668,13 +1771,14 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
                   Сурагчийн оруулсан 0–9 цифрийг бичнэ үү. Хоосон үлдээвэл "blank".
                 </div>
                 <div style={{display:'grid',gridTemplateColumns:'repeat(2,1fr)',gap:14}}>
-                  {Object.keys(sec2Vals).sort().map(sub=>(
+                  {Object.keys(sec2Vals).sort().filter(sub=>Object.keys(sec2Vals[sub]).some(rk=>{const c=ex.sec2Config?.[sub]?.[rk];const a=c&&typeof c==='object'?c.ans:c;return a!==undefined&&a!==null&&a!=='';})).map(sub=>(
                     <div key={sub} style={{padding:12,border:'1px solid '+(d?'#2a2e38':'#e5e7eb'),borderRadius:10,background:d?'#0f1115':'#f9fafb'}}>
                       <div style={{fontWeight:800,fontSize:14,color:d?'#f3f4f6':'#1c1f2a',marginBottom:8}}>{sub}</div>
                       <div style={{display:'grid',gridTemplateColumns:'auto 1fr auto',gap:6,alignItems:'center'}}>
                         {Object.keys(sec2Vals[sub]).map(rk=>{
-                          const cfg = exam.sec2Config?.[sub]?.[rk];
-                          const ans = typeof cfg==='object'?cfg.ans:cfg;
+                          const cfg = ex.sec2Config?.[sub]?.[rk];
+                          const ans = cfg&&typeof cfg==='object'?cfg.ans:cfg;
+                          if (ans===undefined||ans===null||ans==='') return null;   // энэ хувилбарт байхгүй мөр
                           const pts = typeof cfg==='object'?(cfg.score!=null?cfg.score:1):(exam.sec2Score||1);
                           return (
                             <div key={rk} style={{display:'contents'}}>
@@ -1683,7 +1787,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
                                 type="text" inputMode="numeric" pattern="[0-9]*" maxLength={1}
                                 value={sec2Vals[sub][rk]}
                                 onChange={e=>{
-                                  const v = e.target.value.replace(/[^0-9]/g,'').slice(0,1);
+                                  const v = e.target.value.replace(/[^0-9.-]/g,'').slice(0,1);
                                   setSec2Vals(prev=>({...prev,[sub]:{...prev[sub],[rk]:v}}));
                                 }}
                                 style={{width:42,padding:'6px 8px',border:'1px solid '+(d?'#4b5563':'#d1d5db'),borderRadius:6,textAlign:'center',fontWeight:700,fontSize:14,background:d?'#1c1f2a':'white',color:d?'#f3f4f6':'#1c1f2a'}}
@@ -1720,13 +1824,19 @@ function AnalyticsPage({exam, students, teacherName, dark:d=false}) {
   const [filterClass, setFilterClass] = useState('');
   const [school, setSchool] = useState(() => { try { return localStorage.getItem('eyesh_report_school') || ''; } catch(e) { return ''; } });
   const [xlsxBusy, setXlsxBusy] = useState(false);
+  // Олон хувилбартай шалгалт: «Бүх хувилбар» = нэгдсэн дүн; A/B… сонговол тэр хувилбарын сурагчид
+  const [filterVer, setFilterVer] = useState('');
+  useEffect(() => { setFilterVer(''); }, [exam?.id]);
+  const vers = examVariants(exam), multiVer = vers.length > 1;
   const allClasses = [...new Set(students.map(s=>s.class||'').filter(Boolean))].sort((a,b)=>a.localeCompare(b,'mn'));
-  const filtered = filterClass ? students.filter(s=>(s.class||'')===filterClass) : students;
+  const byClass = filterClass ? students.filter(s=>(s.class||'')===filterClass) : students;
+  const filtered = multiVer && filterVer ? byClass.filter(s=>studentVariant(exam,s.version)===filterVer) : byClass;
   if (!exam||!students.length) return <div style={{textAlign:'center',padding:80,color:'#9ca3af',fontWeight:600}}>Дүн шинжилгээнд хангалттай өгөгдөл байхгүй</div>;
   async function exportXlsx() {
     setXlsxBusy(true);
     try { localStorage.setItem('eyesh_report_school', school.trim()); } catch(e) {}
-    try { await exportAnalysisXlsx(exam, filtered, { school: school.trim(), teacherName, label: filterClass }); }
+    const label = [filterClass, multiVer && filterVer ? filterVer+' хувилбар' : ''].filter(Boolean).join(' · ');
+    try { await exportAnalysisXlsx(exam, filtered, { school: school.trim(), teacherName, label }); }
     catch(e) { alert('Excel үүсгэж чадсангүй: '+(e.message||e)); }
     setXlsxBusy(false);
   }
@@ -1740,13 +1850,16 @@ function AnalyticsPage({exam, students, teacherName, dark:d=false}) {
   const gradeColors=['#15803d','#1d4ed8','#0369a1','#d97706','#ea580c','#dc2626'];
   const gradeCounts=grades.map(g=>filtered.filter(s=>s.grade?.g===g).length);
 
-  // Topic analysis
+  // Topic analysis — сурагч бүрийн асуултын сэдэв нь түүний хувилбарынх (нэг сэдэв хувилбаруудад өөр дугаартай байж болно)
   const topicMap={};
-  exam.sec1Key?.forEach((_,i)=>{
-    const t=exam.topics?.[i]||'Бусад';
-    if(!topicMap[t]) topicMap[t]={total:0,correct:0};
-    topicMap[t].total+=filtered.length;
-    filtered.forEach(s=>{if(s.sec1Results?.[i]?.st==='ok') topicMap[t].correct++;});
+  filtered.forEach(s=>{
+    const ve=examForVersion(exam,s.version);
+    (ve.sec1Key||[]).forEach((_,i)=>{
+      const t=ve.topics?.[i]||'Бусад';
+      if(!topicMap[t]) topicMap[t]={total:0,correct:0};
+      topicMap[t].total++;
+      if(s.sec1Results?.[i]?.st==='ok') topicMap[t].correct++;
+    });
   });
 
   return (
@@ -1760,6 +1873,14 @@ function AnalyticsPage({exam, students, teacherName, dark:d=false}) {
               <button key={c} onClick={()=>setFilterClass(c)} style={{padding:'6px 12px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:filterClass===c?'#7B52EE':'#f3f4f6',color:filterClass===c?'white':'#374151'}}>{c}</button>
             ))}
           </div>
+          {multiVer && (
+            <div className="cm-vfilter" style={{display:'flex',gap:4,flexWrap:'wrap'}}>
+              <button onClick={()=>setFilterVer('')} style={{padding:'6px 12px',borderRadius:8,border:'none',fontWeight:700,fontSize:12,cursor:'pointer',background:filterVer===''?'#1c1f2a':'#f3f4f6',color:filterVer===''?'white':'#374151'}}>Бүх хувилбар</button>
+              {vers.map(L=>(
+                <button key={L} onClick={()=>setFilterVer(L)} style={{padding:'6px 12px',borderRadius:8,border:'none',fontWeight:800,fontSize:12,cursor:'pointer',background:filterVer===L?'#1c1f2a':'#f3f4f6',color:filterVer===L?'white':'#374151'}}>{L}</button>
+              ))}
+            </div>
+          )}
           <input value={school} onChange={e=>setSchool(e.target.value)} placeholder="Сургуулийн нэр (тайлангийн толгойд)" title="Excel тайлангийн толгойд гарна"
             style={{padding:'9px 12px',border:'1.6px solid #e5e7eb',borderRadius:8,fontSize:13,minWidth:230,outline:'none',background:'#fff',color:'#1c1f2a'}} />
           <button onClick={exportXlsx} disabled={xlsxBusy} style={{padding:'10px 14px',background:'linear-gradient(135deg,#16a34a,#22c55e)',color:'white',border:'none',borderRadius:8,fontWeight:700,cursor:'pointer',opacity:xlsxBusy?.7:1}}>
@@ -1775,6 +1896,25 @@ function AnalyticsPage({exam, students, teacherName, dark:d=false}) {
           </div>
         ))}
       </div>
+      {multiVer && (
+        <div style={{background:'white',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
+          <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Хувилбараар{filterClass?` · ${filterClass}`:''}</div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10}}>
+            {vers.map(L=>{
+              const vs=byClass.filter(s=>studentVariant(exam,s.version)===L);
+              const va=vs.length?vs.reduce((a,b)=>a+b.scaled,0)/vs.length:0, vp=vs.filter(s=>s.scaled>=60).length;
+              return (
+                <button key={L} onClick={()=>setFilterVer(filterVer===L?'':L)} aria-pressed={filterVer===L}
+                  style={{textAlign:'left',border:'1.5px solid '+(filterVer===L?'#7B52EE':'#e5e7eb'),borderRadius:12,padding:'12px 14px',background:filterVer===L?'#f3f0ff':'#f9fafb',cursor:'pointer'}}>
+                  <div style={{fontSize:13,fontWeight:900,color:'#7B52EE'}}>{L} хувилбар</div>
+                  <div style={{fontSize:22,fontWeight:900,color:vs.length?eyeshGrade(va).c:'#9ca3af'}}>{vs.length?va.toFixed(1):'—'}</div>
+                  <div style={{fontSize:12,color:'#6b7280'}}>{vs.length} сурагч · тэнцсэн {vp}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div className="cm-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
         <div style={{background:'white',borderRadius:12,padding:20,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontWeight:700,fontSize:14,marginBottom:12}}>Зэрэглэлийн тархалт</div>

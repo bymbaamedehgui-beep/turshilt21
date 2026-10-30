@@ -145,7 +145,7 @@ function ResultRow({ r, onOpen }) {
       <div className="sp-res-sc" style={{ color: gradeColor(r) }}><b>{r.scaled}</b><span>{r.grade?.g || ''}</span></div>
       <div className="sp-res-t">
         <b>{r.examTitle}</b>
-        <span>{r.examSubject || '—'} · {fmtDate(r.submittedAt)}{r.version === 'онлайн' ? ' · онлайн' : ''}</span>
+        <span>{r.examSubject || '—'} · {fmtDate(r.submittedAt)}{/онлайн/.test(r.version || '') ? ' · онлайн' : ''}</span>
         <i><em className="ok">✓ {r.correct}</em><em className="ng">✗ {r.wrong - r.blank}</em><em className="bl">○ {r.blank}</em></i>
       </div>
     </button>
@@ -217,7 +217,7 @@ function Exams({ data, onOpen, onTake }) {
         <div className="sp-sec-h"><b>Онлайнаар өгөх</b></div>
         {data.exams.map(e => (
           <div key={e.id} className="sp-card sp-exam">
-            <div><b>{e.title}</b><span>{e.subject || '—'} · {e.sec1Count} тест{Object.keys(e.sec2).length ? ' · 2-р хэсэг' : ''}</span></div>
+            <div><b>{e.title}</b><span>{e.subject || '—'} · {e.sec1Count} тест{Object.keys(e.sec2).length ? ' · 2-р хэсэг' : ''}{e.variants ? ` · ${Object.keys(e.variants).join('/')} хувилбар` : ''}</span></div>
             <button className="cm-btn" onClick={() => onTake(e)}>Эхлэх</button>
           </div>
         ))}
@@ -279,13 +279,18 @@ function TakeExam({ exam, onBack, onDone }) {
   const [sec2, setSec2] = useState({});
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // Олон хувилбартай шалгалт: сурагч материал дээрх хувилбараа сонгоно — тэр хувилбарын түлхүүрээр шалгагдана
+  const vers = exam.variants ? Object.keys(exam.variants) : [];
+  const [ver, setVer] = useState('');
+  const rows2 = vers.length ? (exam.variants[ver] || {}) : exam.sec2;
   const filled = sec1.filter(Boolean).length;
   async function submit() {
+    if (vers.length && !ver) { setErr('Эхлээд хувилбараа сонгоно уу'); window.scrollTo(0, 0); return; }
     const blank = exam.sec1Count - filled;
     if (!window.confirm(blank > 0 ? `${blank} асуулт хоосон байна. Илгээх үү? Дахин өгөх боломжгүй.` : 'Хариултаа илгээх үү? Дахин өгөх боломжгүй.')) return;
     setBusy(true); setErr('');
     try {
-      const row = await sapi('/api/student/submit', { method: 'POST', body: { examId: exam.id, sec1, sec2 } });
+      const row = await sapi('/api/student/submit', { method: 'POST', body: { examId: exam.id, sec1, sec2, ...(vers.length ? { version: ver } : {}) } });
       onDone({ ...row, examTitle: exam.title, examSubject: exam.subject });
     } catch (e) { setErr(e.message); setBusy(false); }
   }
@@ -296,6 +301,14 @@ function TakeExam({ exam, onBack, onDone }) {
         <div className="sp-who"><b>{exam.title}</b><span>{exam.subject || '—'} · бөглөсөн {filled}/{exam.sec1Count}</span></div>
       </header>
       <main className="sp-main">
+        {vers.length > 0 && <>
+          <div className="sp-sec-h"><b>Хувилбар</b>{!ver && <span>Материал дээрх хувилбараа сонгоно уу</span>}</div>
+          <div className="sp-card sp-take">
+            <div className="sp-take-row">
+              {vers.map(L => <button key={L} className={ver === L ? 'on' : ''} onClick={() => { setVer(L); setErr(''); }}>{L}</button>)}
+            </div>
+          </div>
+        </>}
         <div className="sp-sec-h"><b>1-р хэсэг</b></div>
         <div className="sp-card sp-take">
           {sec1.map((v, i) => (
@@ -307,7 +320,7 @@ function TakeExam({ exam, onBack, onDone }) {
             </div>
           ))}
         </div>
-        {Object.entries(exam.sec2).map(([sub, rows]) => (
+        {Object.entries(rows2).map(([sub, rows]) => (
           <div key={sub}>
             <div className="sp-sec-h"><b>{sub}</b></div>
             <div className="sp-card sp-take">
