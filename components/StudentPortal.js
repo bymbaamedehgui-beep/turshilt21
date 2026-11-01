@@ -2,7 +2,7 @@
 // Кодоороо нэвтэрсэн сурагч: Нүүр (ЭЕШ хүртэлх тоолуур, зорилгын ахиц), Шалгалт (бүх өгсөн шалгалт + онлайнаар өгөх),
 // Сурах бичиг (admin-ий оруулсан 12-р ангийн PDF), Материал (багшийн ЭЕШ материал), Миний зорилго.
 import { useState, useEffect } from 'react';
-import { SEC1_CHOICES } from '../lib/eyesh';
+import { SEC1_CHOICES, scaleScore, scaleNote } from '../lib/eyesh';
 
 const TOKEN_KEY = 'student_token';
 const SUBJECTS = ['Математик', 'Физик', 'Хими', 'Биологи', 'Монгол хэл', 'Англи хэл', 'Орос хэл', 'Түүх', 'Газарзүй', 'Нийгмийн ухаан'];
@@ -140,13 +140,14 @@ function Countdown({ date, big }) {
 }
 
 function ResultRow({ r, onOpen }) {
+  const hs = scaleScore(r.scaled, r.examSubject);
   return (
     <button className="sp-card sp-res" onClick={() => onOpen(r)}>
       <div className="sp-res-sc" style={{ color: gradeColor(r) }}><b>{r.scaled}</b><span>{r.grade?.g || ''}</span></div>
       <div className="sp-res-t">
         <b>{r.examTitle}</b>
         <span>{r.examSubject || '—'} · {fmtDate(r.submittedAt)}{/онлайн/.test(r.version || '') ? ' · онлайн' : ''}</span>
-        <i>{r.scaleScore != null && <em className="hs">Хэмжээст {r.scaleScore}</em>}<em className="ok">✓ {r.correct}</em><em className="ng">✗ {r.wrong - r.blank}</em><em className="bl">○ {r.blank}</em></i>
+        <i>{hs != null && <em className="hs">Хэмжээст {hs}</em>}<em className="ok">✓ {r.correct}</em><em className="ng">✗ {r.wrong - r.blank}</em><em className="bl">○ {r.blank}</em></i>
       </div>
     </button>
   );
@@ -235,7 +236,7 @@ function Exams({ data, onOpen, onTake }) {
 }
 
 function ResultDetail({ r, onBack }) {
-  const sec2 = Object.entries(r.sec2Results || {});
+  const sec2 = Object.entries(r.sec2Results || {}), hs = scaleScore(r.scaled, r.examSubject);
   return (
     <div className="sp">
       <header className="sp-top">
@@ -248,7 +249,7 @@ function ResultDetail({ r, onBack }) {
           <div>
             <div className="sp-grade" style={{ color: gradeColor(r) }}>{r.grade?.g} · {r.grade?.l}</div>
             <div className="sp-raw">{r.rawEarned}/{r.rawMax} оноо</div>
-            {r.scaleScore != null && <div className="sp-hs">Хэмжээст оноо <b>{r.scaleScore}</b> · шалгалт өгсөн {r.scaleN} сурагчийн дүнтэй харьцуулсан (200–800)</div>}
+            {hs != null && <div className="sp-hs">Хэмжээст оноо <b>{hs}</b> · {scaleNote(r.examSubject)} (200–800, ойролцоо)</div>}
             <i className="sp-cnt"><em className="ok">✓ {r.correct}</em><em className="ng">✗ {r.wrong - r.blank}</em><em className="bl">○ {r.blank}</em></i>
           </div>
         </div>
