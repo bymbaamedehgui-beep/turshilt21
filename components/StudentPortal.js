@@ -146,7 +146,7 @@ function ResultRow({ r, onOpen }) {
       <div className="sp-res-t">
         <b>{r.examTitle}</b>
         <span>{r.examSubject || '—'} · {fmtDate(r.submittedAt)}{/онлайн/.test(r.version || '') ? ' · онлайн' : ''}</span>
-        <i><em className="ok">✓ {r.correct}</em><em className="ng">✗ {r.wrong - r.blank}</em><em className="bl">○ {r.blank}</em></i>
+        <i>{r.scaleScore != null && <em className="hs">Хэмжээст {r.scaleScore}</em>}<em className="ok">✓ {r.correct}</em><em className="ng">✗ {r.wrong - r.blank}</em><em className="bl">○ {r.blank}</em></i>
       </div>
     </button>
   );
@@ -248,6 +248,7 @@ function ResultDetail({ r, onBack }) {
           <div>
             <div className="sp-grade" style={{ color: gradeColor(r) }}>{r.grade?.g} · {r.grade?.l}</div>
             <div className="sp-raw">{r.rawEarned}/{r.rawMax} оноо</div>
+            {r.scaleScore != null && <div className="sp-hs">Хэмжээст оноо <b>{r.scaleScore}</b> · шалгалт өгсөн {r.scaleN} сурагчийн дүнтэй харьцуулсан (200–800)</div>}
             <i className="sp-cnt"><em className="ok">✓ {r.correct}</em><em className="ng">✗ {r.wrong - r.blank}</em><em className="bl">○ {r.blank}</em></i>
           </div>
         </div>

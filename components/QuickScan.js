@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { apiFetch, uid, calcScore, SEC2_SUBS, examVariants, examForVersion } from '../lib/eyesh';
+import { apiFetch, uid, calcScore, SEC2_SUBS, examVariants, examForVersion, scaleStats, scaleScore } from '../lib/eyesh';
 import { sheetLayout, readSheet, readKey, toDet, toGray, S1_CHOICES, S2_OPTS, S1_MAX } from '../lib/omr';
 
 // ── ZipGrade маягийн хурдан шалгалт ────────────────────────────────────────
@@ -264,6 +264,9 @@ function Review({ exam, layout, result, roster, existing, chosen, onChangeStuden
     const r = { ...read, groups: Object.fromEntries(groups.map(g => [g.id, { sel: ans[g.id], flag: pending.has(g.id) ? 'p' : null }])) };
     return calcScore(toDet(r, layout), vExam);
   }, [ans, pending, vExam]);
+  // Хэмжээст оноо: энэ шалгалтын хадгалсан дүнгүүд + энэ хуудас — Жагсаалтад бүх дүнгээр дахин бодогдоно
+  const scaleSt = useMemo(() => scaleStats([...existing, { scaled: scored.scaled }]), [existing, scored.scaled]);
+  const hs = verOk ? scaleScore(scored.scaled, scaleSt) : null;
 
   const keyOf = g => g.kind === 's1' ? ex.sec1Key?.[g.q - 1]
     : g.kind === 's2' ? (v => (v && typeof v === 'object' ? v.ans : v))(ex.sec2Config?.[g.sub]?.[g.row]) : null;
@@ -336,6 +339,7 @@ function Review({ exam, layout, result, roster, existing, chosen, onChangeStuden
             <div className="qs-sinfo">
               <div className="qs-grade" style={{ color: grade.c }}>{grade.g} · {grade.l}</div>
               <div className="qs-raw">{scored.rawEarned}/{scored.rawMax} оноо{multi ? ` · ${ver} хувилбар` : ''}</div>
+              {hs != null && <div className="qs-hs">Хэмжээст оноо <b>{hs}</b> <span>· {scaleSt.n} сурагчаар</span></div>}
               <div className="qs-cnt">
                 <span className="ok">✓ {scored.correct}</span>
                 <span className="ng">✗ {scored.wrong - scored.blank}</span>

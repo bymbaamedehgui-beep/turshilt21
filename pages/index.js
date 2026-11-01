@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
-import { SEC1_CHOICES, SEC2_ROWS, SEC2_SUBS, uid, pf, eyeshGrade, toScaled, getToken, apiFetch, calcScore, VARIANTS, examVariants, examForVersion, studentVariant } from '../lib/eyesh';
+import { SEC1_CHOICES, SEC2_ROWS, SEC2_SUBS, uid, pf, eyeshGrade, toScaled, getToken, apiFetch, calcScore, VARIANTS, examVariants, examForVersion, studentVariant, scaleStats, scaleScore, scaleNote } from '../lib/eyesh';
 import { ScanPage } from '../components/QuickScan';
 import { SheetsPage } from '../components/AnswerSheet';
 import { Paywall } from '../components/Paywall';
@@ -161,6 +161,8 @@ function exportExcel(exam, students) {
     // Олон хувилбартай бол дүн нэгдсэн, дасгалын шинжилгээ хувилбар бүрээр
     const vers = examVariants(exam), multi = vers.length>1;
     const ofVer = L => multi ? students.filter(s=>studentVariant(exam,s.version)===L) : students;
+    // Хэмжээст оноо — бүх хуудсанд шалгалтын нийт дүнгийн дундаж, σ-ээр (ангийн хуудсанд ч)
+    const st = scaleStats(students), hs = s => scaleScore(s.scaled, st) ?? '—';
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
       ['EYESH Шалгалтын Тайлан'],[],
       ['Шалгалтын нэр:',exam.title],['Хичээл:',exam.subject],
@@ -169,15 +171,16 @@ function exportExcel(exam, students) {
       ['Оролцогч:',n],['Дундаж ЭЕШ:',avg],
       ['Тэнцсэн >=60:',(pass+'/'+n+' ('+n?(Math.round(pass/n*100))+'%':'0%')+')'],
       ['Хамгийн өндөр:',n?Math.max(...ss):'—'],['Хамгийн бага:',n?Math.min(...ss):'—'],
+      ['Хэмжээст оноо:','500 + 100 × (ЭЕШ − дундаж) / σ, 200–800 — '+scaleNote(st)],
       [],[' Огноо:',new Date().toLocaleString('mn-MN')]
     ]),'Тойм');
     // All students sheet
     const sortedAll = [...students].sort((a,b)=>b.scaled-a.scaled);
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
-      ['#','Нэр','Код','Анги','Хув.','Зөв','Буруу','Хоосон','Raw','ЭЕШ','Зэрэглэл'],
+      ['#','Нэр','Код','Анги','Хув.','Зөв','Буруу','Хоосон','Raw','ЭЕШ','Хэмжээст','Зэрэглэл'],
       ...sortedAll.map((s,i)=>[
         i+1,s.name,s.code,s.class||'—',s.version||'—',s.correct,s.wrong,s.blank,
-        s.rawEarned+'/'+s.rawMax,s.scaled,(s.grade?.g+' '+s.grade?.l)
+        s.rawEarned+'/'+s.rawMax,s.scaled,hs(s),(s.grade?.g+' '+s.grade?.l)
       ])
     ]),'Бүгд');
     // Per-class sheets
@@ -190,8 +193,8 @@ function exportExcel(exam, students) {
       XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
         [cls+' — '+exam.title],[],
         ['Нийт сурагч:',clsStudents.length],['Дундаж:',clsAvg],['Тэнцсэн:',clsPass+'/'+clsStudents.length],[],
-        ['#','Нэр','Код','Зөв','Буруу','Хоосон','ЭЕШ','Зэрэглэл'],
-        ...clsStudents.map((s,i)=>[i+1,s.name,s.code,s.correct,s.wrong,s.blank,s.scaled,s.grade?.g+' '+s.grade?.l])
+        ['#','Нэр','Код','Зөв','Буруу','Хоосон','ЭЕШ','Хэмжээст','Зэрэглэл'],
+        ...clsStudents.map((s,i)=>[i+1,s.name,s.code,s.correct,s.wrong,s.blank,s.scaled,hs(s),s.grade?.g+' '+s.grade?.l])
       ]),sheetName);
     });
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([
@@ -1474,6 +1477,7 @@ function RatingPage({exams, students, dark:d=false}) {
 function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, dark:d=false}) {
   if (!exam) return <div style={{textAlign:'center',padding:80,color:'#9ca3af',fontWeight:600}}>Шалгалт сонгоно уу</div>;
   const sorted=[...students].sort((a,b)=>b.scaled-a.scaled);
+  const st=scaleStats(students);   // хэмжээст оноо: энэ шалгалтын бүх дүнгийн дундаж, σ
   const [pdfOpen, setPdfOpen] = useState(false);
   // ── ZipGrade CSV import ──
   const [zipOpen, setZipOpen] = useState(false);
@@ -1546,12 +1550,12 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
 
   // Сурагчийн дүнгийн PDF (нэг сурагч эсвэл анги бүхэлдээ) — монгол үсэгтэй (lib/report-pdf.js)
   function exportStudentPDF(student) {
-    downloadResultsPdf(exam, [student], (student.name||student.code||'сурагч')+'_'+exam.title+'.pdf').catch(e=>alert('PDF үүсгэж чадсангүй: '+(e.message||e)));
+    downloadResultsPdf(exam, [student], (student.name||student.code||'сурагч')+'_'+exam.title+'.pdf', st).catch(e=>alert('PDF үүсгэж чадсангүй: '+(e.message||e)));
   }
   function exportClassPDFs(classname) {
     const list = classname === '__all__' ? sorted : sorted.filter(s => (s.class||'') === classname);
     if (!list.length) return;
-    downloadResultsPdf(exam, list, exam.title+'_'+(classname === '__all__' ? 'бүгд' : classname)+'.pdf').catch(e=>alert('PDF үүсгэж чадсангүй: '+(e.message||e)));
+    downloadResultsPdf(exam, list, exam.title+'_'+(classname === '__all__' ? 'бүгд' : classname)+'.pdf', st).catch(e=>alert('PDF үүсгэж чадсангүй: '+(e.message||e)));
   }
 
   const classes = [...new Set(sorted.map(s => s.class||'').filter(Boolean))].sort();
@@ -1600,9 +1604,10 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
         <div style={{background:d?'#1c1f2a':'white',borderRadius:12,padding:'44px',textAlign:'center',color:'#9ca3af'}}>Одоохондоо сурагч байхгүй</div>
       ):(
         <>
+        <div className="cm-hnote"><b>Хэмжээст оноо</b> = 500 + 100 × (гүйцэтгэл − дундаж) / σ, 200–800 хооронд — {scaleNote(st)}.</div>
         <div className="cm-card cm-only-phone" style={{padding:0,overflow:'hidden'}}>
           {sorted.map((s,i)=>{
-            const g=eyeshGrade(s.scaled);
+            const g=eyeshGrade(s.scaled), hs=scaleScore(s.scaled,st);
             return (
               <div key={s.id} className="cm-srow">
                 <div className="cm-srow-top">
@@ -1610,7 +1615,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
                   <div className="cm-sinfo"><b>{s.name}</b><span>{[s.class,s.code,s.version&&s.version!=='—'?'Хув. '+s.version:''].filter(Boolean).join(' · ')||'—'}</span></div>
                   <div className="cm-sscore" style={{color:g.c}}><b>{s.scaled}</b><span>{g.g} · {g.l}</span></div>
                 </div>
-                <div className="cm-schips"><i className="ok">✓ {s.correct} зөв</i><i className="ng">✗ {s.wrong} буруу</i><i>○ {s.blank} хоосон</i></div>
+                <div className="cm-schips">{hs!=null&&<i className="h">Хэмжээст {hs}</i>}<i className="ok">✓ {s.correct} зөв</i><i className="ng">✗ {s.wrong} буруу</i><i>○ {s.blank} хоосон</i></div>
                 <div className="cm-sacts">
                   <button className="e" onClick={()=>openEdit(s,'sec1')}>✏️ Засах</button>
                   <button className="p" onClick={()=>exportStudentPDF(s)}>PDF</button>
@@ -1624,7 +1629,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
           <table style={{width:'100%',borderCollapse:'collapse'}}>
             <thead>
               <tr style={{background:d?'#0f1115':'#f9fafb',borderBottom:'2px solid '+(d?'#2a2e38':'#e5e7eb')}}>
-                {['#','Нэр','Код','Хув.','Зөв','Буруу','Хоосон','Гүйцэтгэл','Засах','PDF',''].map(h=>(
+                {['#','Нэр','Код','Хув.','Зөв','Буруу','Хоосон','Гүйцэтгэл','Хэмжээст','Засах','PDF',''].map(h=>(
                   <th key={h} style={{padding:'10px 14px',textAlign:'left',fontSize:12,fontWeight:700,color:'#6b7280'}}>{h}</th>
                 ))}
               </tr>
@@ -1642,6 +1647,7 @@ function BoardPage({exam, students, onDeleteStudent, onExportExcel, onReload, da
                     <td style={{padding:'10px 14px',fontSize:13,color:'#dc2626',fontWeight:600}}>{s.wrong}</td>
                     <td style={{padding:'10px 14px',fontSize:13,color:'#9ca3af'}}>{s.blank}</td>
                     <td style={{padding:'10px 14px',fontSize:16,fontWeight:800,color:g.c}}>{s.scaled}%</td>
+                    <td style={{padding:'10px 14px',fontSize:16,fontWeight:800,color:d?'#c4b1ff':'#5b3fd4'}}>{scaleScore(s.scaled,st)??'—'}</td>
                     <td style={{padding:'10px 14px'}}>
                       <button onClick={()=>openEdit(s,'sec1')}
                         style={{padding:'3px 8px',background:'#dbeafe',border:'none',borderRadius:6,fontSize:11,color:'#1e40af',cursor:'pointer',fontWeight:700}}>✏️ Засах</button>
@@ -1860,6 +1866,9 @@ function AnalyticsPage({exam, students, teacherName, dark:d=false}) {
   const gradeLabels=['Онц','Сайн','Дунд сайн','Хангалттай','Хангалтгүй','Тэнцээгүй'];
   const gradeColors=['#15803d','#1d4ed8','#0369a1','#d97706','#ea580c','#dc2626'];
   const gradeCounts=grades.map(g=>filtered.filter(s=>s.grade?.g===g).length);
+  // Хэмжээст оноо шалгалтын нийт дүнгээр — анги/хувилбараар шүүхэд дундаж нь 500-аас хэр зөрөхийг харуулна
+  const stAll=scaleStats(students), hsList=filtered.map(s=>scaleScore(s.scaled,stAll)).filter(v=>v!=null);
+  const hsAvg=hsList.length?Math.round(hsList.reduce((a,b)=>a+b,0)/hsList.length):'—';
 
   // Topic analysis — сурагч бүрийн асуултын сэдэв нь түүний хувилбарынх (нэг сэдэв хувилбаруудад өөр дугаартай байж болно)
   const topicMap={};
@@ -1900,7 +1909,7 @@ function AnalyticsPage({exam, students, teacherName, dark:d=false}) {
         </div>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(160px,1fr))',gap:12,marginBottom:20}}>
-        {[['Нийт сурагч',filtered.length,'#7B52EE'],['Дундаж ЭЕШ',avg,eyeshGrade(pf(avg)).c],['Медиан',median,'#7B52EE'],['Тэнцсэн',pass+'/'+filtered.length,'#16a34a'],['Тэнцэх %',filtered.length?+(pass/filtered.length*100).toFixed(1):0,'#f97316']].map(([l,v,c])=>(
+        {[['Нийт сурагч',filtered.length,'#7B52EE'],['Дундаж ЭЕШ',avg,eyeshGrade(pf(avg)).c],['Дундаж хэмжээст',hsAvg,'#5b3fd4'],['Медиан',median,'#7B52EE'],['Тэнцсэн',pass+'/'+filtered.length,'#16a34a'],['Тэнцэх %',filtered.length?+(pass/filtered.length*100).toFixed(1):0,'#f97316']].map(([l,v,c])=>(
           <div key={l} style={{background:'white',borderRadius:12,padding:'16px 18px',boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
             <div style={{fontSize:26,fontWeight:900,color:c}}>{v}</div>
             <div style={{fontSize:12,color:'#9ca3af',marginTop:4}}>{l}</div>

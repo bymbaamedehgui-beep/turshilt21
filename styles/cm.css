@@ -185,6 +185,10 @@ body.dark .cm-note{color:var(--soft)}
 .qs-ring span{font-size:12px;color:var(--soft);font-weight:800;margin-top:3px}
 .qs-grade{font-size:17px;font-weight:900}
 .qs-raw{font-size:14px;color:var(--soft);font-weight:700;margin:2px 0 8px}
+.qs-hs{font-size:14px;font-weight:800;color:var(--ink);margin:-4px 0 8px}
+.qs-hs b{color:var(--purple-d);font-size:16px;font-weight:900}
+body.dark .qs-hs b{color:#c4b1ff}
+.qs-hs span{color:var(--soft);font-weight:700}
 .qs-cnt{display:flex;gap:6px;flex-wrap:wrap}
 .qs-cnt span{border-radius:999px;padding:.25rem .7rem;font-size:14px;font-weight:900}
 .qs-cnt .ok{background:#e1f4e9;color:var(--green)}
@@ -282,6 +286,10 @@ body.dark .qs-q.pend{background:#2a2108}
 .cm-schips i{font-style:normal;border-radius:999px;padding:.28rem .7rem;font-size:13px;font-weight:900;background:var(--chip);color:var(--soft)}
 .cm-schips .ok{background:#e1f4e9;color:var(--green)}
 .cm-schips .ng{background:#fdecec;color:#dc2626}
+.cm-schips .h{background:var(--purple-l);color:var(--purple-d)}
+body.dark .cm-schips .h{color:#c4b1ff}
+.cm-hnote{margin:0 0 12px;font-size:13px;color:var(--soft);line-height:1.5}
+.cm-hnote b{color:var(--ink)}
 .cm-sacts{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
 .cm-sacts button{border:0;border-radius:12px;padding:11px 6px;font-weight:900;font-size:14px}
 .cm-sacts .e{background:var(--chip);color:var(--ink)}
@@ -483,6 +491,11 @@ button.sp-card:active,a.sp-card:active{transform:scale(.99)}
 .sp-res-t em.ok,.sp-cnt em.ok{background:#e1f4e9;color:var(--green)}
 .sp-res-t em.ng,.sp-cnt em.ng{background:#fdecec;color:#dc2626}
 .sp-res-t em.bl,.sp-cnt em.bl{background:var(--chip);color:var(--soft)}
+.sp-res-t em.hs,.sp-cnt em.hs{background:var(--purple-l);color:var(--purple-d)}
+body.dark .sp-res-t em.hs,body.dark .sp-cnt em.hs{color:#c4b1ff}
+.sp-hs{font-size:13px;color:var(--soft);font-weight:700;margin:2px 0 6px}
+.sp-hs b{color:var(--purple-d);font-size:16px;font-weight:900}
+body.dark .sp-hs b{color:#c4b1ff}
 .sp-exam{display:flex;align-items:center;gap:12px}
 .sp-exam div{flex:1;min-width:0}
 .sp-exam b{display:block;font-size:15.5px;font-weight:900}

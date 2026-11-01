@@ -1,6 +1,6 @@
-import { initDb, getStudentResults, getExams, getMaterials, getGoals, getSetting } from '../../../lib/db';
+import { initDb, getStudentResults, getExams, getMaterials, getGoals, getSetting, getExamScoresForCode } from '../../../lib/db';
 import { requireStudent } from '../../../lib/auth';
-import { SEC2_SUBS, SEC2_ROWS, examVariants, examForVersion } from '../../../lib/eyesh';
+import { SEC2_SUBS, SEC2_ROWS, examVariants, examForVersion, scaleStats, scaleScore } from '../../../lib/eyesh';
 
 // Сурагчийн хэсгийн бүх мэдээлэл нэг дор: дүнгийн түүх, онлайнаар өгөх шалгалт (хариугүй),
 // сурах бичиг, багшийн материал, зорилго, ЭЕШ-ийн огноо
@@ -26,14 +26,22 @@ export default requireStudent(async function handler(req, res) {
   if (req.method !== 'GET') return res.status(405).end();
   await initDb();
   const s = req.student;
-  const [results, exams, textbooks, materials, goals, eeshDate] = await Promise.all([
+  const [results, exams, textbooks, materials, goals, eeshDate, scores] = await Promise.all([
     getStudentResults(s.code, s.teacher_id),
     getExams(s.teacher_id),
     getMaterials({ kind: 'textbook' }),
     getMaterials({ kind: 'material', teacherId: s.teacher_id }),
     getGoals(s.id),
     getSetting('eesh_date'),
+    getExamScoresForCode(s.code, s.teacher_id),
   ]);
+  // Хэмжээст оноо — тухайн шалгалтын бүх дүнгээр (багшийн Жагсаалттай ижил); бусдын дүнг явуулахгүй, зөвхөн тоо
+  const stats = {};
+  results.forEach(r => {
+    const st = stats[r.examId] || (stats[r.examId] = scaleStats(scores[r.examId] || []));
+    r.scaleScore = scaleScore(r.scaled, st);
+    r.scaleN = st.n;
+  });
   const taken = new Set(results.map(r => r.examId));
   res.json({
     student: { id: s.id, name: s.name, code: s.code, class: s.class },
