@@ -1,4 +1,4 @@
-import { getExams, createExam, initDb, getTeacherById } from '../../../lib/db';
+import { getExams, createExam, initDb, getTeacherById, denySubject } from '../../../lib/db';
 import { requirePaid } from '../../../lib/auth';
 import { neon } from '@neondatabase/serverless';
 
@@ -20,6 +20,7 @@ export default requirePaid(async function handler(req, res) {
         return res.status(403).json({ error: 'Demo хэрэглэгч зөвхөн 1 шалгалт үүсгэж болно' });
       }
     }
+    if (await denySubject(res, teacher, req.body?.subject)) return;   // хичээлийн эрх (lib/db.js canUseSubject)
     const exam = await createExam(req.body, req.teacherId);
     return res.json(exam);
   }

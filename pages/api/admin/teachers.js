@@ -1,6 +1,7 @@
 import { getAllTeachers, updateTeacherStatus, deleteTeacher, getTeacherById, initDb, extendTeacher, setTeacherPhone } from '../../../lib/db';
 import { requireAuth } from '../../../lib/auth';
 import { normalizePhone, maskPhone } from '../../../lib/verifymn';
+import { normSubjects } from '../../../lib/plans';
 
 export default requireAuth(async function handler(req, res) {
   await initDb();
@@ -12,11 +13,14 @@ export default requireAuth(async function handler(req, res) {
     return res.json(teachers);
   }
   if (req.method === 'PATCH' && req.body?.extendMonths) {
-    // Гараар эрх сунгах (бэлэн мөнгө, дансаар гэх мэт)
+    // Гараар эрх сунгах (бэлэн мөнгө, дансаар гэх мэт): subject — тэр хичээлийн эрх; '*' — бүх хичээл (хуучин багц шиг)
     const months = parseInt(req.body.extendMonths, 10);
     if (![1, 3, 6, 12].includes(months)) return res.status(400).json({ error: 'Сар буруу' });
-    const paidUntil = await extendTeacher(req.body.id, months);
-    return paidUntil ? res.json({ ok: true, paidUntil }) : res.status(404).json({ error: 'Багш олдсонгүй' });
+    const all = req.body.subject === '*';
+    const [subject] = all ? [null] : normSubjects([req.body.subject]);
+    if (!all && !subject) return res.status(400).json({ error: 'Хичээл сонгоно уу' });
+    const paidUntil = await extendTeacher(req.body.id, months, subject);
+    return paidUntil ? res.json({ ok: true, paidUntil, subject: subject || '*' }) : res.status(404).json({ error: 'Багш олдсонгүй' });
   }
   if (req.method === 'PATCH' && req.body && 'phone' in req.body) {
     // Утас солих/арилгах — admin тухайн хүнтэй тэр дугаараар ярьж баталгаажуулсны дараа (баталгаажсан гэж тэмдэглэнэ).

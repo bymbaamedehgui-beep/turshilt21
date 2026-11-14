@@ -1,4 +1,4 @@
-import { getExam, updateExam, deleteExam, getStudents, updateStudentScores, initDb } from '../../../lib/db';
+import { getExam, updateExam, deleteExam, getStudents, updateStudentScores, initDb, getTeacherById, denySubject } from '../../../lib/db';
 import { requirePaid } from '../../../lib/auth';
 import { rescoreSaved } from '../../../lib/eyesh';
 
@@ -10,6 +10,7 @@ export default requirePaid(async function handler(req, res) {
     return exam ? res.json(exam) : res.status(404).json({ error: 'Олдсонгүй' });
   }
   if (req.method === 'PUT') {
+    if (await denySubject(res, await getTeacherById(req.teacherId), req.body?.subject)) return;   // хичээлийн эрх
     const exam = await updateExam(id, req.body, req.teacherId);
     if (!exam) return res.status(404).json({ error: 'Олдсонгүй' });
     // Зөв хариулт, оноо засагдвал энэ шалгалтын уншуулсан бүх хуудасны дүнг шинэ тохиргоогоор дахин бодно

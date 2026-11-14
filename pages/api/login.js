@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { getTeacherByEmail, initDb, hasAccess, accessUntil } from '../../lib/db';
+import { getTeacherByEmail, getTeacherById, initDb, hasAccess, accessUntil } from '../../lib/db';
 import { signToken } from '../../lib/auth';
 
 export default async function handler(req, res) {
@@ -15,9 +15,10 @@ export default async function handler(req, res) {
   // Эрхийн хугацаа дууссан ч нэвтэрнэ — апп QPay-ийн төлбөрийн дэлгэц гаргана
 
   const token = signToken(teacher.id, teacher.email);
+  const full = (await getTeacherById(teacher.id)) || teacher;   // хичээлийн эрхтэй (lic_until)
   res.json({
     token,
     teacher: { id: teacher.id, email: teacher.email, name: teacher.name, isAdmin: teacher.is_admin, status: teacher.status,
-      paidUntil: accessUntil(teacher), hasAccess: hasAccess(teacher) },
+      paidUntil: accessUntil(full), hasAccess: hasAccess(full) },
   });
 }

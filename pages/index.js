@@ -4,7 +4,8 @@ import { SEC1_CHOICES, SEC2_ROWS, SEC2_SUBS, uid, pf, eyeshGrade, toScaled, getT
 import { ScanPage } from '../components/QuickScan';
 import { SheetsPage } from '../components/AnswerSheet';
 import { Paywall } from '../components/Paywall';
-import { PLANS, planPrice, fullPrice, perMonth, fmtMNT, fmtDay, TRIAL_DAYS } from '../lib/plans';
+import { SchoolPage } from '../components/SchoolPage';
+import { PLANS, planPrice, fullPrice, perMonth, fmtMNT, fmtDay, TRIAL_DAYS, SUBJECTS, canUseSubjectOf, subjectUntilOf } from '../lib/plans';
 import { StudentPortal } from '../components/StudentPortal';
 import { MaterialsPanel } from '../components/MaterialsPanel';
 import { exportAnalysisXlsx } from '../lib/report-xlsx';
@@ -23,7 +24,6 @@ function Ico({d, size=20, color='currentColor', sw=1.5, fill='none'}) {
   );
 }
 
-const SUBJECTS = ['Математик','Физик','Хими','Биологи','Монгол хэл','Түүх','Газарзүй','Англи хэл','Нийгмийн ухаан'];
 
 const TOPICS_BY_SUBJECT = {
   'Математик':  ['Алгебр','Геометр','Тригонометр','Статистик','Тооны онол','Анализ','Функц','Бусад'],
@@ -49,7 +49,7 @@ function topicOptions(subject, mine=[], used=[]) {
   return list;
 }
 const TOPIC_COLORS = ['#3b82f6','#8b5cf6','#f59e0b','#06b6d4','#10b981','#ef4444','#f97316','#6366f1'];
-const PAGE_IDS = ['home','scan','board','analytics','rating','create','sheets','students','materials','admin'];   // ☰ цэсний дараалал
+const PAGE_IDS = ['home','scan','board','analytics','rating','create','sheets','students','materials','school','admin'];   // ☰ цэсний дараалал
 const NAV_ICON = {
   home:'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   board:['M8 6h13','M8 12h13','M8 18h13','M3.5 6h.01','M3.5 12h.01','M3.5 18h.01'],
@@ -64,6 +64,7 @@ const NAV_ICON = {
   students:['M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2','M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z','M22 21v-2a4 4 0 0 0-3-3.87','M16 3.13a4 4 0 0 1 0 7.75'],
   materials:'M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z',
   admin:'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
+  school:['M3 21h18','M5 21V9l7-5 7 5v12','M10 21v-5h4v5','M9 11h.01','M15 11h.01'],
   moon:'M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z',
   sun:['M12 17a5 5 0 1 0 0-10 5 5 0 0 0 0 10z','M12 1v2','M12 21v2','M4.2 4.2l1.4 1.4','M18.4 18.4l1.4 1.4','M1 12h2','M21 12h2','M4.2 19.8l1.4-1.4','M18.4 5.6l1.4-1.4'],
   logout:['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4','M16 17l5-5-5-5','M21 12H9'],
@@ -91,7 +92,7 @@ const T = {
     timeUp:'Хугацаа дууссан! Хариулт автоматаар илгээгдлээ.',
     section1:'1-р хэсэг', section2:'2-р хэсэг',
     hello:'Сайн байна уу,',
-    nav:{billing:'Эрх сунгах',materials:'ЭЕШ материал',home:'Нүүр',scan:'Шалгах',sheets:'Хуудас хэвлэх',create:'Шалгалт үүсгэх',edit:'Шалгалт засах',board:'Жагсаалт',analytics:'Анализ',rating:'Рейтинг',students:'Сурагчид',admin:'Admin'},
+    nav:{school:'Сургуулийн эрх',billing:'Эрх сунгах',materials:'ЭЕШ материал',home:'Нүүр',scan:'Шалгах',sheets:'Хуудас хэвлэх',create:'Шалгалт үүсгэх',edit:'Шалгалт засах',board:'Жагсаалт',analytics:'Анализ',rating:'Рейтинг',students:'Сурагчид',admin:'Admin'},
     more:'Цэс',
   },
   en: {
@@ -111,7 +112,7 @@ const T = {
     timeUp:'Time is up! Your answers have been submitted.',
     section1:'Section 1', section2:'Section 2',
     hello:'Hello,',
-    nav:{billing:'Renew',materials:'Materials',home:'Home',scan:'Scan',sheets:'Print sheets',create:'Create Exam',edit:'Edit Exam',board:'Results',analytics:'Analytics',rating:'Ranking',students:'Students',admin:'Admin'},
+    nav:{school:'School license',billing:'Renew',materials:'Materials',home:'Home',scan:'Scan',sheets:'Print sheets',create:'Create Exam',edit:'Edit Exam',board:'Results',analytics:'Analytics',rating:'Ranking',students:'Students',admin:'Admin'},
     more:'More',
   }
 };
@@ -823,7 +824,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
 }
 
 // ── Home Page ─────────────────────────────────────────────
-function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onNavigate, onEditExam, dark:d=false}) {
+function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onNavigate, onEditExam, dark:d=false, canUse}) {
   // Subject filter — group exams by subject
   const [filterSubject, setFilterSubject] = useState('all');
   const examSubjects = [...new Set(exams.map(e=>e.subject||'Бусад').filter(Boolean))].sort((a,b)=>a.localeCompare(b,'mn'));
@@ -914,7 +915,7 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
                 <div style={{display:'flex',flexWrap:'wrap',justifyContent:'space-between',gap:8,marginBottom:10}}>
                   <div style={{flex:'1 1 100%',minWidth:0}}>
                     <div style={{fontSize:15.5,fontWeight:900,color:'#1c1f2a',lineHeight:1.3}}>{exam.title}</div>
-                    <div style={{fontSize:12,color:'#6b7280',marginTop:2}}>{exam.subject} · {exam.sec1Count} дасгал · Raw max: {rm}{examVariants(exam).length>1?' · '+examVariants(exam).join('/')+' хувилбар':''}</div>
+                    <div style={{fontSize:12,color:'#6b7280',marginTop:2}}>{exam.subject}{canUse&&!canUse(exam.subject)&&<b style={{color:'#b3261e'}}> · 🔒 эрхгүй</b>} · {exam.sec1Count} дасгал · Raw max: {rm}{examVariants(exam).length>1?' · '+examVariants(exam).join('/')+' хувилбар':''}</div>
                     {exam.useSec2&&<div style={{fontSize:11,color:'#059669',marginTop:1}}>2-р хэсэг</div>}
                     {/* Дасгалын төвөөс хадгалсан шалгалтын материал (хувилбаруудын хуудас, хариу) — зөвхөн багшид */}
                     {exam.materials?.length>0&&(
@@ -955,15 +956,17 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
 }
 
 // ── Create Page ───────────────────────────────────────────
-function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
+function CreatePage({onCreated, prefill, isEdit, dark:d=false, canUse, onBuy}) {
   const cnt0 = prefill?.sec1Count||36;
+  // Шинэ шалгалтын анхны хичээл — эрхтэй эхний хичээл (lib/plans.js canUseSubjectOf)
+  const subj0 = prefill?.subject || SUBJECTS.find(s=>!canUse||canUse(s)) || SUBJECTS[0];
   const [title,setTitle]=useState(prefill?.title||'');
-  const [subject,setSubject]=useState(prefill?.subject||SUBJECTS[0]);
+  const [subject,setSubject]=useState(subj0);
   const [cnt,setCnt]=useState(cnt0);
   const [useSec2,setUseSec2]=useState(prefill?.useSec2||false);
   const [keys,setKeys]=useState(()=>Array.from({length:cnt0},(_,i)=>prefill?.sec1Key?.[i]||'A'));
   const [scores,setScores]=useState(()=>Array.from({length:cnt0},(_,i)=>prefill?.sec1Scores?.[i]||2));
-  const [topics,setTopics]=useState(()=>Array.from({length:cnt0},(_,i)=>prefill?.topics?.[i]||getTopics(prefill?.subject||SUBJECTS[0])[0]));
+  const [topics,setTopics]=useState(()=>Array.from({length:cnt0},(_,i)=>prefill?.topics?.[i]||getTopics(subj0)[0]));
   const [sec2Score,setSec2Score]=useState(prefill?.sec2Score||1);
   const [sec2EnabledSubs,setSec2EnabledSubs]=useState(()=>SEC2_SUBS.map(s=>prefill?.sec2Config?.[s]?._enabled??true));
   const [sec2Keys,setSec2Keys]=useState(()=>{const o={};SEC2_SUBS.forEach(s=>{o[s]={};SEC2_ROWS.forEach(r=>{o[s][r]=prefill?.sec2Config?.[s]?.[r]||'';});});return o;});
@@ -977,12 +980,12 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
       if(!v) return;
       const s2={};SEC2_SUBS.forEach(s=>{s2[s]={};SEC2_ROWS.forEach(r=>{s2[s][r]=v.sec2Config?.[s]?.[r]||'';});});
       o[L]={keys:Array.from({length:cnt0},(_,i)=>v.sec1Key?.[i]||''),scores:Array.from({length:cnt0},(_,i)=>v.sec1Scores?.[i]||2),
-        topics:Array.from({length:cnt0},(_,i)=>v.topics?.[i]||getTopics(prefill?.subject||SUBJECTS[0])[0]),sec2Keys:s2};
+        topics:Array.from({length:cnt0},(_,i)=>v.topics?.[i]||getTopics(subj0)[0]),sec2Keys:s2};
     });
     return o;
   });
   const [bulkScore,setBulkScore]=useState(2);
-  const [bulkTopic,setBulkTopic]=useState(()=>getTopics(prefill?.subject||SUBJECTS[0])[0]);
+  const [bulkTopic,setBulkTopic]=useState(()=>getTopics(subj0)[0]);
   const [myTopics,setMyTopics]=useState({});   // багшийн нэмсэн агуулга { хичээл: [...] } — бүх шалгалтад гарна
   useEffect(()=>{ apiFetch('/api/topics').then(d=>setMyTopics(d||{})).catch(()=>{}); },[]);
   const topicList=topicOptions(subject,myTopics[subject],topics);
@@ -1105,8 +1108,9 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
             <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>Хичээл</label>
             <select value={subject} onChange={e=>handleSubjectChange(e.target.value)}
               style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none'}}>
-              {SUBJECTS.map(s=><option key={s}>{s}</option>)}
+              {SUBJECTS.map(s=>{const no=canUse&&!canUse(s);return <option key={s} value={s} disabled={no&&s!==subject}>{s}{no?' — эрхгүй':''}</option>;})}
             </select>
+            {canUse&&onBuy&&SUBJECTS.some(s=>!canUse(s))&&<button type="button" onClick={()=>onBuy(null)} style={{marginTop:6,border:0,background:'none',padding:0,color:'#7B52EE',fontWeight:800,fontSize:12.5,cursor:'pointer'}}>Өөр хичээлийн эрх авах →</button>}
           </div>
           <div>
             <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>1-р хэсэг дасгал (1-36)</label>
@@ -1242,6 +1246,12 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false}) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      {canUse&&!canUse(subject)&&(
+        <div style={{background:'#fdecec',border:'1px solid #f6c9c9',color:'#b3261e',borderRadius:12,padding:'10px 14px',marginBottom:12,fontSize:13.5,fontWeight:700,lineHeight:1.45,display:'flex',alignItems:'center',gap:10,flexWrap:'wrap'}}>
+          <span style={{flex:1,minWidth:200}}>«{subject}» хичээлийн эрх алга — хадгалахын тулд эрх авна уу.</span>
+          {onBuy&&<button type="button" onClick={()=>onBuy(subject)} style={{border:0,borderRadius:999,background:'#b3261e',color:'white',fontWeight:800,padding:'.45rem .9rem',cursor:'pointer'}}>Эрх авах</button>}
         </div>
       )}
       {isEdit && (
@@ -2134,6 +2144,21 @@ function StudentAccountsPage({dark:d=false}) {
 // ─────────────────────────────────────────────────────────
 
 
+// Шалгалтын хичээлийн эрх алга — уншуулахын оронд (lib/plans.js canUseSubjectOf)
+function SubjectLock({ subject, onBuy, onBack }) {
+  return (
+    <div className="cm-page">
+      <div className="cm-card sc-lock">
+        <div className="sc-lock-i" aria-hidden="true">🔒</div>
+        <h2>«{subject}» хичээлийн эрх алга</h2>
+        <p>Энэ шалгалтыг уншуулахын тулд «{subject}» хичээлийн эрх авна уу. Багц нэг хичээлийнх — сард {fmtMNT(planPrice(1))}.</p>
+        <button className="cm-btn big" onClick={onBuy}>«{subject}» эрх авах</button>
+        {onBack && <button className="cm-link" onClick={onBack}>Өөр шалгалт сонгох</button>}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [lang, toggleLang, t] = useLang();
   const [dark, toggleDark] = useDark();
@@ -2150,16 +2175,30 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [editingExam, setEditingExam] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [me, setMe] = useState(null);             // { hasAccess, paidUntil, … } — /api/me
+  const [me, setMe] = useState(null);             // { hasAccess, paidUntil, access, … } — /api/me
+  const [paySubject, setPaySubject] = useState(null);   // төлбөрийн дэлгэцийг аль хичээлээр нээх (402 SUBJECT_REQUIRED, түгжээ)
+  const [navTick, setNavTick] = useState(0);             // цэснээс дахин сонгоход «Сургуулийн эрх»-ийг шинээр ачаална
   const [notice, setNotice] = useState(null);     // { text, err } — дээд талын түр мэдэгдэл
   useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(null), 8000); return () => clearTimeout(t); }, [notice]);
 
   // Ямар нэг API 402 (эрх дууссан) буцаавал эрхийн мэдээллийг шинэчилж төлбөрийн дэлгэц гаргана
   useEffect(() => {
-    const onPaywall = () => { apiFetch('/api/me').then(setMe).catch(() => {}); };
+    // SUBJECT_REQUIRED (lib/eyesh.js apiFetch) — эрх нь байгаа ч тэр хичээлийнх алга: «Эрх сунгах»-ыг тэр хичээлээр нээнэ
+    const onPaywall = e => {
+      const subject = e?.detail?.subject || null;
+      apiFetch('/api/me').then(m => { setMe(m); if (subject && m.hasAccess) { setPaySubject(subject); setPage('billing'); } }).catch(() => {});
+    };
     window.addEventListener('eyesh:paywall', onPaywall);
     return () => window.removeEventListener('eyesh:paywall', onPaywall);
   }, []);
+
+  // Эрх шинээр нээгдсэн (сургуульд нэгдсэн, төлсөн) — эрхгүй үед ачаалаагүй шалгалт, дүнгээ spinner-гүйгээр ачаална
+  const hadAccess = useRef(null);
+  useEffect(() => {
+    const h = !!me?.hasAccess;
+    if (hadAccess.current === false && h) loadContent();
+    hadAccess.current = me ? h : null;
+  }, [me]);
 
   // ☰ цэс нээлттэй үед: Esc-ээр хаах, ард нь гүйлгэхгүй
   useEffect(() => {
@@ -2227,6 +2266,14 @@ export default function App() {
       if (ex.length) setCurrentExam(cur => (want && ex.find(e=>e.id===want)) || (cur ? ex.find(e=>e.id===cur.id)||ex[0] : ex[0]));
     } catch(e) { console.error('loadData error:', e); }
     setLoading(false);
+  }
+
+  async function loadContent() {
+    try {
+      const [ex, st] = await Promise.all([apiFetch('/api/exams'), apiFetch('/api/students')]);
+      setExams(ex); setStudents(st);
+      if (ex.length) setCurrentExam(cur => (cur && ex.find(e=>e.id===cur.id)) || ex[0]);
+    } catch(e) { console.error('loadContent error:', e); }
   }
 
   async function handleAddExam(exam) {
@@ -2305,11 +2352,26 @@ export default function App() {
 
   const examStudents = students.filter(s=>s.examId===currentExam?.id);
   const navIds = PAGE_IDS.filter(id => id!=='admin' || teacher?.isAdmin);
-  function go(id) { setPage(id); setMenuOpen(false); if (typeof window!=='undefined') window.scrollTo(0,0); }
+  function go(id) { setPage(id); setNavTick(t=>t+1); setMenuOpen(false); if (typeof window!=='undefined') window.scrollTo(0,0); }
   function logout() { localStorage.removeItem('eyesh_token');localStorage.removeItem('eyesh_teacher');setAuthed(false);setTeacher(null);setMe(null);setMenuOpen(false); }
   const daysLeft = me?.paidUntil ? (new Date(me.paidUntil) - Date.now()) / 86400000 : null;
   const showRenew = me && me.hasAccess && !me.isAdmin && daysLeft !== null;
-  function paid(r) { setMe(m => ({ ...m, hasAccess: true, paidUntil: r.paidUntil })); }
+  async function refreshMe() { try { setMe(await apiFetch('/api/me')); } catch(e) {} }
+  function paid() { refreshMe(); }
+  const canUse = s => canUseSubjectOf(me, s);   // хичээлийн эрх (lib/plans.js)
+  function openBilling(s) { setPaySubject(s || null); go('billing'); }
+  // Анхааруулга: аль нэг хичээлийн (эсвэл бүх хичээлийн) эрх 3 хоногоос бага үлдсэн бол — хамгийн түрүүнд дуусах нь
+  const expiring = (() => {
+    const a = me?.access; if (!a || !me?.hasAccess || me?.unlimited) return null;
+    const subs = new Set((a.licenses || []).map(l => l.subject)); if (a.cm) subs.add('Математик');
+    const cand = [...subs].map(s => ({ s, u: subjectUntilOf(me, s) }));
+    if (a.all) cand.push({ s: null, u: new Date(a.all) });
+    const now = Date.now();
+    const x = cand.filter(c => c.u && c.u > now && (c.u - now) / 86400000 < 3).sort((p, q) => p.u - q.u)[0];
+    return x ? { subject: x.s, days: (x.u - now) / 86400000 } : null;
+  })();
+  // Төлбөрийн дэлгэцийн анхны хичээл — багшийн хамгийн олон шалгалттай хичээл
+  const favSubject = (() => { const c = {}; exams.forEach(e => { if (e.subject) c[e.subject] = (c[e.subject] || 0) + 1; }); return Object.keys(c).sort((a, b) => c[b] - c[a])[0] || null; })();
 
   // Эрх дууссан: зөвхөн төлбөрийн дэлгэц
   if (me && !me.hasAccess) return (
@@ -2318,7 +2380,12 @@ export default function App() {
       <header className="cm-top"><div className="cm-top-in">
         <div className="cm-brand"><img src="/chick.svg" alt="" className="cm-chick" /><span><b>ЭЕШ шалгагч</b><small>CyberMath</small></span></div>
       </div></header>
-      <Paywall me={me} onClose={() => { setPage('home'); loadData(); }} onLogout={logout} />
+      {me.access?.invites?.length > 0 && page !== 'school' && (
+        <div className="cm-billbar no-print"><span>«{me.access.invites[0].schoolName}» сургууль таныг багшаар урьж байна</span><button onClick={() => setPage('school')}>Харах</button></div>
+      )}
+      {page === 'school'
+        ? <><div className="sc-back"><button className="cm-link" onClick={() => setPage('home')}>← Багшийн эрх</button></div><SchoolPage me={me} onChanged={refreshMe} /></>
+        : <Paywall me={me} subject={paySubject || favSubject} onClose={() => { setPage('home'); refreshMe(); }} onLogout={logout} onSchool={() => setPage('school')} />}
     </>
   );
   const tab = (id, label) => (
@@ -2357,18 +2424,27 @@ export default function App() {
             <button onClick={()=>setNotice(null)} aria-label="Хаах" style={{border:0,background:'none',color:'inherit',fontSize:18,fontWeight:900,cursor:'pointer'}}>×</button>
           </div>
         )}
-        {showRenew && daysLeft < 3 && page !== 'billing' && (
+        {expiring && page !== 'billing' && (
           <div className="cm-billbar no-print">
-            <span>{daysLeft < 1 ? `Эрх ${Math.max(1, Math.ceil(daysLeft * 24))} цагийн дараа дуусна` : `Эрх ${Math.ceil(daysLeft)} хоногийн дараа дуусна`}</span>
-            <button onClick={()=>go('billing')}>Сунгах</button>
+            <span>{expiring.subject ? `«${expiring.subject}» хичээлийн эрх` : 'Эрх'} {expiring.days < 1 ? `${Math.max(1, Math.ceil(expiring.days * 24))} цагийн` : `${Math.ceil(expiring.days)} хоногийн`} дараа дуусна</span>
+            <button onClick={()=>openBilling(expiring.subject)}>Сунгах</button>
           </div>
         )}
-        {page==='billing'&&<Paywall me={me} renew onPaid={paid} onClose={()=>go('home')} />}
-        {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={go} onEditExam={e=>{setEditingExam(e);go('edit');}} dark={d} />}
-        {page==='scan'&&<ScanPage exam={currentExam} exams={exams} students={examStudents} onSelectExam={setCurrentExam} onAddStudent={handleAddStudent} onNavigate={go} />}
+        {me?.access?.invites?.length>0 && page!=='school' && (
+          <div className="cm-billbar no-print">
+            <span>«{me.access.invites[0].schoolName}» сургууль таныг багшаар урьж байна</span>
+            <button onClick={()=>go('school')}>Харах</button>
+          </div>
+        )}
+        {page==='billing'&&<Paywall me={me} renew subject={paySubject || favSubject} onPaid={paid} onClose={()=>go('home')} onSchool={()=>go('school')} />}
+        {page==='school'&&<SchoolPage key={navTick} me={me} onChanged={refreshMe} />}
+        {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={go} onEditExam={e=>{setEditingExam(e);go('edit');}} dark={d} canUse={canUse} />}
+        {page==='scan'&&(currentExam&&!canUse(currentExam.subject)
+          ? <SubjectLock subject={currentExam.subject} onBuy={()=>openBilling(currentExam.subject)} onBack={()=>go('home')} />
+          : <ScanPage exam={currentExam} exams={exams} students={examStudents} onSelectExam={setCurrentExam} onAddStudent={handleAddStudent} onNavigate={go} />)}
         {page==='sheets'&&<SheetsPage exam={currentExam} onNavigate={go} dark={d} />}
-        {page==='create'&&<CreatePage onCreated={handleAddExam} dark={d} />}
-        {page==='edit'&&<CreatePage onCreated={handleUpdateExam} prefill={editingExam} isEdit={true} dark={d} />}
+        {page==='create'&&<CreatePage onCreated={handleAddExam} dark={d} canUse={canUse} onBuy={openBilling} />}
+        {page==='edit'&&<CreatePage onCreated={handleUpdateExam} prefill={editingExam} isEdit={true} dark={d} canUse={canUse} onBuy={openBilling} />}
         {page==='board'&&<BoardPage exam={currentExam} students={examStudents} onDeleteStudent={handleDeleteStudent} onExportExcel={exportExcel} onReload={loadData} dark={d} />}
         {page==='analytics'&&<AnalyticsPage exam={currentExam} students={examStudents} teacherName={teacher?.name||''} dark={d} />}
         {page==='rating'&&<RatingPage exams={exams} students={students} dark={d} />}
@@ -2397,7 +2473,7 @@ export default function App() {
             {showRenew&&(
               <div className="cm-drawer-plan">
                 <span>Эрх<b>{fmtDay(me.paidUntil)} хүртэл</b></span>
-                <button onClick={()=>go('billing')}>Сунгах</button>
+                <button onClick={()=>openBilling(null)}>Сунгах</button>
               </div>
             )}
             <nav className="cm-drawer-nav">
