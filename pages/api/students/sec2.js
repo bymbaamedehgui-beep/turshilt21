@@ -4,7 +4,7 @@
 // Дүгнэлт нь сканнерынхтай ижил (lib/eyesh.js regradeStudent → calcScore); өгөөгүй хэсэгт хадгалсан хариу хэвээр.
 
 import { requirePaid } from '../../../lib/auth';
-import { initDb } from '../../../lib/db';
+import { initDb, getTeacherById, denySubject } from '../../../lib/db';
 import { examVariants, regradeStudent } from '../../../lib/eyesh';
 import { neon } from '@neondatabase/serverless';
 
@@ -21,12 +21,14 @@ export default requirePaid(async function handler(req, res) {
 
     // Fetch student + exam
     const sRows = await sql`
-      SELECT s.*, e.sec1_key, e.sec1_count, e.sec1_scores, e.topics, e.sec2_config, e.sec2_score, e.use_sec2, e.variants, e.teacher_id
+      SELECT s.*, e.sec1_key, e.sec1_count, e.sec1_scores, e.topics, e.sec2_config, e.sec2_score, e.use_sec2, e.variants, e.teacher_id,
+        e.subject AS exam_subject
       FROM students s JOIN exams e ON s.exam_id = e.id
       WHERE s.id = ${studentId}`;
     const row = sRows[0];
     if (!row) return res.status(404).json({ error: 'Сурагч олдсонгүй' });
     if (row.teacher_id !== req.teacherId) return res.status(403).json({ error: 'Энэ сурагчид эрхгүй' });
+    if (await denySubject(res, await getTeacherById(req.teacherId), row.exam_subject)) return;   // хичээлийн эрх
 
     const exam = {
       sec1Count: row.sec1_count, sec1Key: row.sec1_key || [], sec1Scores: row.sec1_scores || [], topics: row.topics || [],

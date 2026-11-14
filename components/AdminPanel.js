@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../lib/eyesh';
 import { MaterialsPanel, EeshDateSetting } from './MaterialsPanel';
+import { SUBJECTS } from '../lib/plans';
 
 // ── Admin: багш нарын эрх, промо код, сурагчийн хэсэг ─────────────────────
 // eyeshcheck-ийн ☰ «Admin» (pages/index.js) ба Дасгалын төвийн админы «ЭЕШ шалгагч» цэс (pages/cm-admin.js, embed) хоёулаа.
@@ -21,6 +22,7 @@ export function AdminPanel({dark:d=false, embed=false}) {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState('');
   const [q, setQ] = useState('');
+  const [extSubject, setExtSubject] = useState(SUBJECTS[0]);   // «+1 сар» аль хичээлийн эрх; '*' — бүх хичээл
 
   useEffect(()=>{ load(); }, []);
 
@@ -42,8 +44,8 @@ export function AdminPanel({dark:d=false, embed=false}) {
 
   async function extend(id, months) {
     try {
-      const r = await apiFetch('/api/admin/teachers', { method:'PATCH', body:{ id, extendMonths: months } });
-      setTeachers(ts => ts.map(t => t.id===id ? {...t, paid_until: r.paidUntil} : t));
+      await apiFetch('/api/admin/teachers', { method:'PATCH', body:{ id, extendMonths: months, subject: extSubject } });
+      setTeachers(await apiFetch('/api/admin/teachers'));   // хичээл бүрийн эрх шинэчлэгдэнэ
     } catch(e) { alert(e.message); }
   }
 
@@ -89,6 +91,12 @@ export function AdminPanel({dark:d=false, embed=false}) {
           <div style={{fontSize:11,color:muted}}>{new Date(t.created_at).toLocaleDateString('mn-MN')}{t.phone ? ' · ' + t.phone : ' · утасгүй'}{t.cm_linked ? ' · Дасгалын төв' : ''}</div>
           {!t.is_admin && <div style={{fontSize:12,fontWeight:800,marginTop:2,color:t.paid_until && new Date(t.paid_until) > new Date() ? '#16a34a' : '#b3261e'}}>
             {t.paid_until ? (new Date(t.paid_until) > new Date() ? 'Эрх: ' : 'Дууссан: ') + new Date(t.paid_until).toLocaleDateString('mn-MN') : 'Эрхгүй'}
+          </div>}
+          {!t.is_admin && <div style={{fontSize:11,fontWeight:700,color:muted}}>
+            {[t.all_until && new Date(t.all_until) > new Date() && 'Бүх хичээл ' + ymd(t.all_until),
+              t.cm_paid_until && new Date(t.cm_paid_until) > new Date() && 'Математик (Дасгалын төв) ' + ymd(t.cm_paid_until),
+              ...(t.licenses || []).filter(l => new Date(l.until) > new Date()).map(l => l.subject + ' ' + ymd(l.until)),
+              t.school_names && '🏫 ' + t.school_names].filter(Boolean).join(' · ')}
           </div>}
         </div>
         <div style={{display:'flex',gap:6,flexShrink:0,marginLeft:'auto'}}>
@@ -140,6 +148,12 @@ export function AdminPanel({dark:d=false, embed=false}) {
         <div style={{padding:'12px 16px',borderBottom:'1px solid '+border,display:'flex',alignItems:'center',gap:8}}>
           <span style={{fontSize:16}}>✅</span>
           <span style={{fontWeight:800,fontSize:14,color:text}}>Идэвхтэй багш нар — {active.length}</span>
+          <label style={{marginLeft:'auto',display:'flex',alignItems:'center',gap:6,fontSize:12,fontWeight:700,color:muted}}>«+1 сар» хичээл
+            <select value={extSubject} onChange={e=>setExtSubject(e.target.value)} style={{padding:'4px 8px',borderRadius:8,border:'1px solid '+border,background:bg,color:text,fontSize:12,fontWeight:700}}>
+              {SUBJECTS.map(s=><option key={s} value={s}>{s}</option>)}
+              <option value="*">Бүх хичээл</option>
+            </select>
+          </label>
         </div>
         {active.length===0
           ? <div style={{padding:'24px',textAlign:'center',color:muted,fontSize:13}}>{ql ? 'Хайлтад тохирох багш алга' : 'Одоохондоо байхгүй'}</div>
@@ -185,6 +199,7 @@ export function AdminPanel({dark:d=false, embed=false}) {
       )}
 
       <PromoAdmin d={d} />
+      <SchoolsAdmin d={d} />
 
       {/* Сурагчийн хэсэг: ЭЕШ-ийн огноо, 12-р ангийн сурах бичиг */}
       <div style={{marginTop:24}}>
@@ -313,6 +328,51 @@ function PromoAdmin({d}) {
           </div>
         );
       })}
+    </div>
+  );
+}
+
+// ── Сургуулиуд (pages/api/admin/schools.js): эзэн, багш нар, хичээлийн эрх; гараар сунгах (дансаар төлсөн г.м.) ──
+function SchoolsAdmin({d}) {
+  const [list, setList] = useState(null);
+  const [err, setErr] = useState('');
+  const [pick, setPick] = useState({});   // { schoolId: subject }
+  const load = () => apiFetch('/api/admin/schools').then(setList).catch(e => setErr(e.message));
+  useEffect(() => { load(); }, []);
+  async function extend(s) {
+    const subject = pick[s.id] || SUBJECTS[0];
+    if (!window.confirm(`«${s.name}» — ${subject} хичээлийн эрхийг 1 сараар сунгах уу?`)) return;
+    try { await apiFetch('/api/admin/schools', { method:'PATCH', body:{ id:s.id, subject, months:1 } }); load(); }
+    catch (e) { alert(e.message); }
+  }
+  const bg = d ? '#1c1f2a' : 'white', text = d ? '#f3f4f6' : '#1c1f2a', muted = d ? '#9ca3af' : '#6b7280', border = d ? '#2a2e38' : '#e5e7eb';
+  return (
+    <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginTop:16}}>
+      <div style={{padding:'12px 16px',borderBottom:'1px solid '+border,display:'flex',alignItems:'center',gap:8}}>
+        <span style={{fontSize:16}}>🏫</span>
+        <span style={{fontWeight:800,fontSize:14,color:text}}>Сургуулиуд — {list ? list.length : '…'}</span>
+      </div>
+      {err && <div style={{padding:12,color:'#b3261e',fontSize:13}}>{err}</div>}
+      {list && list.length === 0 && <div style={{padding:'20px',textAlign:'center',color:muted,fontSize:13}}>Одоохондоо сургууль алга</div>}
+      {(list || []).map(s => (
+        <div key={s.id} style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:10,padding:'12px 16px',borderBottom:'1px solid '+border}}>
+          <div style={{flex:'1 1 220px',minWidth:0}}>
+            <div style={{fontWeight:800,fontSize:14,color:text}}>{s.name}</div>
+            <div style={{fontSize:12,color:muted}}>{s.owner_name || '—'} · {s.owner_email}{s.owner_phone ? ' · ' + s.owner_phone : ''}</div>
+            <div style={{fontSize:12,color:muted}}>{s.members} багш нэгдсэн{s.invited ? ` · ${s.invited} урилга` : ''} · {ymd(s.created_at)}</div>
+            <div style={{fontSize:12,fontWeight:800,marginTop:2,color:'#16a34a'}}>
+              {(s.licenses || []).length ? s.licenses.map(l => `${l.subject} ${new Date(l.until) > new Date() ? ymd(l.until) : '(дууссан)'}`).join(' · ') : <span style={{color:'#b3261e'}}>Хичээлийн эрхгүй</span>}
+            </div>
+          </div>
+          <div style={{display:'flex',gap:6,alignItems:'center'}}>
+            <select value={pick[s.id] || SUBJECTS[0]} onChange={e => setPick(p => ({ ...p, [s.id]: e.target.value }))}
+              style={{padding:'5px 8px',borderRadius:8,border:'1px solid '+border,background:bg,color:text,fontSize:12,fontWeight:700}}>
+              {SUBJECTS.map(x => <option key={x} value={x}>{x}</option>)}
+            </select>
+            <button onClick={() => extend(s)} style={{padding:'6px 14px',border:'none',borderRadius:7,fontWeight:700,fontSize:12,cursor:'pointer',background:'#e1f4e9',color:'#16a34a'}}>+1 сар</button>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

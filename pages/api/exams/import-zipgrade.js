@@ -5,7 +5,7 @@
 // inserts (or replaces) student records in the DB.
 
 import { requirePaid } from '../../../lib/auth';
-import { getExam, initDb } from '../../../lib/db';
+import { getExam, initDb, getTeacherById, denySubject } from '../../../lib/db';
 import { neon } from '@neondatabase/serverless';
 
 const SEC2_ROWS = ['a','b','c','d','e','f','g','h'];
@@ -60,6 +60,7 @@ export default requirePaid(async function handler(req, res) {
     await initDb();
     const exam = await getExam(examId, req.teacherId);
     if (!exam) return res.status(404).json({ error: 'Шалгалт олдсонгүй' });
+    if (await denySubject(res, await getTeacherById(req.teacherId), exam.subject)) return;   // хичээлийн эрх
 
     const rows = parseCSV(csvText);
     if (rows.length < 2) return res.status(400).json({ error: 'CSV хоосон эсвэл толгойгүй' });
