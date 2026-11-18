@@ -1,8 +1,11 @@
 // ── Сурагчийн хэсэг ─────────────────────────────────────────────────────────
-// Кодоороо нэвтэрсэн сурагч: Нүүр (ЭЕШ хүртэлх тоолуур, зорилгын ахиц), Шалгалт (бүх өгсөн шалгалт + онлайнаар өгөх),
-// Сурах бичиг (admin-ий оруулсан 12-р ангийн PDF), Материал (багшийн ЭЕШ материал), Миний зорилго.
-import { useState, useEffect } from 'react';
+// Кодоороо нэвтэрсэн сурагч: Нүүр (ЭЕШ хүртэлх тоолуур, зорилгын ахиц), Шалгалт (бүх өгсөн шалгалт + онлайнаар өгөх —
+// багш нээсэн бол бодлогуудтай, 9-өөр хуудаслана), Сурах бичиг (admin-ий оруулсан 10–12-р ангийн PDF),
+// Материал (багшийн ЭЕШ материал), Миний зорилго.
+import { useState, useEffect, useRef } from 'react';
+import Head from 'next/head';
 import { SEC1_CHOICES, scaleScore, scaleNote } from '../lib/eyesh';
+import { parsePaper } from '../lib/paperClient';
 
 const TOKEN_KEY = 'student_token';
 const SUBJECTS = ['Математик', 'Физик', 'Хими', 'Биологи', 'Монгол хэл', 'Англи хэл', 'Орос хэл', 'Түүх', 'Газарзүй', 'Нийгмийн ухаан'];
@@ -110,7 +113,7 @@ export function StudentPortal({ onLogout }) {
         {err && <div className="cm-alert">{err}</div>}
         {tab === 'home' && <Home data={data} onOpen={setOpen} go={go} />}
         {tab === 'exams' && <Exams data={data} onOpen={setOpen} onTake={setTaking} />}
-        {tab === 'books' && <Files items={data.textbooks} title="12-р ангийн сурах бичиг" empty="Сурах бичиг хараахан нэмэгдээгүй байна." grouped />}
+        {tab === 'books' && <Files items={data.textbooks} title="Сурах бичиг" empty="Сурах бичиг хараахан нэмэгдээгүй байна." grouped />}
         {tab === 'materials' && <Files items={data.materials} title="ЭЕШ-ийн материал" empty="Багш тань материал хараахан оруулаагүй байна." />}
         {tab === 'goal' && <Goal data={data} onSaved={goals => setData(d => ({ ...d, goals }))} />}
       </main>
@@ -276,6 +279,21 @@ function ResultDetail({ r, onBack }) {
   );
 }
 
+// Бодлогын зангилаа (lib/paperClient.js цэвэрлэсэн, өөр баримтад задалсан) — хуулбарыг нь хуудсанд шууд залгана
+function PaperNode({ node, as: Tag = 'div', className }) {
+  const ref = useRef(null);
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    c.textContent = '';
+    if (node) c.appendChild(document.importNode(node, true));
+  }, [node]);
+  return <Tag ref={ref} className={className} />;
+}
+const KATEX_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css';
+const PER_PAGE = 9;   // 1-р хэсгийг 9-өөр багцална (36 тест → 4 хуудас), 2-р хэсэг тусдаа хуудас
+const range = (a, b) => Array.from({ length: Math.max(0, b - a) }, (_, k) => a + k);
+
 function TakeExam({ exam, onBack, onDone }) {
   const [sec1, setSec1] = useState(() => Array(exam.sec1Count).fill(''));
   const [sec2, setSec2] = useState({});
@@ -286,6 +304,43 @@ function TakeExam({ exam, onBack, onDone }) {
   const [ver, setVer] = useState('');
   const rows2 = vers.length ? (exam.variants[ver] || {}) : exam.sec2;
   const filled = sec1.filter(Boolean).length;
+  const needVer = vers.length > 0 && !ver;
+  // Багш «Онлайн бодлого»-г нээсэн бол бодлогууд (хариугүй, /api/student/paper) — хувилбар сонгосны дараа ачаална.
+  // Ачаалж чадахгүй бол өмнөх шигээ зөвхөн хариултын товчнууд.
+  const [paperRes, setPaperRes] = useState(null);   // { v, p } эсвэл { v, err } — аль хувилбарынх болохыг хадгална
+  useEffect(() => {
+    if (!exam.paper || needVer) return;
+    let off = false;
+    sapi(`/api/student/paper?examId=${encodeURIComponent(exam.id)}${ver ? '&v=' + encodeURIComponent(ver) : ''}`)
+      .then(r => { if (off) return; const p = parsePaper(r.docs); setPaperRes(p.count ? { v: ver, p } : { v: ver, err: true }); })
+      .catch(() => { if (!off) setPaperRes({ v: ver, err: true }); });
+    return () => { off = true; };
+  }, [exam.id, ver]);
+  const curPaper = exam.paper && !needVer && paperRes && paperRes.v === ver ? paperRes : null;
+  const pp = curPaper?.p || null;
+  const paperLoading = !!exam.paper && !needVer && !curPaper;
+  const subs = Object.keys(rows2).sort();
+  const pages1 = Math.max(1, Math.ceil(exam.sec1Count / PER_PAGE));
+  const pageCount = pages1 + (subs.length ? 1 : 0);
+  const [pageAt, setPage] = useState(0);
+  const page = Math.min(pageAt, pageCount - 1);   // хувилбар солиход 2-р хэсэг алга болж болно
+  const onP2 = subs.length > 0 && page === pages1;
+  const from = page * PER_PAGE, to = Math.min(exam.sec1Count, from + PER_PAGE);
+  function go(p) { setPage(Math.max(0, Math.min(pageCount - 1, p))); window.scrollTo(0, 0); }
+  const pick = (i, c) => setSec1(s => { const n = [...s]; n[i] = n[i] === c ? '' : c; return n; });
+  const pick2 = (sub, row, o) => setSec2(s => ({ ...s, [sub]: { ...(s[sub] || {}), [row]: s[sub]?.[row] === o ? '' : o } }));
+  const tabLabel = p => (p < pages1 ? `${p * PER_PAGE + 1}–${Math.min(exam.sec1Count, (p + 1) * PER_PAGE)}` : '2-р хэсэг');
+  const tabDone = p => (p < pages1
+    ? `${sec1.slice(p * PER_PAGE, (p + 1) * PER_PAGE).filter(Boolean).length}/${Math.min(exam.sec1Count, (p + 1) * PER_PAGE) - p * PER_PAGE}`
+    : `${subs.reduce((a, s) => a + rows2[s].filter(r => sec2[s]?.[r]).length, 0)}/${subs.reduce((a, s) => a + rows2[s].length, 0)}`);
+  function chooseVer(L) {
+    if (L === ver) return;
+    // бодлоготой үед хувилбар бүр өөр бодлоготой — сонгосон хариултууд хамааралгүй болно
+    const any = filled > 0 || Object.values(sec2).some(r => Object.values(r || {}).some(Boolean));
+    if (exam.paper && ver && any && !window.confirm('Хувилбар солиход сонгосон хариултууд арилна. Солих уу?')) return;
+    if (exam.paper && ver) { setSec1(Array(exam.sec1Count).fill('')); setSec2({}); setPage(0); }
+    setVer(L); setErr('');
+  }
   async function submit() {
     if (vers.length && !ver) { setErr('Эхлээд хувилбараа сонгоно уу'); window.scrollTo(0, 0); return; }
     const blank = exam.sec1Count - filled;
@@ -296,50 +351,99 @@ function TakeExam({ exam, onBack, onDone }) {
       onDone({ ...row, examTitle: exam.title, examSubject: exam.subject });
     } catch (e) { setErr(e.message); setBusy(false); }
   }
+  const s2Rows = sub => rows2[sub].map(row => (
+    <div key={row} className="sp-take-row s2">
+      <i>{row}</i>
+      {S2_OPTS.map(o => <button key={o} className={sec2[sub]?.[row] === o ? 'on' : ''} onClick={() => pick2(sub, row, o)}>{o}</button>)}
+    </div>
+  ));
   return (
     <div className="sp">
+      {exam.paper && <Head><link rel="stylesheet" href={KATEX_CSS} /></Head>}
       <header className="sp-top">
         <button className="sp-icon-btn" onClick={onBack} aria-label="Буцах"><Ico d={ICON.back} /></button>
         <div className="sp-who"><b>{exam.title}</b><span>{exam.subject || '—'} · бөглөсөн {filled}/{exam.sec1Count}</span></div>
       </header>
       <main className="sp-main">
         {vers.length > 0 && <>
-          <div className="sp-sec-h"><b>Хувилбар</b>{!ver && <span>Материал дээрх хувилбараа сонгоно уу</span>}</div>
+          <div className="sp-sec-h"><b>Хувилбар</b>{!ver && <span>{exam.paper ? 'Хувилбараа сонгоно уу' : 'Материал дээрх хувилбараа сонгоно уу'}</span>}</div>
           <div className="sp-card sp-take">
             <div className="sp-take-row">
-              {vers.map(L => <button key={L} className={ver === L ? 'on' : ''} onClick={() => { setVer(L); setErr(''); }}>{L}</button>)}
+              {vers.map(L => <button key={L} className={ver === L ? 'on' : ''} onClick={() => chooseVer(L)}>{L}</button>)}
             </div>
           </div>
         </>}
-        <div className="sp-sec-h"><b>1-р хэсэг</b></div>
-        <div className="sp-card sp-take">
-          {sec1.map((v, i) => (
-            <div key={i} className="sp-take-row">
-              <i>{i + 1}</i>
-              {SEC1_CHOICES.map(c => (
-                <button key={c} className={v === c ? 'on' : ''} onClick={() => setSec1(s => { const n = [...s]; n[i] = n[i] === c ? '' : c; return n; })}>{c}</button>
+        {paperLoading && <div className="sp-empty">Бодлогуудыг ачаалж байна…</div>}
+        {!needVer && !paperLoading && <>
+          {curPaper?.err && <div className="cm-alert">Бодлогуудыг ачаалж чадсангүй — хариултаа доорх товчоор сонгож болно.</div>}
+          {pageCount > 1 && (
+            <div className="sp-pages" role="tablist" aria-label="Хуудас">
+              {range(0, pageCount).map(p => (
+                <button key={p} role="tab" aria-selected={page === p} className={page === p ? 'on' : ''} onClick={() => go(p)}>
+                  <b>{tabLabel(p)}</b><i>{tabDone(p)}</i>
+                </button>
               ))}
             </div>
-          ))}
-        </div>
-        {Object.entries(rows2).map(([sub, rows]) => (
-          <div key={sub}>
-            <div className="sp-sec-h"><b>{sub}</b></div>
+          )}
+          {pp?.fbox && <details className="sp-fbox"><summary>Томьёо</summary><PaperNode node={pp.fbox} className="sp-fbox-b" /></details>}
+          {!onP2 && (pp ? (
+            <div className="sp-probs">
+              {range(from, to).map(i => {
+                const p = pp.p1[i + 1], v = sec1[i];
+                return (
+                  <div key={i} className="sp-card sp-prob" data-q={i + 1}>
+                    <div className="sp-prob-h"><b>{i + 1}.</b>{p?.pts ? <span>{p.pts} оноо</span> : null}</div>
+                    {p?.q && <PaperNode node={p.q} className="sp-prob-q" />}
+                    {p?.fig && <PaperNode node={p.fig} className="sp-prob-fig" />}
+                    <div className="sp-opts">
+                      {SEC1_CHOICES.map((c, j) => (
+                        <button key={c} className={'sp-opt' + (v === c ? ' on' : '')} aria-pressed={v === c} onClick={() => pick(i, c)}>
+                          <b>{c}</b>{p?.opts?.[j] ? <PaperNode as="span" node={p.opts[j]} className="sp-opt-v" /> : null}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : <>
+            <div className="sp-sec-h"><b>1-р хэсэг{pages1 > 1 ? ' · ' + tabLabel(page) : ''}</b></div>
             <div className="sp-card sp-take">
-              {rows.map(row => (
-                <div key={row} className="sp-take-row s2">
-                  <i>{row}</i>
-                  {S2_OPTS.map(o => (
-                    <button key={o} className={sec2[sub]?.[row] === o ? 'on' : ''}
-                      onClick={() => setSec2(s => ({ ...s, [sub]: { ...(s[sub] || {}), [row]: s[sub]?.[row] === o ? '' : o } }))}>{o}</button>
-                  ))}
+              {range(from, to).map(i => (
+                <div key={i} className="sp-take-row">
+                  <i>{i + 1}</i>
+                  {SEC1_CHOICES.map(c => <button key={c} className={sec1[i] === c ? 'on' : ''} onClick={() => pick(i, c)}>{c}</button>)}
                 </div>
               ))}
             </div>
-          </div>
-        ))}
+          </>)}
+          {/* 2-р хэсэг: бодлого (a, b, c … нүднүүдтэй), доор нь нүд бүрт цифрээ сонгоно */}
+          {onP2 && subs.map(sub => {
+            const p = pp?.p2[parseInt(sub.split('.')[1], 10) - 1];
+            return pp ? (
+              <div key={sub} className="sp-card sp-prob" data-sub={sub}>
+                <div className="sp-prob-h"><b>{sub}.</b></div>
+                {p?.q && <PaperNode node={p.q} className="sp-prob-q" />}
+                <div className="sp-take sp-s2">{s2Rows(sub)}</div>
+              </div>
+            ) : (
+              <div key={sub}>
+                <div className="sp-sec-h"><b>{sub}</b></div>
+                <div className="sp-card sp-take">{s2Rows(sub)}</div>
+              </div>
+            );
+          })}
+          {pageCount > 1 && (
+            <div className="sp-pnav">
+              {page > 0 && <button className="cm-btn ghost" onClick={() => go(page - 1)}>← Өмнөх</button>}
+              {page < pageCount - 1 && <button className="cm-btn" onClick={() => go(page + 1)}>Дараах →</button>}
+            </div>
+          )}
+        </>}
         {err && <div className="cm-alert">{err}</div>}
-        <button className="cm-btn big sp-submit" disabled={busy} onClick={submit}>{busy ? 'Илгээж байна…' : 'Хариултаа илгээх'}</button>
+        {!needVer && !paperLoading && page === pageCount - 1 && (
+          <button className="cm-btn big sp-submit" disabled={busy} onClick={submit}>{busy ? 'Илгээж байна…' : 'Хариултаа илгээх'}</button>
+        )}
       </main>
     </div>
   );
@@ -348,6 +452,8 @@ function TakeExam({ exam, onBack, onDone }) {
 function Files({ items, title, empty, grouped }) {
   const groups = {};
   items.forEach(m => { const k = grouped ? (m.subject || 'Бусад') : ''; (groups[k] = groups[k] || []).push(m); });
+  // сурах бичиг: хичээл дотроо нэрээр (Математик 10, 11, 12 дарааллаар)
+  if (grouped) Object.values(groups).forEach(l => l.sort((a, b) => String(a.title).localeCompare(String(b.title), 'mn', { numeric: true })));
   return (
     <>
       <div className="sp-hello"><h1>{title}</h1></div>

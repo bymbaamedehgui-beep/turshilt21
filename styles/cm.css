@@ -666,3 +666,54 @@ body.dark .sc-lics span.on i{color:#86efac}
 .sc-reload{padding:0;font-size:13px}
 .sc-buy-closed{align-items:center}
 .sc-buy-closed b{flex:1}
+
+/* ── Онлайн шалгалт: бодлоготой, 9-өөр хуудасласан (components/StudentPortal.js TakeExam) ── */
+.sp-pages{display:flex;gap:5px;overflow-x:auto;padding:2px 2px 10px;margin:0 -2px 4px;scrollbar-width:none}
+.sp-pages::-webkit-scrollbar{display:none}
+.sp-pages button{flex:1 0 auto;display:flex;flex-direction:column;align-items:center;gap:1px;border:1.6px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:.45rem .5rem;cursor:pointer;white-space:nowrap}
+.sp-pages button b{font-size:14px;font-weight:900}
+.sp-pages button i{font-style:normal;font-size:11.5px;font-weight:800;color:var(--soft)}
+.sp-pages button.on{border-color:var(--purple);background:var(--purple-l);color:var(--purple-d)}
+body.dark .sp-pages button.on{color:#d7ccff}
+.sp-probs{display:flex;flex-direction:column;gap:12px}
+.sp-prob{display:flex;flex-direction:column;gap:10px}
+.sp-probs .sp-prob{margin-bottom:0}
+.sp-prob-h{display:flex;align-items:baseline;gap:8px}
+.sp-prob-h b{font-size:17px;font-weight:900}
+.sp-prob-h span{margin-left:auto;font-size:12px;font-weight:800;color:var(--soft)}
+/* бодлогын агуулга өөрийн хайрцгаасаа гарахгүй (position:relative + overflow), өргөн томьёо хөндлөн гүйлгэнэ */
+.sp-prob-q,.sp-prob-fig,.sp-opt-v,.sp-fbox-b{position:relative;overflow-x:auto;overflow-y:hidden;max-width:100%}
+.sp-prob-q{font-size:16px;line-height:1.65;color:var(--ink)}
+.sp-prob-fig{text-align:center}
+/* бодлогын анхны класс «pp-» угтвартай (lib/paperClient.js). SVG-г зөвхөн шууд хүүхдээр — KaTeX-ийн \sqrt доторх svg-д height:auto болохгүй */
+.sp-prob-fig>*>svg,.sp-prob-fig>*>img,.sp-prob .pp-fig>svg,.sp-opt-v>*>svg{max-width:100%;height:auto;vertical-align:middle}
+body.dark .sp-prob-fig>*>svg,body.dark .sp-prob .pp-fig>svg,body.dark .sp-opt-v>*>svg{background:#fff;color:#1c1f2a;border-radius:8px}
+.sp-prob .pp-fig{text-align:center;margin:6px 0;max-width:100%;overflow-x:auto}
+.sp-prob table{border-collapse:collapse;margin:4px auto}
+.sp-prob td,.sp-prob th{border:1px solid var(--line);padding:2px 8px}
+.sp-prob .pp-stmt{display:flow-root;margin-bottom:4px}
+.sp-prob .pp-sp{display:flex;gap:8px;align-items:baseline;margin:6px 0}
+.sp-prob .pp-sn{min-width:24px;flex-shrink:0;font-weight:800}
+.sp-prob .pp-st{flex:1;min-width:0}
+.sp-prob .pp-nw{display:inline-block;white-space:nowrap}
+.sp-prob .pp-pt{float:right;white-space:nowrap;margin-left:10px;font-size:12px;font-weight:800;color:var(--soft)}
+.sp-prob .pp-bx{display:inline-block;min-width:1.3em;padding:0 .2em;margin:0 .1em;border:1.5px solid currentColor;border-radius:4px;text-align:center;font-family:KaTeX_Math,'Times New Roman',serif;font-style:italic;line-height:1.15;white-space:nowrap;color:var(--purple-d)}
+body.dark .sp-prob .pp-bx{color:#d7ccff}
+.sp-prob .pp-bf>.pp-n{display:flex;align-items:baseline;justify-content:center;border-bottom:1px solid currentColor;padding:0 .15em 2px}
+.sp-prob .pp-bf>.pp-d{display:flex;align-items:baseline;justify-content:center;padding:2px .15em 0}
+.sp-prob .pp-bf{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 .2em;line-height:1.15}
+.sp-prob .katex .kp{font-family:'Segoe UI',Arial,sans-serif;font-size:.8264em;font-style:normal;font-weight:normal}
+.sp-opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+.sp-opt{display:flex;align-items:center;gap:10px;text-align:left;border:1.6px solid var(--line);background:var(--card);color:var(--ink);border-radius:14px;padding:.55rem .75rem;min-height:48px;font-size:15px;cursor:pointer;min-width:0}
+.sp-opt>b{flex:0 0 auto;width:28px;height:28px;border-radius:999px;display:grid;place-items:center;background:var(--chip);font-weight:900;font-size:14px}
+.sp-opt.on{border-color:var(--purple);background:var(--purple-l)}
+.sp-opt.on>b{background:var(--purple);color:#fff}
+.sp-opt-v{min-width:0;flex:1}
+.sp-s2{padding:0;border-top:1px solid var(--chip)}
+.sp-fbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:8px 12px;margin-bottom:10px;font-size:14px}
+.sp-fbox summary{font-weight:900;cursor:pointer}
+.sp-fbox-b{margin-top:6px}
+.sp-fbox table{border-collapse:collapse;margin:4px 0}
+.sp-fbox td,.sp-fbox th{border:1px solid var(--line);padding:2px 8px}
+.sp-pnav{display:flex;gap:10px;margin:14px 0 4px}
+.sp-pnav .cm-btn{flex:1}
