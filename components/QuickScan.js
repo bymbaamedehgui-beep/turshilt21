@@ -489,7 +489,7 @@ export function ScanPage({ exam, exams, students, onSelectExam, onAddStudent, on
   if (!exam) return (
     <div className="cm-page">
       <div className="cm-h2">Аль шалгалтыг шалгах вэ?</div>
-      <div className="cm-list">
+      <div className="cm-list" data-tour="scan-pick">
         {exams.length === 0 && <div className="cm-card cm-empty"><div className="cm-empty-t">Шалгалт алга</div>
           <button className="cm-btn" onClick={() => onNavigate('create')}>+ Шалгалт үүсгэх</button></div>}
         {exams.map(e => (
@@ -536,7 +536,7 @@ export function ScanPage({ exam, exams, students, onSelectExam, onAddStudent, on
           <h1>{exam.title}</h1>
           <p>{exam.sec1Count} дасгал{exam.useSec2 ? ' · 2-р хэсэгтэй' : ''}{examVariants(exam).length > 1 ? ` · ${examVariants(exam).join('/')} хувилбар` : ''} · шалгасан {students.length}</p>
         </div>
-        <button className="cm-btn amber big" disabled={tooMany} onClick={openCamera}>
+        <button className="cm-btn amber big" data-tour="scan-camera" disabled={tooMany} onClick={openCamera}>
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 12h10"/></svg>
           Камераар шалгах
         </button>

@@ -229,8 +229,8 @@ export function SheetsPage({ exam, onNavigate, dark: d = false }) {
           <div className="cm-hint" style={{ marginTop: 10 }}>Сурагчийн бүртгэл алга. «Сурагчид» хэсэгт ангиар нэмбэл нэрлэсэн хуудас хэвлэж болно.</div>
         )}
         <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
-          <button className="cm-btn" disabled={!students.length} onClick={() => window.print()}>Хэвлэх · {students.length} хуудас</button>
-          <button className="cm-btn ghost" onClick={() => onNavigate('scan')}>Шалгах руу</button>
+          <button className="cm-btn" data-tour="sheets-print" disabled={!students.length} onClick={() => window.print()}>Хэвлэх · {students.length} хуудас</button>
+          <button className="cm-btn ghost" data-tour="sheets-scan" onClick={() => onNavigate('scan')}>Шалгах руу</button>
         </div>
         <div className="cm-tips">
           <b>Анхаарах:</b> Хэвлэх цонхонд «Fit to page/Хуудсанд тааруулах»-ыг унтрааж, цаасыг A4 сонгоно. Өнгөт болон хар-цагаан принтерт аль алинд нь ажиллана. Булан ба хажуугийн 6 хар дөрвөлжин бүтэн гарсан байх ёстой.

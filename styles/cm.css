@@ -717,3 +717,54 @@ body.dark .sp-prob .pp-bx{color:#d7ccff}
 .sp-fbox td,.sp-fbox th{border:1px solid var(--line);padding:2px 8px}
 .sp-pnav{display:flex;gap:10px;margin:14px 0 4px}
 .sp-pnav .cm-btn{flex:1}
+
+/* ── «Эхлэх заавар» (components/Tour.js): тодруулга, сум, карт ── */
+.tour-dim{position:fixed;inset:0;z-index:160;background:rgba(15,17,26,.55);display:flex;align-items:center;justify-content:center;padding:16px;animation:fade .2s}
+.tour-dim.soft{background:rgba(15,17,26,.22);pointer-events:none}
+.tour-hole{position:fixed;z-index:160;border-radius:14px;pointer-events:none;box-shadow:0 0 0 9999px rgba(15,17,26,.5);transition:left .2s,top .2s,width .2s,height .2s}
+.tour-hole::after{content:'';position:absolute;inset:-4px;border-radius:17px;border:3px solid #FFC113;animation:tour-ring 1.4s ease-out infinite}
+.tour-hole.mini{box-shadow:none}
+.tour-arrow{position:fixed;z-index:161;width:44px;height:44px;pointer-events:none;filter:drop-shadow(0 3px 6px rgba(0,0,0,.25))}
+.tour-arrow.down svg{animation:tour-bob 1s ease-in-out infinite}
+.tour-arrow.up svg{transform:rotate(180deg);animation:tour-bob-up 1s ease-in-out infinite}
+.tour-arrow.right svg{transform:rotate(-90deg);animation:tour-bob-right 1s ease-in-out infinite}
+@keyframes tour-bob{0%,100%{transform:translateY(-7px)}50%{transform:translateY(0)}}
+@keyframes tour-bob-up{0%,100%{transform:rotate(180deg) translateY(-7px)}50%{transform:rotate(180deg) translateY(0)}}
+@keyframes tour-bob-right{0%,100%{transform:rotate(-90deg) translateY(-7px)}50%{transform:rotate(-90deg) translateY(0)}}
+@keyframes tour-ring{0%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.12)}}
+.tour-card{background:var(--card);color:var(--ink);border-radius:20px;box-shadow:0 24px 60px -18px rgba(15,17,26,.55);padding:16px}
+.tour-welcome{width:min(420px,100%);text-align:center;display:flex;flex-direction:column;align-items:center;gap:10px;padding:24px 22px}
+.tour-welcome h2{font-size:22px;font-weight:900;margin:0}
+.tour-welcome p{font-size:14.5px;line-height:1.5;color:var(--soft);font-weight:600;margin:0}
+.tour-big{font-size:44px;line-height:1}
+.tour-list{list-style:none;margin:4px 0;padding:0;width:100%;display:flex;flex-direction:column;gap:8px;text-align:left}
+.tour-list li{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;background:var(--chip);border-radius:12px;padding:9px 12px}
+.tour-list li b{width:26px;height:26px;border-radius:999px;display:grid;place-items:center;background:var(--purple);color:#fff;font-size:13px;flex-shrink:0}
+.tour-list li.ok{color:var(--soft)}
+.tour-list li.ok b{background:var(--green)}
+.tour-btns{display:flex;align-items:center;justify-content:flex-end;gap:12px;width:100%;margin-top:4px}
+.tour-welcome .tour-btns{justify-content:center}
+.tour-welcome .tour-btns .cm-btn{flex:1}
+.tour-step{position:fixed;z-index:162;display:flex;flex-direction:column;gap:10px;max-height:calc(100vh - 24px);overflow:auto;animation:up .2s ease}
+.tour-step.w{width:340px;bottom:20px}
+.tour-step.w.right{right:20px}
+.tour-step.w.left{left:20px}
+.tour-step.n{left:8px;right:8px;padding:12px}
+.tour-step.n.bottom{bottom:calc(var(--tab-h) + 10px + env(safe-area-inset-bottom))}
+.tour-step.n.top{top:calc(70px + env(safe-area-inset-top))}
+.tour-h{display:flex;align-items:center;gap:10px}
+.tour-h b{flex:1;font-size:16px;font-weight:900;line-height:1.25}
+.tour-dots{display:flex;gap:4px;flex-shrink:0}
+.tour-dots i{width:8px;height:8px;border-radius:99px;background:var(--line)}
+.tour-dots i.on{background:var(--purple);width:18px}
+.tour-dots i.ok{background:var(--green)}
+.tour-x{border:0;background:var(--chip);color:var(--ink);width:30px;height:30px;border-radius:99px;font-size:20px;line-height:1;cursor:pointer;flex-shrink:0}
+.tour-video{display:block;width:100%;aspect-ratio:16/10;max-height:30vh;object-fit:contain;border-radius:12px;background:#f1edff;border:1px solid var(--line)}
+body.dark .tour-video{background:#2a2440}
+.tour-text{margin:0;font-size:14.5px;line-height:1.5;font-weight:600}
+.tour-pill{position:fixed;z-index:162;left:20px;bottom:20px;display:flex;align-items:center;gap:8px;border:0;border-radius:999px;padding:10px 16px;background:var(--purple);color:#fff;font-weight:800;font-size:14px;box-shadow:0 12px 28px -10px rgba(91,63,212,.7);cursor:pointer}
+.tour-pill b{background:rgba(255,255,255,.22);border-radius:99px;padding:1px 8px;font-size:12.5px}
+.tour-pill i{font-style:normal;opacity:.8}
+.tour-pill.n{left:50%;transform:translateX(-50%);bottom:calc(var(--tab-h) + 10px + env(safe-area-inset-bottom));white-space:nowrap;max-width:calc(100vw - 24px);overflow:hidden;text-overflow:ellipsis}
+@media (prefers-reduced-motion:reduce){.tour-arrow svg,.tour-hole::after{animation:none}.tour-hole{transition:none}}
+@media print{.tour-dim,.tour-hole,.tour-arrow,.tour-step,.tour-pill{display:none!important}}
