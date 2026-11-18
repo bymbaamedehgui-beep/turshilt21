@@ -1,4 +1,4 @@
-import { getExam, updateExam, deleteExam, getStudents, updateStudentScores, initDb, getTeacherById, denySubject } from '../../../lib/db';
+import { getExam, updateExam, deleteExam, getStudents, updateStudentScores, initDb, getTeacherById, denySubject, setExamPaperOpen } from '../../../lib/db';
 import { requirePaid } from '../../../lib/auth';
 import { rescoreSaved } from '../../../lib/eyesh';
 
@@ -24,6 +24,17 @@ export default requirePaid(async function handler(req, res) {
       console.error('rescore error:', e);
       return res.json({ ...exam, rescored: 0, rescoreError: 'Шалгалт хадгалагдсан ч сурагчдын дүнг дахин бодож чадсангүй. Дахин хадгалж үзнэ үү.' });
     }
+  }
+  if (req.method === 'PATCH' && req.body && 'paperOpen' in req.body) {
+    // Онлайн шалгалтад бодлогуудыг (шалгалтын материал) сурагчдад нээх/хаах — нээхэд тухайн хичээлийн эрх хэрэгтэй, хаах нь үргэлж болно
+    const open = !!req.body.paperOpen;
+    if (open) {
+      const exam = await getExam(id, req.teacherId);
+      if (!exam) return res.status(404).json({ error: 'Олдсонгүй' });
+      if (await denySubject(res, await getTeacherById(req.teacherId), exam.subject)) return;
+    }
+    const v = await setExamPaperOpen(id, req.teacherId, open);
+    return v === null ? res.status(404).json({ error: 'Олдсонгүй' }) : res.json({ ok: true, paperOpen: v });
   }
   if (req.method === 'DELETE') {
     await deleteExam(id, req.teacherId);

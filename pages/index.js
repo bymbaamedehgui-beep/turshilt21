@@ -824,9 +824,20 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
 }
 
 // ── Home Page ─────────────────────────────────────────────
-function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onNavigate, onEditExam, dark:d=false, canUse}) {
+function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onNavigate, onEditExam, dark:d=false, canUse, onPaperOpen}) {
   // Subject filter — group exams by subject
   const [filterSubject, setFilterSubject] = useState('all');
+  // Онлайн шалгалтад бодлогуудыг (шалгалтын материал, хариугүй) сурагчдад нээх/хаах
+  const [paperBusy, setPaperBusy] = useState('');
+  async function togglePaper(exam) {
+    const open = !exam.paperOpen;
+    if (!window.confirm(open
+      ? `«${exam.title}»: сурагчид онлайнаар өгөхдөө бодлогуудыг (хариу, бодолтгүй) утсан дээрээ харж, 5 сонголтоос сонгоно. Нээх үү?`
+      : `«${exam.title}»: онлайн бодлогыг хаах уу? Сурагчид зөвхөн хариултын товчтой үлдэнэ.`)) return;
+    setPaperBusy(exam.id);
+    try { await onPaperOpen(exam, open); } catch (e) { alert(e.message); }
+    setPaperBusy('');
+  }
   const examSubjects = [...new Set(exams.map(e=>e.subject||'Бусад').filter(Boolean))].sort((a,b)=>a.localeCompare(b,'mn'));
   const subjectCounts = examSubjects.reduce((m,s)=>{m[s]=exams.filter(e=>(e.subject||'Бусад')===s).length;return m;},{});
   const filteredExams = filterSubject==='all' ? exams : exams.filter(e=>(e.subject||'Бусад')===filterSubject);
@@ -926,6 +937,14 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
                             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M8 13h8M8 17h5"/></svg>
                             Материал{exam.materials.length>1&&p?' · '+p[1]+'-р хэсэг':''}
                           </a>);})}
+                        {onPaperOpen&&(
+                          <button onClick={e=>{e.stopPropagation();togglePaper(exam);}} disabled={paperBusy===exam.id} aria-pressed={!!exam.paperOpen}
+                            title={exam.paperOpen?'Сурагчид онлайнаар өгөхдөө бодлогуудыг харж байна — дарж хаана':'Сурагчид онлайнаар өгөхдөө бодлогуудыг харж, 5 сонголтоос сонгоно'}
+                            style={{display:'inline-flex',alignItems:'center',gap:5,padding:'4px 9px',background:exam.paperOpen?'#e7f8ef':'white',border:'1px solid '+(exam.paperOpen?'#a7e3c2':'#ddd3fd'),borderRadius:8,fontSize:11.5,fontWeight:800,color:exam.paperOpen?'#047857':'#5B3BD9',cursor:'pointer',opacity:paperBusy===exam.id?.6:1}}>
+                            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="6" y="2" width="12" height="20" rx="2.5"/><path d="M10 18h4"/></svg>
+                            {exam.paperOpen?'Онлайн бодлого нээлттэй':'Онлайн бодлого нээх'}
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
@@ -2285,7 +2304,7 @@ export default function App() {
 
   async function handleUpdateExam(exam) {
     const { rescored, rescoreError, ...updated } = await apiFetch('/api/exams/'+exam.id, {method:'PUT', body:exam});
-    setExams(ex=>ex.map(e=>e.id===exam.id?updated:e));
+    setExams(ex=>ex.map(e=>e.id===exam.id?{...updated,materials:e.materials}:e));   // PUT материалын жагсаалтыг буцаадаггүй
     setCurrentExam(updated);
     setEditingExam(null);
     setPage('home');
@@ -2293,6 +2312,13 @@ export default function App() {
     if (rescored) { try { setStudents(await apiFetch('/api/students')); } catch(e) {} }
     setNotice(rescoreError ? { err:true, text:rescoreError }
       : rescored ? { text: rescored+' сурагчийн оноо, хувийг шинэ зөв хариултаар дахин бодлоо.' } : null);
+  }
+
+  async function handlePaperOpen(exam, open) {
+    const r = await apiFetch('/api/exams/'+exam.id, {method:'PATCH', body:{paperOpen:open}});
+    const upd = e => e&&e.id===exam.id ? {...e, paperOpen:r.paperOpen} : e;
+    setExams(ex=>ex.map(upd));
+    setCurrentExam(upd);
   }
 
   async function handleDeleteExam(id) {
@@ -2438,7 +2464,7 @@ export default function App() {
         )}
         {page==='billing'&&<Paywall me={me} renew subject={paySubject || favSubject} onPaid={paid} onClose={()=>go('home')} onSchool={()=>go('school')} />}
         {page==='school'&&<SchoolPage key={navTick} me={me} onChanged={refreshMe} />}
-        {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={go} onEditExam={e=>{setEditingExam(e);go('edit');}} dark={d} canUse={canUse} />}
+        {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={go} onEditExam={e=>{setEditingExam(e);go('edit');}} dark={d} canUse={canUse} onPaperOpen={handlePaperOpen} />}
         {page==='scan'&&(currentExam&&!canUse(currentExam.subject)
           ? <SubjectLock subject={currentExam.subject} onBuy={()=>openBilling(currentExam.subject)} onBack={()=>go('home')} />
           : <ScanPage exam={currentExam} exams={exams} students={examStudents} onSelectExam={setCurrentExam} onAddStudent={handleAddStudent} onNavigate={go} />)}

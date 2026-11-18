@@ -19,6 +19,8 @@ function examOutline(e) {
   // олон хувилбартай: сурагч өөрийн хувилбарыг сонгоно — хувилбар бүрийн 2-р хэсгийн мөрүүд (түлхүүргүй)
   const vers = examVariants(e);
   if (vers.length > 1) out.variants = Object.fromEntries(vers.map(L => [L, sec2Rows(examForVersion(e, L))]));
+  // багш онлайн бодлогыг нээсэн, шалгалтын материалтай — бодлогуудыг /api/student/paper-оос (хариугүй) авна
+  if (e.paperOpen && e.materials && e.materials.length) out.paper = true;
   return out;
 }
 
