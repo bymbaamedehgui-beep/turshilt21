@@ -7,6 +7,8 @@
 // өөрөө нээгдэнэ; ☰ «Эхлэх заавар»-аас дахин нээнэ.
 import { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../lib/eyesh';
+import { fmtMNT, PLANS, planPrice, WELCOME_HOURS } from '../lib/plans';
+import { Clock } from './Clock';
 
 const STEPS = [
   { key: 'exam', title: 'Шалгалтаа үүсгэнэ', video: '/tour/1-exam.mp4', poster: '/tour/1-exam.jpg' },
@@ -58,7 +60,8 @@ function findTarget(keys) {
 const load = key => { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch (e) { return null; } };
 const save = (key, v) => { try { localStorage.setItem(key, JSON.stringify(v)); } catch (e) {} };
 
-export function Tour({ teacherId, ready, page, menuOpen, examCount, sheetCount, reopen }) {
+// offer — шинэ бүртгэлийн 24 цагийн урамшуулал дуусах хугацаа (pages/index.js welcomeUntil): «Тавтай морил» картад цагтай мөр
+export function Tour({ teacherId, ready, page, menuOpen, examCount, sheetCount, reopen, offer, onBuy }) {
   const KEY = 'eyesh_tour:' + (teacherId || '');
   const [st, setSt] = useState(null);           // { state:'welcome'|'on'|'off'|'done', printed, skip:[] }
   const [accounts, setAccounts] = useState(null);
@@ -143,7 +146,7 @@ export function Tour({ teacherId, ready, page, menuOpen, examCount, sheetCount, 
     return () => cancelAnimationFrame(raf);
   }, [active, tkey, page]);
 
-  if (!active || !geo || geo.hidden) return null;
+  if (!active || !geo || geo.hidden || page === 'billing') return null;   // төлбөр хийж байхад саад болохгүй
   const close = () => setSt(s => ({ ...s, state: 'off' }));
   const narrow = geo.vw <= 760;   // доод таб мөр гарах өргөн (styles/cm.css)
 
@@ -157,6 +160,14 @@ export function Tour({ teacherId, ready, page, menuOpen, examCount, sheetCount, 
         <ol className="tour-list">
           {STEPS.map((s, i) => <li key={s.key} className={done[s.key] ? 'ok' : ''}><b>{done[s.key] ? '✓' : i + 1}</b>{s.title}</li>)}
         </ol>
+        {offer && (
+          <div className="tour-offer">
+            <div><b>🎁 Эхний {WELCOME_HOURS} цагт бүх багц 50% хямд</b>
+              <span>{PLANS.map((p, i) => <span key={p.months}>{i ? ' · ' : ''}{p.months} сар <b>{fmtMNT(planPrice(p.months, true))}</b></span>)}</span>
+              <span>Дуусахад <Clock until={offer} /></span></div>
+            {onBuy && <button className="cm-btn amber" onClick={() => { setSt(s => ({ ...s, state: 'on' })); onBuy(); }}>Авах</button>}
+          </div>
+        )}
         <div className="tour-btns">
           <button className="cm-btn ghost" onClick={close}>Дараа</button>
           <button className="cm-btn" onClick={() => setSt(s => ({ ...s, state: 'on' }))}>Эхлэх</button>

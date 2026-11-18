@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { apiFetch } from '../lib/eyesh';
-import { PLANS, MONTH_PRICE, SUBJECTS, CM_SUBJECT, planPrice, fullPrice, perMonth, promoPrice, fmtMNT, fmtDay as fmtDate, subjectUntilOf } from '../lib/plans';
+import { PLANS, MONTH_PRICE, WELCOME_MONTH_PRICE, SUBJECTS, CM_SUBJECT, planPrice, fullPrice, perMonth, promoPrice, fmtMNT, fmtDay as fmtDate, subjectUntilOf } from '../lib/plans';
+import { Clock } from './Clock';
 
 // ── Эрх авах / сунгах (QPay) ───────────────────────────────────────────────
 // Багц НЭГ хичээлийнх (lib/plans.js): багш хичээлээ сонгоод төлнө. Олон хичээл — «Сургуулийн эрх» (components/SchoolPage.js).
@@ -95,11 +96,16 @@ export function MyAccess({ me }) {
   );
 }
 
-export function Paywall({ me, renew, subject: subject0, onPaid, onClose, onLogout, onSchool }) {
+export function Paywall({ me, renew, subject: subject0, months: months0, onPaid, onClose, onLogout, onSchool }) {
   const own = (me?.access?.licenses || []).filter(l => !l.school).sort((a, b) => new Date(b.until) - new Date(a.until));
   const [subject, setSubject] = useState(() => subject0 || own[0]?.subject || SUBJECTS[0]);
   useEffect(() => { if (subject0) setSubject(subject0); }, [subject0]);
-  const [months, setMonths] = useState(6);
+  // Шинэ бүртгэлийн 24 цагийн урамшуулал (/api/me welcome) — үнийг сервер мөн адил тооцно (pages/api/pay/create.js)
+  const welcomeLive = () => !!(me?.welcome && new Date(me.welcome.until) > new Date());
+  const [welcomeOn, setWelcomeOn] = useState(welcomeLive);
+  useEffect(() => { setWelcomeOn(welcomeLive()); }, [me?.welcome?.until]);
+  const [months, setMonths] = useState(() => months0 || 1);   // months0 — урамшууллын картаас сонгосон
+  useEffect(() => { if (months0) setMonths(months0); }, [months0]);
   const [inv, setInv] = useState(null);           // QPay нэхэмжлэх
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(null);         // { paidUntil, days?, subject }
@@ -111,7 +117,14 @@ export function Paywall({ me, renew, subject: subject0, onPaid, onClose, onLogou
 
   const expired = !renew && me?.paidUntil && !me?.hasAccess;   // туршилт эсвэл төлсөн хугацаа дууссан
   const pct = promo?.kind === 'percent' ? promo.value : 0;
-  const priceOf = m => pct ? promoPrice(m, pct) : planPrice(m);
+  // үнэ ба аль хөнгөлөлтөөр: урамшуулал ба промо давхцахгүй — промо зөвхөн урамшууллаас хямд бол (сервертэй ижил)
+  const priceInfo = m => {
+    const base = planPrice(m), w = welcomeOn ? planPrice(m, true) : null, q = pct ? promoPrice(m, pct) : null;
+    if (q != null && (w == null || q < w)) return { price: q, by: 'promo' };
+    if (w != null) return { price: w, by: 'welcome' };
+    return { price: base, by: null };
+  };
+  const priceOf = m => priceInfo(m).price;
   const until = subjectUntilOf(me, subject), active = !!(until && until > new Date());
 
   async function create() {
@@ -164,6 +177,17 @@ export function Paywall({ me, renew, subject: subject0, onPaid, onClose, onLogou
         </div>
       </div>
 
+      {welcomeOn && !inv && (
+        <div className="pw-offer" role="note">
+          <span className="pw-offer-ic" aria-hidden="true">🎁</span>
+          <div className="pw-offer-t">
+            <b>Шинэ хэрэглэгчийн урамшуулал — 50% хямд</b>
+            <span>1, 3, 6 сарын бүх багц хагас үнээр: 1 сар <s>{fmtMNT(MONTH_PRICE)}</s> {fmtMNT(WELCOME_MONTH_PRICE)}. Зөвхөн бүртгүүлснээс хойш 24 цагийн дотор.</span>
+          </div>
+          <div className="pw-offer-c"><span>Дуусахад</span><Clock until={me.welcome.until} onEnd={() => setWelcomeOn(false)} /></div>
+        </div>
+      )}
+
       {!inv ? (
         <>
           <div className="pw-sec">Хичээл</div>
@@ -174,7 +198,9 @@ export function Paywall({ me, renew, subject: subject0, onPaid, onClose, onLogou
           <div className="pw-sec">Хугацаа</div>
           <div className="pw-plans" role="radiogroup" aria-label="Багц">
             {PLANS.map(p => {
-              const price = priceOf(p.months), full = fullPrice(p.months), off = pct ? Math.round((1 - price / full) * 100) : p.off;
+              // урамшуулал: багцын ердийн үнийг зурж −50% (нүүрний карттай ижил); промо: бүтэн үнээс
+              const { price, by } = priceInfo(p.months), full = by === 'welcome' ? planPrice(p.months) : fullPrice(p.months);
+              const off = by ? Math.round((1 - price / full) * 100) : p.off;
               return (
                 <button key={p.months} role="radio" aria-checked={months === p.months}
                   className={'pw-plan' + (months === p.months ? ' on' : '') + (p.best ? ' best' : '')} onClick={() => setMonths(p.months)}>
@@ -186,7 +212,8 @@ export function Paywall({ me, renew, subject: subject0, onPaid, onClose, onLogou
                     {off > 0 && <s>{fmtMNT(full)}</s>}
                   </span>
                   <span className="pw-plan-n">
-                    {pct ? <>промо кодоор <i>{fmtMNT(full - price)} хэмнэнэ</i></>
+                    {by === 'promo' ? <>промо кодоор <i>{fmtMNT(full - price)} хэмнэнэ</i></>
+                      : by === 'welcome' ? <>шинэ хэрэглэгч · сард <b>{fmtMNT(perMonth(p.months, true))}</b> · <i>{fmtMNT(full - price)} хэмнэнэ</i></>
                       : p.off > 0 ? <>сард <b>{fmtMNT(perMonth(p.months))}</b> · <i>{fmtMNT(full - price)} хэмнэнэ</i></> : <>сард {fmtMNT(MONTH_PRICE)}</>}
                   </span>
                 </button>
@@ -225,7 +252,8 @@ export function Paywall({ me, renew, subject: subject0, onPaid, onClose, onLogou
           {onSchool && <div className="pw-school">Олон хичээл, олон багштай бол <button onClick={onSchool}>Сургуулийн эрх →</button></div>}
         </>
       ) : (
-        <QPayInvoice inv={inv} title={`${subject} · ${inv.months} сарын эрх`} sub={`QPay нэхэмжлэх${pct ? ` · ${promo.code}` : ''}`}
+        <QPayInvoice inv={inv} title={`${subject} · ${inv.months} сарын эрх`}
+          sub={`QPay нэхэмжлэх${(b => (b === 'promo' ? ` · ${promo.code}` : b === 'welcome' ? ' · шинэ хэрэглэгчийн урамшуулал' : ''))(priceInfo(inv.months).by)}`}
           onPaid={r => { setDone({ paidUntil: r.paidUntil, subject }); onPaid && onPaid(r); }} onBack={() => { setInv(null); setErr(''); }} />
       )}
 
