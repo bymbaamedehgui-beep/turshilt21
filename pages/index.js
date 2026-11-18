@@ -5,7 +5,8 @@ import { ScanPage } from '../components/QuickScan';
 import { SheetsPage } from '../components/AnswerSheet';
 import { Paywall } from '../components/Paywall';
 import { SchoolPage } from '../components/SchoolPage';
-import { PLANS, planPrice, fullPrice, perMonth, fmtMNT, fmtDay, TRIAL_DAYS, SUBJECTS, canUseSubjectOf, subjectUntilOf } from '../lib/plans';
+import { PLANS, planPrice, fullPrice, perMonth, fmtMNT, fmtDay, TRIAL_DAYS, SUBJECTS, canUseSubjectOf, subjectUntilOf, MONTH_PRICE, WELCOME_MONTH_PRICE, WELCOME_HOURS } from '../lib/plans';
+import { Clock } from '../components/Clock';
 import { StudentPortal } from '../components/StudentPortal';
 import { MaterialsPanel } from '../components/MaterialsPanel';
 import { exportAnalysisXlsx } from '../lib/report-xlsx';
@@ -358,6 +359,8 @@ function LandingPage({onEnter}) {
         <div style={sec}>
           <div style={h2}>Үнэ</div>
           <div style={sub}>Бүртгүүлээд {TRIAL_DAYS} хоног үнэгүй туршина · дараа нь QPay-ээр төлнө</div>
+          <div className="cm-offer-note">🎁 Шинээр бүртгүүлбэл эхний {WELCOME_HOURS} цагт бүх багц <b>50% хямд</b>:{' '}
+            {PLANS.map((p, i) => <span key={p.months}>{i ? ' · ' : ''}{p.months} сар <b>{fmtMNT(planPrice(p.months, true))}</b></span>)}</div>
           <div className="pw-plans">
             {PLANS.map(p => (
               <div key={p.months} className={'pw-plan' + (p.best ? ' best on' : '')} style={{cursor:'default'}}>
@@ -390,7 +393,7 @@ function LandingPage({onEnter}) {
             {q:'Ямар төхөөрөмжид ажилладаг вэ?', a:'Утас, таблет, компьютерийн хөтөч дээр ажиллана. Суулгах шаардлагагүй — утсан дээрээ «Нүүр дэлгэцэнд нэмэх»-ээр апп шиг ашиглаж болно.'},
             {q:'Камераар уншихад хэр найдвартай вэ?', a:'CyberMath-ийн хэвлэсэн хуудсыг AI-гүй, тэмдгээр нь байрлалыг тогтоож пикселээр уншдаг тул нэг хуудсыг хэдэн удаа уншуулсан ч ижил үр дүн гарна. Олон будсан, бүдэг, арилгасан мөрийг таньж танаас баталгаажуулалт авна.'},
             {q:'Үнэгүй туршиж болох уу?', a:'Тийм. Бүртгүүлэхдээ утасны дугаараа SMS-ээр баталгаажуулмагц ' + TRIAL_DAYS + ' хоног бүх боломжийг үнэгүй ашиглана.'},
-            {q:'Үнэ хэд вэ?', a:'1 сар 9,900₮. 3 сараар авбал 20%, 6 сараар авбал 30% хямд. Аль ч багцад шалгалт хязгааргүй.'},
+            {q:'Үнэ хэд вэ?', a:'Нэг хичээлийн ' + PLANS.map(p => p.months + ' сар ' + fmtMNT(planPrice(p.months))).join(', ') + '. Шинээр бүртгүүлсэн бол эхний ' + WELCOME_HOURS + ' цагт бүх багц 50% хямд (' + PLANS.map(p => p.months + ' сар ' + fmtMNT(planPrice(p.months, true))).join(', ') + '). Аль ч багцад шалгалт хязгааргүй.'},
             {q:'Өгөгдөл хаана хадгалагддаг вэ?', a:'Бүх өгөгдөл Neon cloud database-д хадгалагдана. Өгөгдлийг гуравдагч этгээдэд дамжуулахгүй.'},
             {q:'Олон багш нэг платформ ашиглаж болох уу?', a:'Тийм. Багш бүр өөрийн бүртгэлтэй бөгөөд зөвхөн өөрийн шалгалт, сурагчдаа харна.'},
             {q:'Төлбөрийг хэрхэн төлөх вэ?', a:'Нэвтэрсний дараа багцаа сонгоод QPay-ээр төлнө: банкны аппаараа QR уншуулах эсвэл утсан дээрээ банкны апп руу шууд орно. Төлсөн даруй эрх нээгдэнэ. Хугацаа дуусахаас өмнө сунгавал үлдсэн хоног дээр нэмэгдэнэ.'},
@@ -826,7 +829,7 @@ function LoginPage({onLogin, onStudentLogin, onBack}) {
 }
 
 // ── Home Page ─────────────────────────────────────────────
-function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onNavigate, onEditExam, dark:d=false, canUse, onPaperOpen}) {
+function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onNavigate, onEditExam, dark:d=false, canUse, onPaperOpen, welcome, onBuy, onOfferEnd}) {
   // Subject filter — group exams by subject
   const [filterSubject, setFilterSubject] = useState('all');
   // Онлайн шалгалтад бодлогуудыг (шалгалтын материал, хариугүй) сурагчдад нээх/хаах
@@ -868,6 +871,29 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
 
   return (
     <div style={{maxWidth:1200,margin:'0 auto',padding:'24px 20px'}}>
+      {/* Шинэ бүртгэлийн 24 цагийн урамшуулал — худалдан авах хэсэг, цаг тоолуур (lib/plans.js WELCOME_*) */}
+      {welcome && (
+        <div className="cm-offer-card no-print" role="region" aria-label="Шинэ хэрэглэгчийн урамшуулал">
+          <div className="cm-offer-l">
+            <span className="cm-offer-tag">🎁 Шинэ хэрэглэгчийн урамшуулал</span>
+            <b>Эхний {WELCOME_HOURS} цагт бүх багц 50% хямд</b>
+            <span>Нэг хичээлийн эрх — багцаа сонгоод авна</span>
+          </div>
+          <span className="cm-offer-clock">Дуусахад <Clock until={welcome} onEnd={onOfferEnd} /></span>
+          {/* 1, 3, 6 сарын багц — дарахад тэр багц сонгогдсон төлбөрийн цонх нээгдэнэ */}
+          <div className="cm-offer-plans">
+            {PLANS.map(p => (
+              <button key={p.months} className={'cm-offer-plan' + (p.best ? ' best' : '')} onClick={() => onBuy(p.months)}>
+                {p.best && <i>Хамгийн ашигтай</i>}
+                <span>{p.months} сар</span>
+                <b>{fmtMNT(planPrice(p.months, true))}</b>
+                <s>{fmtMNT(planPrice(p.months))}</s>
+                <em>{p.months > 1 ? `сард ${fmtMNT(perMonth(p.months, true))}` : 'Авах'}</em>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <div className="cm-hero" style={{display:'flex',alignItems:'center',gap:18,marginBottom:20}}>
         <img src="/chick.svg" alt="" style={{width:86,height:86,flexShrink:0,filter:'drop-shadow(0 8px 14px rgba(0,0,0,.25))',animation:'bob 3.4s ease-in-out infinite',position:'relative',zIndex:1}} />
         <div className="cm-hero-t" style={{marginBottom:0,flex:1,minWidth:0}}>
@@ -2203,6 +2229,7 @@ export default function App() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [me, setMe] = useState(null);             // { hasAccess, paidUntil, access, … } — /api/me
   const [paySubject, setPaySubject] = useState(null);   // төлбөрийн дэлгэцийг аль хичээлээр нээх (402 SUBJECT_REQUIRED, түгжээ)
+  const [payMonths, setPayMonths] = useState(null);     // урамшууллын картаас сонгосон багц (1/3/6 сар)
   const [navTick, setNavTick] = useState(0);             // цэснээс дахин сонгоход «Сургуулийн эрх»-ийг шинээр ачаална
   const [notice, setNotice] = useState(null);     // { text, err } — дээд талын түр мэдэгдэл
   const [tourTick, setTourTick] = useState(0);    // ☰ «Эхлэх заавар» — components/Tour.js-ийг дахин нээнэ
@@ -2393,7 +2420,7 @@ export default function App() {
   async function refreshMe() { try { setMe(await apiFetch('/api/me')); } catch(e) {} }
   function paid() { refreshMe(); }
   const canUse = s => canUseSubjectOf(me, s);   // хичээлийн эрх (lib/plans.js)
-  function openBilling(s) { setPaySubject(s || null); go('billing'); }
+  function openBilling(s, m) { setPaySubject(s || null); setPayMonths(m || null); go('billing'); }   // m — урьдчилан сонгох багц (сар)
   // Анхааруулга: аль нэг хичээлийн (эсвэл бүх хичээлийн) эрх 3 хоногоос бага үлдсэн бол — хамгийн түрүүнд дуусах нь
   const expiring = (() => {
     const a = me?.access; if (!a || !me?.hasAccess || me?.unlimited) return null;
@@ -2404,6 +2431,9 @@ export default function App() {
     const x = cand.filter(c => c.u && c.u > now && (c.u - now) / 86400000 < 3).sort((p, q) => p.u - q.u)[0];
     return x ? { subject: x.s, days: (x.u - now) / 86400000 } : null;
   })();
+  // Шинэ бүртгэлийн 24 цагийн урамшуулал (/api/me welcome) — нүүрэнд худалдан авах карт, бусад хуудсанд цагтай мөр.
+  // Цаг дуусахад components/Clock.js onEnd → /api/me дахин асууж нуугдана.
+  const welcomeUntil = me?.welcome?.until && new Date(me.welcome.until) > new Date() ? me.welcome.until : null;
   // Төлбөрийн дэлгэцийн анхны хичээл — багшийн хамгийн олон шалгалттай хичээл
   const favSubject = (() => { const c = {}; exams.forEach(e => { if (e.subject) c[e.subject] = (c[e.subject] || 0) + 1; }); return Object.keys(c).sort((a, b) => c[b] - c[a])[0] || null; })();
 
@@ -2419,7 +2449,7 @@ export default function App() {
       )}
       {page === 'school'
         ? <><div className="sc-back"><button className="cm-link" onClick={() => setPage('home')}>← Багшийн эрх</button></div><SchoolPage me={me} onChanged={refreshMe} /></>
-        : <Paywall me={me} subject={paySubject || favSubject} onClose={() => { setPage('home'); refreshMe(); }} onLogout={logout} onSchool={() => setPage('school')} />}
+        : <Paywall me={me} subject={paySubject || favSubject} months={payMonths} onClose={() => { setPage('home'); refreshMe(); }} onLogout={logout} onSchool={() => setPage('school')} />}
     </>
   );
   const tab = (id, label) => (
@@ -2458,7 +2488,13 @@ export default function App() {
             <button onClick={()=>setNotice(null)} aria-label="Хаах" style={{border:0,background:'none',color:'inherit',fontSize:18,fontWeight:900,cursor:'pointer'}}>×</button>
           </div>
         )}
-        {expiring && page !== 'billing' && (
+        {welcomeUntil && page !== 'billing' && page !== 'home' && (
+          <div className="cm-billbar cm-offerbar no-print">
+            <span>🎁 Шинэ хэрэглэгч: 50% хямд — 1 сар <b>{fmtMNT(WELCOME_MONTH_PRICE)}</b> · дуусахад <Clock until={welcomeUntil} onEnd={refreshMe} /></span>
+            <button onClick={()=>openBilling(null)}>Авах</button>
+          </div>
+        )}
+        {expiring && !welcomeUntil && page !== 'billing' && (
           <div className="cm-billbar no-print">
             <span>{expiring.subject ? `«${expiring.subject}» хичээлийн эрх` : 'Эрх'} {expiring.days < 1 ? `${Math.max(1, Math.ceil(expiring.days * 24))} цагийн` : `${Math.ceil(expiring.days)} хоногийн`} дараа дуусна</span>
             <button onClick={()=>openBilling(expiring.subject)}>Сунгах</button>
@@ -2470,9 +2506,9 @@ export default function App() {
             <button onClick={()=>go('school')}>Харах</button>
           </div>
         )}
-        {page==='billing'&&<Paywall me={me} renew subject={paySubject || favSubject} onPaid={paid} onClose={()=>go('home')} onSchool={()=>go('school')} />}
+        {page==='billing'&&<Paywall me={me} renew subject={paySubject || favSubject} months={payMonths} onPaid={paid} onClose={()=>go('home')} onSchool={()=>go('school')} />}
         {page==='school'&&<SchoolPage key={navTick} me={me} onChanged={refreshMe} />}
-        {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={go} onEditExam={e=>{setEditingExam(e);go('edit');}} dark={d} canUse={canUse} onPaperOpen={handlePaperOpen} />}
+        {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={go} onEditExam={e=>{setEditingExam(e);go('edit');}} dark={d} canUse={canUse} onPaperOpen={handlePaperOpen} welcome={welcomeUntil} onBuy={m=>openBilling(null, m)} onOfferEnd={refreshMe} />}
         {page==='scan'&&(currentExam&&!canUse(currentExam.subject)
           ? <SubjectLock subject={currentExam.subject} onBuy={()=>openBilling(currentExam.subject)} onBack={()=>go('home')} />
           : <ScanPage exam={currentExam} exams={exams} students={examStudents} onSelectExam={setCurrentExam} onAddStudent={handleAddStudent} onNavigate={go} />)}
@@ -2528,7 +2564,8 @@ export default function App() {
           </aside>
         </div>
       )}
-      <Tour teacherId={teacher?.id} ready={!loading} page={page} menuOpen={menuOpen} examCount={exams.length} sheetCount={students.length} reopen={tourTick} />
+      <Tour teacherId={teacher?.id} ready={!loading} page={page} menuOpen={menuOpen} examCount={exams.length} sheetCount={students.length} reopen={tourTick}
+        offer={welcomeUntil} onBuy={()=>openBilling(null)} />
     </>
   );
 }
