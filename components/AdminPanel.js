@@ -118,6 +118,8 @@ export function AdminPanel({dark:d=false, embed=false}) {
         <div style={{opacity:.8,fontSize:13,marginTop:4}}>Багш нарын хандалтыг удирдах</div>
       </div>}
 
+      <FunnelAdmin d={d} />
+
       {err && <div style={{background:'#fdecec',color:'#b3261e',padding:'10px 14px',borderRadius:10,marginBottom:16,fontSize:13}}>{err}</div>}
       {loading && <div style={{textAlign:'center',padding:40,color:muted}}><Spinner/></div>}
 
@@ -207,6 +209,107 @@ export function AdminPanel({dark:d=false, embed=false}) {
         <EeshDateSetting />
         <MaterialsPanel kind="textbook" />
       </div>
+    </div>
+  );
+}
+
+// ── Хувиргалт: бүртгүүлсэн багш нар аль шатанд хүрсэн (pages/api/admin/funnel.js) ──
+// Нэг цуваа → нэг өнгө (баар бүр ижил), утга нь текстээр баарын баруун талд; дээр нь заахад өмнөх шатнаас хэдэн хувь болсон.
+const FUNNEL_DAYS = [[7, '7 хоног'], [30, '30 хоног'], [90, '90 хоног'], [0, 'Бүгд']];
+const funnelStage = t => t.paidAt ? 'Төлсөн' : t.sheets ? 'Дүн гарсан' : t.accounts ? 'Сурагч нэмсэн' : t.exams ? 'Шалгалт үүсгэсэн' : 'Бүртгүүлсэн';
+
+function FunnelAdmin({d}) {
+  const [days, setDays] = useState(30);
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState('');
+  const [tip, setTip] = useState(null);
+  const [list, setList] = useState(false);
+  useEffect(() => {
+    let off = false;
+    setData(null); setErr('');
+    apiFetch('/api/admin/funnel?days=' + days).then(r => { if (!off) setData(r); }).catch(e => { if (!off) setErr(e.message); });
+    return () => { off = true; };
+  }, [days]);
+  const bg = d ? '#1c1f2a' : 'white', text = d ? '#f3f4f6' : '#1c1f2a', muted = d ? '#9ca3af' : '#6b7280', border = d ? '#2a2e38' : '#e5e7eb';
+  const bar = d ? '#9b7bf5' : '#7B52EE';
+  const total = data ? data.steps[0].count : 0;
+  const pct = (n, of) => (of ? Math.round(n * 100 / of) + '%' : '—');
+  const sheets = data?.steps.find(s => s.key === 'sheets');
+  const chip = on => ({ padding: '5px 10px', borderRadius: 8, border: 'none', fontSize: 12, fontWeight: 800, cursor: 'pointer',
+    background: on ? '#7B52EE' : (d ? '#2a2e38' : '#f3f4f6'), color: on ? 'white' : (d ? '#d1d5db' : '#374151') });
+  const fmt = v => (v ? new Date(v).toLocaleDateString('en-CA') : '—');
+  return (
+    <div className="adm-funnel" style={{background:bg,borderRadius:14,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16,padding:'14px 16px'}}>
+      <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:8,marginBottom:12}}>
+        <span style={{fontWeight:800,fontSize:15,color:text}}>Хувиргалт</span>
+        <span style={{fontSize:12,color:muted}}>энэ хугацаанд бүртгүүлсэн багш нар аль шатанд хүрсэн</span>
+        <div style={{marginLeft:'auto',display:'flex',gap:4,flexWrap:'wrap'}}>
+          {FUNNEL_DAYS.map(([v, l]) => <button key={v} style={chip(days === v)} aria-pressed={days === v} onClick={() => setDays(v)}>{l}</button>)}
+        </div>
+      </div>
+      {err && <div style={{color:'#b3261e',fontSize:13}}>{err}</div>}
+      {!data && !err && <div style={{textAlign:'center',padding:20,color:muted}}><Spinner/></div>}
+      {data && total === 0 && <div style={{padding:'12px 0',textAlign:'center',color:muted,fontSize:13}}>Энэ хугацаанд шинэ бүртгэл алга</div>}
+      {data && total > 0 && <>
+        <div role="list" aria-label="Хувиргалтын шатууд">
+          {data.steps.map((s, i) => {
+            const prev = i ? data.steps[i - 1].count : 0;
+            return (
+              <div key={s.key} role="listitem" tabIndex={0} aria-label={`${s.label}: ${s.count}`}
+                onMouseEnter={() => setTip(s.key)} onMouseLeave={() => setTip(null)} onFocus={() => setTip(s.key)} onBlur={() => setTip(null)}
+                style={{display:'grid',gridTemplateColumns:'minmax(108px,150px) 1fr auto',alignItems:'center',gap:10,padding:'5px 0',position:'relative',outline:'none'}}>
+                <span style={{fontSize:13,fontWeight:700,color:text}}>{s.label}</span>
+                <div style={{height:20,minWidth:0}}>
+                  <div style={{height:20,width:(s.count / total * 100) + '%',minWidth:s.count ? 4 : 0,background:bar,borderRadius:'0 4px 4px 0'}} />
+                </div>
+                <span style={{fontSize:13,fontWeight:800,color:text,whiteSpace:'nowrap',minWidth:86,textAlign:'right'}}>
+                  {s.count}{i > 0 && <span style={{fontWeight:700,color:muted,marginLeft:3}}>{' ' + pct(s.count, total)}</span>}
+                </span>
+                {tip === s.key && i > 0 && (
+                  <div role="tooltip" style={{position:'absolute',left:0,top:'100%',zIndex:5,marginTop:2,background:d ? '#2a2e38' : '#1c1f2a',color:'white',
+                    borderRadius:8,padding:'6px 10px',fontSize:12,fontWeight:600,boxShadow:'0 6px 18px rgba(0,0,0,.18)',maxWidth:'100%'}}>
+                    {s.label}: {s.count} багш — бүртгүүлсэн {total}-ийн {pct(s.count, total)}, өмнөх шатны {pct(s.count, prev)}
+                    {s.day1 != null ? `; эхний 24 цагт ${s.day1}` : ''}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+        {sheets && (
+          <div style={{marginTop:10,fontSize:12.5,color:muted,lineHeight:1.5}}>
+            Эхний 24 цагт (одоогийн туршилтын хугацаанд) дүн гаргасан: <b style={{color:text}}>{sheets.day1} / {total}</b> ({pct(sheets.day1, total)}).
+            {' '}Шалгалт үүсгэсэн боловч дүн гаргаагүй: <b style={{color:text}}>{data.teachers.filter(t => t.exams > 0 && !t.sheets).length}</b>.
+          </div>
+        )}
+        <button onClick={() => setList(v => !v)} style={{marginTop:10,padding:0,border:'none',background:'none',color:'#7B52EE',fontWeight:800,fontSize:13,cursor:'pointer'}}>
+          {list ? 'Жагсаалтыг нуух' : `Багш бүрээр харах (${data.teachers.length})`}
+        </button>
+        {list && (
+          <div style={{overflowX:'auto',marginTop:8,border:'1px solid ' + border,borderRadius:10}}>
+            <table style={{width:'100%',borderCollapse:'collapse',fontSize:12.5,color:text}}>
+              <thead><tr style={{background:d ? '#232733' : '#f9fafb'}}>
+                {['Багш', 'Бүртгүүлсэн', 'Шалгалт', 'Сурагч', 'Дүн', 'Шат'].map(h => <th key={h} style={{padding:'8px 10px',textAlign:'left',fontWeight:800,color:muted,whiteSpace:'nowrap'}}>{h}</th>)}
+              </tr></thead>
+              <tbody>
+                {data.teachers.map(t => (
+                  <tr key={t.id} style={{borderTop:'1px solid ' + border}}>
+                    <td style={{padding:'7px 10px',minWidth:160}}>
+                      <b>{t.name || '—'}</b>{t.cm && <span style={{marginLeft:6,fontSize:11,color:muted}}>Дасгалын төв</span>}
+                      <div style={{color:muted,fontSize:11.5}}>{[t.phone, t.email].filter(Boolean).join(' · ')}</div>
+                    </td>
+                    <td style={{padding:'7px 10px',whiteSpace:'nowrap'}}>{fmt(t.createdAt)}</td>
+                    <td style={{padding:'7px 10px'}}>{t.exams}</td>
+                    <td style={{padding:'7px 10px'}}>{t.accounts}</td>
+                    <td style={{padding:'7px 10px'}}>{t.sheets}</td>
+                    <td style={{padding:'7px 10px',fontWeight:800,whiteSpace:'nowrap'}}>{funnelStage(t)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </>}
     </div>
   );
 }

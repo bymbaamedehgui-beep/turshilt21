@@ -11,6 +11,7 @@ import { MaterialsPanel } from '../components/MaterialsPanel';
 import { exportAnalysisXlsx } from '../lib/report-xlsx';
 import { downloadResultsPdf } from '../lib/report-pdf';
 import { AdminPanel } from '../components/AdminPanel';
+import { Tour } from '../components/Tour';
 
 const PRACTICE_URL = 'https://cyber-math.com/worksheets.html';
 const TUTORIAL_VIDEO = '0x_sZEEofts';   // YouTube «eyeshcheck танилцуулга» (CyberMath Mongolia) — нүүр хуудас, ☰ цэс
@@ -70,6 +71,7 @@ const NAV_ICON = {
   logout:['M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4','M16 17l5-5-5-5','M21 12H9'],
   book:['M4 19.5A2.5 2.5 0 0 1 6.5 17H20','M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z'],
   play:['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z','M10 8.5v7l6-3.5z'],
+  tour:['M4 21V4','M4 4h11l-2 4 2 4H4'],
 };
 
 
@@ -874,7 +876,7 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
           <p>Хуудсаа хэвлээд утасны камераар уншуул — оноо, анализ, рейтинг шууд гарна.</p>
           <div style={{display:'flex',gap:8,flexWrap:'wrap',marginTop:14}}>
             <button className="cm-btn amber" onClick={()=>onNavigate('scan')}>Камераар шалгах</button>
-            <button className="cm-btn ghost" onClick={()=>onNavigate('create')}>+ Шалгалт үүсгэх</button>
+            <button className="cm-btn ghost" data-tour="hero-create" onClick={()=>onNavigate('create')}>+ Шалгалт үүсгэх</button>
           </div>
         </div>
       </div>
@@ -962,8 +964,8 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
                   <div style={{flex:1,textAlign:'right',fontSize:11,color:'#9ca3af'}}>{new Date(exam.createdAt).toLocaleDateString('mn-MN')}</div>
                 </div>
                 <div style={{display:'flex',gap:8,marginTop:12}}>
-                  <button className="cm-btn" style={{flex:1,padding:'.6rem .8rem',fontSize:13.5}} onClick={e=>{e.stopPropagation();onSelectExam(exam);onNavigate('scan');}}>Шалгах</button>
-                  <button className="cm-btn ghost" style={{flex:1,padding:'.6rem .8rem',fontSize:13.5}} onClick={e=>{e.stopPropagation();onSelectExam(exam);onNavigate('sheets');}}>Хуудас хэвлэх</button>
+                  <button className="cm-btn" data-tour="card-scan" style={{flex:1,padding:'.6rem .8rem',fontSize:13.5}} onClick={e=>{e.stopPropagation();onSelectExam(exam);onNavigate('scan');}}>Шалгах</button>
+                  <button className="cm-btn ghost" data-tour="card-sheets" style={{flex:1,padding:'.6rem .8rem',fontSize:13.5}} onClick={e=>{e.stopPropagation();onSelectExam(exam);onNavigate('sheets');}}>Хуудас хэвлэх</button>
                 </div>
               </div>
             );
@@ -2022,7 +2024,12 @@ function StudentAccountsPage({dark:d=false}) {
 
   async function loadAccounts() {
     setLoading(true);
-    try { setAccounts(await apiFetch('/api/student-accounts')); } catch(e) {}
+    try {
+      const list = await apiFetch('/api/student-accounts');
+      setAccounts(list);
+      // «Эхлэх заавар» (components/Tour.js) сурагч нэмэгдсэнийг мэдэж дараагийн алхам руу шилжинэ
+      window.dispatchEvent(new CustomEvent('eyesh:accounts', { detail: { count: list.length } }));
+    } catch(e) {}
     setLoading(false);
   }
 
@@ -2087,7 +2094,7 @@ function StudentAccountsPage({dark:d=false}) {
         Сурагчид <strong>/student</strong> хуудсаар орж кодоороо нэвтэрч шалгалтаа өгнө.
       </div>
 
-      <div className="cm-stack" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
+      <div className="cm-stack" data-tour="students-add" style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:16,marginBottom:16}}>
         <div style={{background:'white',borderRadius:16,padding:20,boxShadow:'0 1px 4px rgba(17,24,39,.06)'}}>
           <div style={{fontWeight:700,fontSize:15,marginBottom:12}}>Нэг сурагч нэмэх</div>
           <input value={singleName} onChange={e=>setSingleName(e.target.value)} placeholder="Нэр (заавал биш)"
@@ -2198,6 +2205,7 @@ export default function App() {
   const [paySubject, setPaySubject] = useState(null);   // төлбөрийн дэлгэцийг аль хичээлээр нээх (402 SUBJECT_REQUIRED, түгжээ)
   const [navTick, setNavTick] = useState(0);             // цэснээс дахин сонгоход «Сургуулийн эрх»-ийг шинээр ачаална
   const [notice, setNotice] = useState(null);     // { text, err } — дээд талын түр мэдэгдэл
+  const [tourTick, setTourTick] = useState(0);    // ☰ «Эхлэх заавар» — components/Tour.js-ийг дахин нээнэ
   useEffect(() => { if (!notice) return; const t = setTimeout(() => setNotice(null), 8000); return () => clearTimeout(t); }, [notice]);
 
   // Ямар нэг API 402 (эрх дууссан) буцаавал эрхийн мэдээллийг шинэчилж төлбөрийн дэлгэц гаргана
@@ -2436,7 +2444,7 @@ export default function App() {
               <span className="cm-timer">⏱ {Math.floor(demoSecsLeft/60)}:{String(demoSecsLeft%60).padStart(2,'0')}</span>
             )}
             {currentExam&&<button className="cm-exam" onClick={()=>go('home')} title="Идэвхтэй шалгалт">{currentExam.title}</button>}
-            <button className="cm-burger" onClick={()=>setMenuOpen(true)} aria-label={t.more} aria-expanded={menuOpen}>
+            <button className="cm-burger" data-tour="menu" onClick={()=>setMenuOpen(true)} aria-label={t.more} aria-expanded={menuOpen}>
               <Ico d={NAV_ICON.menu} size={22} sw={2.2}/>
             </button>
           </div>
@@ -2484,7 +2492,7 @@ export default function App() {
       <nav className="cm-tabbar no-print">
         {tab('home', t.nav.home)}
         {tab('board', t.nav.board)}
-        <button className="cm-fab" onClick={()=>go('scan')}><span><Ico d={NAV_ICON.scan} size={26} sw={2.2}/></span>{t.nav.scan}</button>
+        <button className="cm-fab" data-tour="tab-scan" onClick={()=>go('scan')}><span><Ico d={NAV_ICON.scan} size={26} sw={2.2}/></span>{t.nav.scan}</button>
         {tab('analytics', t.nav.analytics)}
         {tab('rating', t.nav.rating)}
       </nav>
@@ -2504,10 +2512,11 @@ export default function App() {
             )}
             <nav className="cm-drawer-nav">
               {navIds.map(id=>(
-                <button key={id} className={page===id||(id==='create'&&page==='edit')?'on':''} onClick={()=>go(id)}>
+                <button key={id} data-tour={'nav-'+id} className={page===id||(id==='create'&&page==='edit')?'on':''} onClick={()=>go(id)}>
                   <Ico d={NAV_ICON[id]} size={21} sw={2}/>{t.nav[id]}
                 </button>
               ))}
+              <button onClick={()=>{setTourTick(n=>n+1);setMenuOpen(false);}}><Ico d={NAV_ICON.tour} size={21} sw={2}/>Эхлэх заавар</button>
               <a href={PRACTICE_URL}><Ico d={NAV_ICON.book} size={21} sw={2}/>Дасгалын төв<i>↗</i></a>
               <a href={`https://youtu.be/${TUTORIAL_VIDEO}`} target="_blank" rel="noopener noreferrer"><Ico d={NAV_ICON.play} size={21} sw={2}/>Видео заавар<i>↗</i></a>
             </nav>
@@ -2519,6 +2528,7 @@ export default function App() {
           </aside>
         </div>
       )}
+      <Tour teacherId={teacher?.id} ready={!loading} page={page} menuOpen={menuOpen} examCount={exams.length} sheetCount={students.length} reopen={tourTick} />
     </>
   );
 }
