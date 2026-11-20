@@ -21,6 +21,7 @@ export default async function handler(req, res) {
         const t = await getTeacherById(auth.teacherId);
         if (!t || !hasAccess(t)) throw new Error('Эрхийн хугацаа дууссан');
         if (p.kind === 'textbook' && !t.is_admin) throw new Error('Сурах бичгийг зөвхөн admin нэмнэ');
+        if (p.kind === 'eeshbank' && !t.is_admin) throw new Error('ЭЕШ санд зөвхөн admin нэмнэ');   // components/EeshBankAdmin.js
         return {
           allowedContentTypes: ['application/pdf'],
           maximumSizeInBytes: 300 * 1024 * 1024,

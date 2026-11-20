@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Head from 'next/head';
+import dynamic from 'next/dynamic';
 import { SEC1_CHOICES, SEC2_ROWS, SEC2_SUBS, uid, pf, eyeshGrade, toScaled, getToken, apiFetch, calcScore, VARIANTS, examVariants, examForVersion, studentVariant, scaleScore, scaleNote } from '../lib/eyesh';
 import { ScanPage } from '../components/QuickScan';
 import { SheetsPage } from '../components/AnswerSheet';
 import { Paywall } from '../components/Paywall';
 import { SchoolPage } from '../components/SchoolPage';
-import { PLANS, planPrice, fullPrice, perMonth, fmtMNT, fmtDay, TRIAL_DAYS, SUBJECTS, canUseSubjectOf, subjectUntilOf, MONTH_PRICE, WELCOME_MONTH_PRICE, WELCOME_HOURS } from '../lib/plans';
+import { PLANS, planPrice, fullPrice, perMonth, fmtMNT, fmtDay, TRIAL_DAYS, SUBJECTS, canUseSubjectOf, subjectUntilOf, MONTH_PRICE, WELCOME_MONTH_PRICE, WELCOME_HOURS, BANK } from '../lib/plans';
 import { Clock } from '../components/Clock';
 import { StudentPortal } from '../components/StudentPortal';
 import { MaterialsPanel } from '../components/MaterialsPanel';
@@ -13,6 +14,9 @@ import { exportAnalysisXlsx } from '../lib/report-xlsx';
 import { downloadResultsPdf } from '../lib/report-pdf';
 import { AdminPanel } from '../components/AdminPanel';
 import { Tour } from '../components/Tour';
+import { EeshBank } from '../components/EeshBank';
+// Онлайн шалгалт зохиох — KaTeX-тэй тул зөвхөн нээхэд ачаална
+const PaperEditor = dynamic(() => import('../components/PaperEditor').then(m => m.PaperEditor), { ssr: false, loading: () => <div className="mp-page">Ачаалж байна…</div> });
 
 const PRACTICE_URL = 'https://cyber-math.com/worksheets.html';
 const TUTORIAL_VIDEO = '0x_sZEEofts';   // YouTube «eyeshcheck танилцуулга» (CyberMath Mongolia) — нүүр хуудас, ☰ цэс
@@ -51,7 +55,7 @@ function topicOptions(subject, mine=[], used=[]) {
   return list;
 }
 const TOPIC_COLORS = ['#3b82f6','#8b5cf6','#f59e0b','#06b6d4','#10b981','#ef4444','#f97316','#6366f1'];
-const PAGE_IDS = ['home','scan','board','analytics','rating','create','sheets','students','materials','school','admin'];   // ☰ цэсний дараалал
+const PAGE_IDS = ['home','scan','board','analytics','rating','create','author','sheets','students','materials','bank','school','admin'];   // ☰ цэсний дараалал
 const NAV_ICON = {
   home:'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   board:['M8 6h13','M8 12h13','M8 18h13','M3.5 6h.01','M3.5 12h.01','M3.5 18h.01'],
@@ -59,6 +63,8 @@ const NAV_ICON = {
   more:['M4 4h6v6H4z','M14 4h6v6h-6z','M4 14h6v6H4z','M14 14h6v6h-6z'],
   scan:['M3 7V5a2 2 0 0 1 2-2h2','M17 3h2a2 2 0 0 1 2 2v2','M21 17v2a2 2 0 0 1-2 2h-2','M7 21H5a2 2 0 0 1-2-2v-2','M7 12h10'],
   create:['M12 5v14','M5 12h14'],
+  author:['M12 20h9','M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z'],
+  bank:['M3 21h18','M4 10h16','M12 3 4 7v3h16V7z','M6 10v8','M10 10v8','M14 10v8','M18 10v8'],
   sheets:['M6 9V2h12v7','M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2','M6 14h12v8H6z'],
   menu:['M4 6h16','M4 12h16','M4 18h16'],
   close:['M6 6l12 12','M18 6 6 18'],
@@ -95,7 +101,7 @@ const T = {
     timeUp:'Хугацаа дууссан! Хариулт автоматаар илгээгдлээ.',
     section1:'1-р хэсэг', section2:'2-р хэсэг',
     hello:'Сайн байна уу,',
-    nav:{school:'Сургуулийн эрх',billing:'Эрх сунгах',materials:'ЭЕШ материал',home:'Нүүр',scan:'Шалгах',sheets:'Хуудас хэвлэх',create:'Шалгалт үүсгэх',edit:'Шалгалт засах',board:'Жагсаалт',analytics:'Анализ',rating:'Рейтинг',students:'Сурагчид',admin:'Admin'},
+    nav:{school:'Сургуулийн эрх',billing:'Эрх сунгах',materials:'ЭЕШ материал',bank:'ЭЕШ сан',author:'Онлайн шалгалт зохиох',home:'Нүүр',scan:'Шалгах',sheets:'Хуудас хэвлэх',create:'Шалгалт үүсгэх',edit:'Шалгалт засах',board:'Жагсаалт',analytics:'Анализ',rating:'Рейтинг',students:'Сурагчид',admin:'Admin'},
     more:'Цэс',
   },
   en: {
@@ -115,7 +121,7 @@ const T = {
     timeUp:'Time is up! Your answers have been submitted.',
     section1:'Section 1', section2:'Section 2',
     hello:'Hello,',
-    nav:{school:'School license',billing:'Renew',materials:'Materials',home:'Home',scan:'Scan',sheets:'Print sheets',create:'Create Exam',edit:'Edit Exam',board:'Results',analytics:'Analytics',rating:'Ranking',students:'Students',admin:'Admin'},
+    nav:{school:'School license',billing:'Renew',materials:'Materials',bank:'Exam bank',author:'Write online exam',home:'Home',scan:'Scan',sheets:'Print sheets',create:'Create Exam',edit:'Edit Exam',board:'Results',analytics:'Analytics',rating:'Ranking',students:'Students',admin:'Admin'},
     more:'More',
   }
 };
@@ -2226,6 +2232,7 @@ export default function App() {
   const [currentExam, setCurrentExam] = useState(null);
   const [loading, setLoading] = useState(true);
   const [editingExam, setEditingExam] = useState(null);
+  const [paperOpenId, setPaperOpenId] = useState(null);   // «Онлайн шалгалт зохиох»-д шууд нээх (шалгалтын картын «Засах»)
   const [menuOpen, setMenuOpen] = useState(false);
   const [me, setMe] = useState(null);             // { hasAccess, paidUntil, access, … } — /api/me
   const [paySubject, setPaySubject] = useState(null);   // төлбөрийн дэлгэцийг аль хичээлээр нээх (402 SUBJECT_REQUIRED, түгжээ)
@@ -2420,7 +2427,9 @@ export default function App() {
   async function refreshMe() { try { setMe(await apiFetch('/api/me')); } catch(e) {} }
   function paid() { refreshMe(); }
   const canUse = s => canUseSubjectOf(me, s);   // хичээлийн эрх (lib/plans.js)
-  function openBilling(s, m) { setPaySubject(s || null); setPayMonths(m || null); go('billing'); }   // m — урьдчилан сонгох багц (сар)
+  function openBilling(s, m) { if (s === BANK) return go('bank'); setPaySubject(s || null); setPayMonths(m || null); go('billing'); }   // m — урьдчилан сонгох багц (сар); ЭЕШ сан — өөрийн хуудсанд
+  // Багшийн зохиосон онлайн шалгалт (exams.cm_ref 'paper:<id>', lib/tpaper.js) — засварыг бодлогын засварлагчид
+  function editExam(e) { const m = /^paper:(.+)$/.exec(e?.cmRef || ''); if (m) { setPaperOpenId(m[1]); go('author'); } else { setEditingExam(e); go('edit'); } }
   // Анхааруулга: аль нэг хичээлийн (эсвэл бүх хичээлийн) эрх 3 хоногоос бага үлдсэн бол — хамгийн түрүүнд дуусах нь
   const expiring = (() => {
     const a = me?.access; if (!a || !me?.hasAccess || me?.unlimited) return null;
@@ -2508,7 +2517,7 @@ export default function App() {
         )}
         {page==='billing'&&<Paywall me={me} renew subject={paySubject || favSubject} months={payMonths} onPaid={paid} onClose={()=>go('home')} onSchool={()=>go('school')} />}
         {page==='school'&&<SchoolPage key={navTick} me={me} onChanged={refreshMe} />}
-        {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={go} onEditExam={e=>{setEditingExam(e);go('edit');}} dark={d} canUse={canUse} onPaperOpen={handlePaperOpen} welcome={welcomeUntil} onBuy={m=>openBilling(null, m)} onOfferEnd={refreshMe} />}
+        {page==='home'&&<HomePage exams={exams} students={students} onSelectExam={e=>{setCurrentExam(e);}} currentExam={currentExam} onDeleteExam={handleDeleteExam} onNavigate={go} onEditExam={editExam} dark={d} canUse={canUse} onPaperOpen={handlePaperOpen} welcome={welcomeUntil} onBuy={m=>openBilling(null, m)} onOfferEnd={refreshMe} />}
         {page==='scan'&&(currentExam&&!canUse(currentExam.subject)
           ? <SubjectLock subject={currentExam.subject} onBuy={()=>openBilling(currentExam.subject)} onBack={()=>go('home')} />
           : <ScanPage exam={currentExam} exams={exams} students={examStudents} onSelectExam={setCurrentExam} onAddStudent={handleAddStudent} onNavigate={go} />)}
@@ -2521,6 +2530,8 @@ export default function App() {
         {page==='students'&&<StudentAccountsPage dark={d} />}
         {page==='materials'&&<div className="mp-page"><h1 className="mp-title">ЭЕШ материал</h1><MaterialsPanel kind="material" classes={[...new Set(students.map(s=>s.class).filter(Boolean))].sort()} /></div>}
         {page==='admin'&&teacher?.isAdmin&&<AdminPanel dark={d} />}
+        {page==='author'&&<PaperEditor openId={paperOpenId} onOpened={()=>setPaperOpenId(null)} topics={topicOptions} canUse={canUse} onBuy={s=>openBilling(s)} onSaved={()=>loadContent()} />}
+        {page==='bank'&&<EeshBank me={me} onCreated={()=>loadContent()} onPaid={()=>refreshMe()} onHome={()=>go('home')} />}
       </main>
       <footer className="cm-foot no-print">
         CyberMath · ЭЕШ шалгагч · <a href={PRACTICE_URL}>Дасгалын төв →</a>

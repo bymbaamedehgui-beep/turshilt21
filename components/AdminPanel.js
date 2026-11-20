@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../lib/eyesh';
+import { EeshBankAdmin } from './EeshBankAdmin';
+import { ArchiveAdmin } from './ArchiveAdmin';
 import { MaterialsPanel, EeshDateSetting } from './MaterialsPanel';
 import { SUBJECTS } from '../lib/plans';
 
@@ -202,6 +204,8 @@ export function AdminPanel({dark:d=false, embed=false}) {
 
       <PromoAdmin d={d} />
       <SchoolsAdmin d={d} />
+      <EeshBankAdmin d={d} />
+      <ArchiveAdmin d={d} />
 
       {/* Сурагчийн хэсэг: ЭЕШ-ийн огноо, 12-р ангийн сурах бичиг */}
       <div style={{marginTop:24}}>

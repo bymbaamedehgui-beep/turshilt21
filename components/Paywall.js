@@ -97,7 +97,8 @@ export function MyAccess({ me }) {
 }
 
 export function Paywall({ me, renew, subject: subject0, months: months0, onPaid, onClose, onLogout, onSchool }) {
-  const own = (me?.access?.licenses || []).filter(l => !l.school).sort((a, b) => new Date(b.until) - new Date(a.until));
+  // «ЭЕШ сан» (lib/plans.js BANK) хичээл биш — сонголтод орохгүй
+  const own = (me?.access?.licenses || []).filter(l => !l.school && SUBJECTS.includes(l.subject)).sort((a, b) => new Date(b.until) - new Date(a.until));
   const [subject, setSubject] = useState(() => subject0 || own[0]?.subject || SUBJECTS[0]);
   useEffect(() => { if (subject0) setSubject(subject0); }, [subject0]);
   // Шинэ бүртгэлийн 24 цагийн урамшуулал (/api/me welcome) — үнийг сервер мөн адил тооцно (pages/api/pay/create.js)

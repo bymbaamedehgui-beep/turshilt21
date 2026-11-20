@@ -36,7 +36,7 @@ export default requirePaid(async function handler(req, res) {
   if (req.method === 'DELETE') {
     const m = await deleteMaterial(String(req.query.id || ''), req.teacherId, !!t?.is_admin);
     if (!m) return res.status(404).json({ error: 'Олдсонгүй' });
-    await deleteBlob(m.url);
+    if (!m.archived) await deleteBlob(m.url);   // багшийн материал админы архивт файлтайгаа үлдэнэ (lib/db.js deleteMaterial)
     return res.json({ ok: true });
   }
   res.status(405).end();
