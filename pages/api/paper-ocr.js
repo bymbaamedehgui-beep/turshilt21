@@ -7,6 +7,7 @@ import { SUBJECTS } from '../../lib/plans';
 // «Зургаас таних» ба «AI хариу» (components/PaperEditor.js, lib/aiPaper.js — Claude Opus 5.5). Env: ANTHROPIC_API_KEY (Vercel →
 // Settings → Environment Variables) — байхгүй бол 503. Өдрийн хязгаар (Улаанбаатарын цагаар, дуудлага бүр 1): багш бүр
 // OCR_DAILY_LIMIT (100), нийт OCR_GLOBAL_LIMIT (1500); алдаатай/татгалзсан дуудлага тоологдохгүй.
+// GET → { enabled } — түлхүүр тавьсан эсэх; үгүй бол засварлагч AI товчнуудыг нууна
 // POST { image:'data:image/jpeg;base64,…', w, h } → { kind:'problems'|'fragment'|'figure', fragment, problems:[{ number, stem, choices,
 //   marked, fill, box }], fixed, left }
 // POST { mode:'solve', subject, topics, items:[{ id, stem, choices, letters, img? }] } → { results:[{ id, answer, cells, topic, confidence, check }], left }
@@ -40,6 +41,7 @@ function solveInput(b) {
 }
 
 export default requirePaid(async function handler(req, res) {
+  if (req.method === 'GET') return res.json({ enabled: !!process.env.ANTHROPIC_API_KEY });
   if (req.method !== 'POST') return res.status(405).end();
   if (!process.env.ANTHROPIC_API_KEY) return res.status(503).json({ error: 'Зургаас таних үйлчилгээ одоогоор тохируулагдаагүй байна.' });
   const b = req.body || {}, solve = b.mode === 'solve';

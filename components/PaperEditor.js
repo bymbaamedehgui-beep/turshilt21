@@ -9,6 +9,7 @@ import { mathHtml, mathErrors, boxLetters, insideMath } from '../lib/mathText';
 // бодлогыг бүтцээр нь, ганц томьёог курсорт, зургийн хэсгийг тайрч; LaTeX-ийг KaTeX-ээр шалгаж засна). AI зөв хариу, агуулгыг
 // санал болгож, багшийн түлхүүртэй зөрвөл анхааруулна — багш баталгаажуулна. Хадгалахад хариутай шалгалт + онлайн/хэвлэх
 // материал үүснэ (lib/tpaper.js). Ноорог хөтөчид автоматаар хадгалагдана. Томьёо — lib/mathText.js (сурагч, хэвлэлттэй ижил).
+// Серверт ANTHROPIC_API_KEY байхгүй бол (GET /api/paper-ocr → enabled:false) AI товчнууд нуугдаж, буулгасан/чирсэн зураг бодлогод хавсаргагдана.
 const KATEX_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css';
 const PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
 const PDFJS_WORKER = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
@@ -232,9 +233,9 @@ const Q1 = memo(function Q1({ q, i, n, topics, warn, h }) {
         <button type="button" className="pe-ib del" title="Устгах" onClick={() => h.del(q.k)}><Ico d={I.trash} /></button>
       </div>
       <MathArea value={q.q} onChange={v => h.upd(q.k, { q: v })} onField={fld('stem')} rows={3}
-        placeholder="Бодлогын өгүүлбэр. Томьёог $…$ дотор: $x^2-5x+6=0$, $\frac{1}{2}$. Эсвэл бодлогын зургийг энд Ctrl+V-ээр буулгана" />
+        placeholder={'Бодлогын өгүүлбэр. Томьёог $…$ дотор: $x^2-5x+6=0$, $\\frac{1}{2}$.' + (h.ai ? ' Эсвэл бодлогын зургийг энд Ctrl+V-ээр буулгана' : '')} />
       <div className="pe-qt">
-        <button type="button" onClick={() => h.ocr(q.k, 1)} disabled={h.busy}><Ico d={I.cam} />Зургаас таних</button>
+        {h.ai && <button type="button" onClick={() => h.ocr(q.k, 1)} disabled={h.busy}><Ico d={I.cam} />Зургаас таних</button>}
         <button type="button" onClick={() => h.pick(q.k, 1)}><Ico d={I.img} />{q.img ? 'Зураг солих' : 'Зураг хавсаргах'}</button>
       </div>
       {q.img && <div className="pe-fig"><img src={q.img} alt="" /><button type="button" className="cm-link" onClick={() => h.upd(q.k, { img: null })}>Зургийг хасах</button></div>}
@@ -267,7 +268,7 @@ const Q2 = memo(function Q2({ q, i, h }) {
       <MathArea value={q.q} onChange={v => h.upd2(q.k, { q: v })} onField={f => h.field({ ...f, k: q.k, part: 2, role: 'stem' })} rows={3}
         placeholder="Бодлого. Хариултын нүд: [[a]], [[bc]], бутархай [[a/bc]]. Жишээ: $x_1=$ [[a]], $x_2=-$[[b]]" />
       <div className="pe-qt">
-        <button type="button" onClick={() => h.ocr(q.k, 2)} disabled={h.busy}><Ico d={I.cam} />Зургаас таних</button>
+        {h.ai && <button type="button" onClick={() => h.ocr(q.k, 2)} disabled={h.busy}><Ico d={I.cam} />Зургаас таних</button>}
         <button type="button" onClick={() => h.pick(q.k, 2)}><Ico d={I.img} />{q.img ? 'Зураг солих' : 'Зураг хавсаргах'}</button>
       </div>
       {q.img && <div className="pe-fig"><img src={q.img} alt="" /><button type="button" className="cm-link" onClick={() => h.upd2(q.k, { img: null })}>Зургийг хасах</button></div>}
@@ -319,14 +320,16 @@ export function PaperEditor({ openId, topics, canUse, onBuy, onSaved, onOpened }
   const [draft, setDraft] = useState(null);     // сэргээх боломжтой ноорог
   const [warnK, setWarnK] = useState(null);
   const [drag, setDrag] = useState(false);
+  const [ai, setAi] = useState(false);          // зургаас таних, AI хариу — серверт ANTHROPIC_API_KEY байвал л
   const fieldRef = useRef(null), fileRef = useRef(null), target = useRef(null), ocrCtl = useRef(null), pdfStop = useRef(null);
   const p1Ref = useRef(p1), p2Ref = useRef(p2), edRef = useRef(ed), topsRef = useRef([]);
   p1Ref.current = p1; p2Ref.current = p2; edRef.current = ed;
 
   async function loadList() {
-    try { setList(await apiFetch('/api/papers')); } catch (e) { setErr(e.message); }
+    try { setList(await apiFetch('/api/papers')); return true; } catch (e) { setErr(e.message); return false; }
   }
-  useEffect(() => { loadList(); }, []);
+  // AI-ийн төлөвийг жагсаалт ачаалсны дараа (эрхгүй бол төлбөрийн цонхыг давхар өдөөхгүй)
+  useEffect(() => { loadList().then(ok => { if (ok) apiFetch('/api/paper-ocr').then(r => setAi(!!r?.enabled), () => {}); }); }, []);
   useEffect(() => { if (openId) { open(openId); onOpened && onOpened(); } }, [openId]);
 
   // restore — ноорог байвал шууд сэргээнэ (жагсаалтын «Үргэлжлүүлэх»)
@@ -397,7 +400,7 @@ export function PaperEditor({ openId, topics, canUse, onBuy, onSaved, onOpened }
       target.current = { k, part, mode: 'card' }; fileRef.current.accept = 'image/*'; fileRef.current.click();
     },
   }), []);
-  const hb = useMemo(() => ({ ...h, busy: !!ocr?.busy }), [h, ocr?.busy]);
+  const hb = useMemo(() => ({ ...h, busy: !!ocr?.busy, ai }), [h, ocr?.busy, ai]);
 
   async function attachImg(t, src) {
     try {
@@ -416,7 +419,12 @@ export function PaperEditor({ openId, topics, canUse, onBuy, onSaved, onOpened }
   }
   // Файл (зураг/PDF) → таних; t = { mode:'card'|'paste'|'new', k, part, field }
   function take(file, t) {
-    if (/pdf$/i.test(file.type) || /\.pdf$/i.test(file.name || '')) return runPdf(file);
+    const pdf = /pdf$/i.test(file.type) || /\.pdf$/i.test(file.name || '');
+    if (!ai) {   // AI-гүй: зургийг бодлогод хавсаргана
+      if (pdf || !/^image\//.test(file.type)) { setMsg({ text: 'Бодлогын зургийг (JPEG, PNG) оруулна уу.', err: true }); return; }
+      return attachImg(t.k ? t : { k: null, part: 1 }, file);
+    }
+    if (pdf) return runPdf(file);
     if (!/^image\//.test(file.type)) { setOcr({ text: 'Зураг (JPEG, PNG) эсвэл PDF файл оруулна уу.', err: true }); return; }
     runOcr(file, t);
   }
@@ -564,6 +572,7 @@ export function PaperEditor({ openId, topics, canUse, onBuy, onSaved, onOpened }
       if (!f) return;
       e.preventDefault();
       const fld = fieldRef.current && document.activeElement === fieldRef.current.el ? fieldRef.current : null;
+      if (!ai) { attachImg({ k: fld ? fld.k : null, part: fld ? fld.part : 1 }, f); return; }
       runOcr(f, { mode: 'paste', k: fld ? fld.k : null, part: fld ? fld.part : 1, field: fld });
     };
     document.addEventListener('paste', onPaste);
@@ -620,6 +629,7 @@ export function PaperEditor({ openId, topics, canUse, onBuy, onSaved, onOpened }
   const css = <style jsx global>{`
     .pe{max-width:900px;margin:0 auto;padding:16px 16px 120px;position:relative}
     .pe.drag::after{content:'Зураг эсвэл PDF-ийг энд тавина уу';position:fixed;inset:12px;z-index:200;display:grid;place-items:center;border:3px dashed var(--purple);border-radius:24px;background:rgba(123,82,238,.10);color:var(--purple-d);font-weight:900;font-size:20px;pointer-events:none}
+    .pe.drag.noai::after{content:'Зургийг бодлого дээр тавина уу'}
     .pe-lh{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:4px 2px 6px}.pe-lh h1{font-size:23px;font-weight:900;margin:0;flex:1}
     .pe-intro{color:var(--soft);font-size:14.5px;margin:0 2px 16px}
     .pe-card{display:flex;align-items:center;gap:12px;flex-wrap:wrap;border:1px solid var(--line);background:var(--card);border-radius:16px;padding:14px 16px;margin-bottom:10px}
@@ -704,8 +714,8 @@ export function PaperEditor({ openId, topics, canUse, onBuy, onSaved, onOpened }
     <div className="pe">
       {css}
       <div className="pe-lh"><h1>Онлайн шалгалт зохиох</h1><button className="cm-btn" onClick={() => create(false)}><Ico d={I.plus} />Шинэ шалгалт</button></div>
-      <p className="pe-intro">Бодлогоо бичих эсвэл зураг, дэлгэцийн зураг (Ctrl+V), PDF-ээс таниулна — текст, томьёо, сонголт, зургийг автоматаар бичиж,
-        AI зөв хариуг санал болгоно. Хадгалахад шалгалт үүсч, сурагчид кодоороо нэвтэрч онлайнаар өгнө — хэвлэж, хариултын хуудсаар шалгаж ч болно.</p>
+      <p className="pe-intro">{ai ? 'Бодлогоо бичих эсвэл зураг, дэлгэцийн зураг (Ctrl+V), PDF-ээс таниулна — текст, томьёо, сонголт, зургийг автоматаар бичиж, AI зөв хариуг санал болгоно.'
+        : 'Бодлогоо текст, LaTeX томьёогоор бичиж, зураг хавсаргана.'} Хадгалахад шалгалт үүсч, сурагчид кодоороо нэвтэрч онлайнаар өгнө — хэвлэж, хариултын хуудсаар шалгаж ч болно.</p>
       {err && <div className="cm-alert">{err}</div>}
       {newDraft && newDraft.doc && <div className="pe-note"><span>Хадгалаагүй шинэ шалгалтын ноорог байна{newDraft.title ? ` — «${newDraft.title}»` : ''}.</span>
         <button className="pe-btn" onClick={() => create(true)}>Үргэлжлүүлэх</button></div>}
@@ -729,7 +739,7 @@ export function PaperEditor({ openId, topics, canUse, onBuy, onSaved, onOpened }
 
   // ── Засварлагч ──
   return (
-    <div className={'pe' + (drag ? ' drag' : '')} onDragOver={onDragOver} onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDrag(false); }} onDrop={onDrop}>
+    <div className={'pe' + (drag ? ' drag' : '') + (ai ? '' : ' noai')} onDragOver={onDragOver} onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget)) setDrag(false); }} onDrop={onDrop}>
       {css}
       <Head><link rel="stylesheet" href={KATEX_CSS} /></Head>
       <input ref={fileRef} type="file" accept="image/*" hidden onChange={onFile} />
@@ -745,9 +755,10 @@ export function PaperEditor({ openId, topics, canUse, onBuy, onSaved, onOpened }
           {SUBJECTS.map(s => <option key={s} value={s}>{s}</option>)}
         </select>
       </div>
-      <p className="pe-help">Томьёог <code>$…$</code> дотор LaTeX-ээр бичнэ (тусдаа мөрөнд <code>$$…$$</code>) — доорх самбараас дарж оруулж болно.
-        Бодлогоо <kbd>Win+Shift+S</kbd>-ээр тайрч аваад <kbd>Ctrl+V</kbd> дарвал шууд таньж бичнэ (ганц томьёо бол курсорт орно); зураг, PDF-ийг чирж оруулж ч болно.
-        AI-ийн хариуг заавал шалгаарай.</p>
+      <p className="pe-help">Томьёог <code>$…$</code> дотор LaTeX-ээр бичнэ (тусдаа мөрөнд <code>$$…$$</code>) — доорх самбараас дарж оруулж болно.{' '}
+        {ai ? <>Бодлогоо <kbd>Win+Shift+S</kbd>-ээр тайрч аваад <kbd>Ctrl+V</kbd> дарвал шууд таньж бичнэ (ганц томьёо бол курсорт орно); зураг, PDF-ийг чирж оруулж ч болно.
+          AI-ийн хариуг заавал шалгаарай.</>
+          : <>Бодлогын зургийг <kbd>Ctrl+V</kbd>-ээр буулгах эсвэл бодлого дээр чирж тавибал тэр бодлогод хавсаргагдана.</>}</p>
       <Toolbar fieldRef={fieldRef} />
       {ocr && <div className={'pe-note' + (ocr.err ? ' err' : ocr.busy ? ' busy' : ' ok')} role="status"><span>{ocr.text}</span>
         {ocr.busy && ocr.alt && <button className="pe-btn" onClick={asFigure}>Зураг болгож хавсаргах</button>}
@@ -760,9 +771,9 @@ export function PaperEditor({ openId, topics, canUse, onBuy, onSaved, onOpened }
       {p1.map((q, i) => <Q1 key={q.k} q={q} i={i} n={p1.length} topics={tops} warn={warnK === q.k} h={hb} />)}
       <div className="pe-add">
         <button className="pe-btn" disabled={p1.length >= MAX1} onClick={() => { setP1(l => [...l, blank1()]); touch(); }}><Ico d={I.plus} />Бодлого нэмэх</button>
-        <button className="pe-btn" disabled={!!ocr?.busy || p1.length >= MAX1} onClick={() => { target.current = { mode: 'new' }; fileRef.current.accept = 'image/*,application/pdf'; fileRef.current.click(); }}>
-          <Ico d={I.doc} />Зураг, PDF-ээс бодлогууд</button>
-        <button className="pe-btn ai" disabled={!!solve?.busy} onClick={() => aiSolve([...p1, ...p2].map(x => x.k), true)}><Ico d={I.spark} />Хариуг AI-аар шалгах</button>
+        {ai && <button className="pe-btn" disabled={!!ocr?.busy || p1.length >= MAX1} onClick={() => { target.current = { mode: 'new' }; fileRef.current.accept = 'image/*,application/pdf'; fileRef.current.click(); }}>
+          <Ico d={I.doc} />Зураг, PDF-ээс бодлогууд</button>}
+        {ai && <button className="pe-btn ai" disabled={!!solve?.busy} onClick={() => aiSolve([...p1, ...p2].map(x => x.k), true)}><Ico d={I.spark} />Хариуг AI-аар шалгах</button>}
       </div>
 
       <div className="pe-sec">2-р хэсэг (нөхөх) · {p2.length}/{MAX2}</div>
