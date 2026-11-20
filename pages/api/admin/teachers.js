@@ -1,7 +1,10 @@
-import { getAllTeachers, updateTeacherStatus, deleteTeacher, getTeacherById, initDb, extendTeacher, setTeacherPhone } from '../../../lib/db';
+import bcrypt from 'bcryptjs';
+import { getAllTeachers, updateTeacherStatus, deleteTeacher, getTeacherById, initDb, extendTeacher, setTeacherPhone, getTeacherByEmail, createTeacher, phoneTaken } from '../../../lib/db';
 import { requireAuth } from '../../../lib/auth';
 import { normalizePhone, maskPhone } from '../../../lib/verifymn';
-import { normSubjects } from '../../../lib/plans';
+import { normSubjects, TRIAL_DAYS } from '../../../lib/plans';
+
+const genId = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
 
 export default requireAuth(async function handler(req, res) {
   await initDb();
@@ -11,6 +14,29 @@ export default requireAuth(async function handler(req, res) {
   if (req.method === 'GET') {
     const teachers = await getAllTeachers();
     return res.json(teachers);
+  }
+  if (req.method === 'POST') {
+    // Admin багш нэмэх (чатаар асуусан хүнд): SMS баталгаажуулалтгүй — admin тухайн хүнтэй ярьж баталгаажуулсан.
+    // Энгийн бүртгэлтэй адил TRIAL_DAYS туршилт, 24 цагийн урамшуулалтай. Нууц үг хоосон бол утасны дугаар.
+    const email = String(req.body?.email || '').trim().toLowerCase();
+    const name = String(req.body?.name || '').trim().slice(0, 200);
+    const ph = normalizePhone(req.body?.phone);
+    const password = String(req.body?.password || '') || (ph ? ph.local : '');
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 200) return res.status(400).json({ error: 'Имэйл буруу байна' });
+    if (!ph) return res.status(400).json({ error: 'Утасны дугаар буруу байна — 8 оронтой гар утас' });
+    if (password.length < 6) return res.status(400).json({ error: 'Нууц үг хамгийн багадаа 6 тэмдэгт' });
+    if (await getTeacherByEmail(email)) return res.status(409).json({ error: 'Энэ имэйл бүртгэлтэй байна' });
+    if (await phoneTaken(ph.local)) return res.status(409).json({ error: 'Энэ утасны дугаараар бүртгэл үүссэн байна' });
+    const t = await createTeacher({ id: genId(), email, passwordHash: await bcrypt.hash(password, 10), name, phone: ph.local, trialDays: TRIAL_DAYS, phoneVerified: true });
+    try {
+      const msg = `🆕 Admin бүртгэл үүсгэв (${TRIAL_DAYS} хоног туршилт)\n\n👤 ${name || '—'}\n📧 ${email}\n📱 ${maskPhone(ph.local)}`;
+      await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({chat_id: process.env.TELEGRAM_CHAT_ID, text: msg})
+      });
+    } catch(e) {}
+    return res.status(201).json({ ok: true, teacher: { id: t.id, email: t.email, name: t.name, phone: t.phone } });
   }
   if (req.method === 'PATCH' && req.body?.extendMonths) {
     // Гараар эрх сунгах (бэлэн мөнгө, дансаар гэх мэт): subject — тэр хичээлийн эрх; '*' — бүх хичээл (хуучин багц шиг)

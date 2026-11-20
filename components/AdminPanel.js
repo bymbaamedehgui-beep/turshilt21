@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../lib/eyesh';
 import { MaterialsPanel, EeshDateSetting } from './MaterialsPanel';
-import { SUBJECTS } from '../lib/plans';
+import { SUBJECTS, TRIAL_DAYS } from '../lib/plans';
 
 // ── Admin: багш нарын эрх, промо код, сурагчийн хэсэг ─────────────────────
 // eyeshcheck-ийн ☰ «Admin» (pages/index.js) ба Дасгалын төвийн админы «ЭЕШ шалгагч» цэс (pages/cm-admin.js, embed) хоёулаа.
@@ -128,6 +128,8 @@ export function AdminPanel({dark:d=false, embed=false}) {
           style={{width:'100%',boxSizing:'border-box',padding:'10px 14px',border:'1.5px solid '+border,borderRadius:12,fontSize:14,marginBottom:14,background:bg,color:text,outline:'none'}} />
       )}
 
+      <AddTeacher d={d} onCreated={load} />
+
       {/* Pending */}
       {pending.length>0 && (
         <div style={{background:bg,borderRadius:14,overflow:'hidden',boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16}}>
@@ -209,6 +211,60 @@ export function AdminPanel({dark:d=false, embed=false}) {
         <EeshDateSetting />
         <MaterialsPanel kind="textbook" />
       </div>
+    </div>
+  );
+}
+
+// ── Багш нэмэх (POST /api/admin/teachers): чатаар асуусан хүнд SMS-гүйгээр данс үүсгэнэ; нэвтрэх мэдээллийг хуулж илгээнэ ──
+function AddTeacher({d, onCreated}) {
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({ name: '', email: '', phone: '', password: '' });
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState('');
+  const [done, setDone] = useState(null);     // { email, password } — хуулах мэдээлэл
+  const [copied, setCopied] = useState(false);
+  const bg = d ? '#1c1f2a' : 'white', text = d ? '#f3f4f6' : '#1c1f2a', muted = d ? '#9ca3af' : '#6b7280', border = d ? '#2a2e38' : '#e5e7eb';
+  const inp = { width:'100%', boxSizing:'border-box', padding:'10px 12px', border:'1.5px solid '+border, borderRadius:10, fontSize:14, background:bg, color:text, outline:'none' };
+  const set = k => e => setF(x => ({ ...x, [k]: e.target.value }));
+  async function create(e) {
+    e.preventDefault();
+    setBusy(true); setErr(''); setCopied(false);
+    try {
+      const r = await apiFetch('/api/admin/teachers', { method:'POST', body: f });
+      const pw = f.password || r.teacher.phone;
+      setDone({ email: r.teacher.email, password: pw });
+      setF({ name: '', email: '', phone: '', password: '' });
+      onCreated && onCreated();
+    } catch (e2) { setErr(e2.message); }
+    setBusy(false);
+  }
+  const msg = done ? `Таны «ЭЕШ шалгагч» бүртгэл үүслээ ✅\nНэвтрэх: eyeshcheck.com\nИмэйл: ${done.email}\nНууц үг: ${done.password}\n🎁 Эхний 24 цагт бүх багц 50% хямд.` : '';
+  async function copy() { try { await navigator.clipboard.writeText(msg); setCopied(true); } catch (e) { setCopied(false); } }
+  return (
+    <div className="adm-add" style={{background:bg,borderRadius:14,boxShadow:'0 1px 4px rgba(17,24,39,.06)',marginBottom:16,padding:'12px 16px'}}>
+      <button onClick={() => { setOpen(o => !o); setDone(null); setErr(''); }} aria-expanded={open}
+        style={{border:'none',background:'none',padding:0,color:'#7B52EE',fontWeight:900,fontSize:14,cursor:'pointer'}}>{open ? '− Багш нэмэх' : '+ Багш нэмэх'}</button>
+      {open && !done && (
+        <form onSubmit={create} style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(180px,1fr))',gap:8,marginTop:10}}>
+          <input style={inp} value={f.name} onChange={set('name')} placeholder="Нэр" maxLength={200} />
+          <input style={inp} value={f.email} onChange={set('email')} placeholder="Имэйл" type="email" required autoComplete="off" />
+          <input style={inp} value={f.phone} onChange={set('phone')} placeholder="Утас (8 орон)" inputMode="numeric" required autoComplete="off" />
+          <input style={inp} value={f.password} onChange={set('password')} placeholder="Нууц үг (хоосон бол утасны дугаар)" autoComplete="new-password" />
+          <div style={{gridColumn:'1 / -1',fontSize:12,color:muted}}>SMS баталгаажуулалтгүй шууд үүснэ — {TRIAL_DAYS} хоног туршилт, эхний 24 цагт 50% хямдралтай. Утсыг тухайн хүнтэй ярьж баталгаажуулна уу: «Нууц үгээ мартсан»-ы код тэр дугаар руу очно.</div>
+          {err && <div style={{gridColumn:'1 / -1',color:'#b3261e',fontSize:13,fontWeight:700}}>{err}</div>}
+          <button className="cm-btn" disabled={busy} style={{gridColumn:'1 / -1'}}>{busy ? 'Үүсгэж байна…' : 'Бүртгэл үүсгэх'}</button>
+        </form>
+      )}
+      {open && done && (
+        <div style={{marginTop:10}}>
+          <div style={{fontSize:13.5,fontWeight:800,color:'#16a34a',marginBottom:6}}>✓ Бүртгэл үүслээ — доорх мэдээллийг багшид илгээнэ үү</div>
+          <pre style={{whiteSpace:'pre-wrap',margin:0,padding:'10px 12px',borderRadius:10,background:d ? '#232733' : '#f9fafb',border:'1px solid '+border,fontSize:13.5,color:text,fontFamily:'inherit'}}>{msg}</pre>
+          <div style={{display:'flex',gap:8,marginTop:8,flexWrap:'wrap'}}>
+            <button className="cm-btn" onClick={copy}>{copied ? 'Хууллаа ✓' : 'Хуулах'}</button>
+            <button className="cm-btn ghost" onClick={() => setDone(null)}>Дахин нэмэх</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
