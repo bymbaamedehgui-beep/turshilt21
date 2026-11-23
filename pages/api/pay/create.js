@@ -1,8 +1,8 @@
 import crypto from 'crypto';
 import { requireAuth } from '../../../lib/auth';
-import { initDb, getTeacherById, createPayment, findOpenPayment, grantPromo, getSchoolByOwner, welcomeOffer } from '../../../lib/db';
+import { initDb, getTeacherById, createPayment, findOpenPayment, grantPromo, grantPromoLicenses, teacherFloors, getSchoolByOwner, welcomeOffer } from '../../../lib/db';
 import { qpayConfigured, qpayCreateInvoice } from '../../../lib/qpay';
-import { planOf, planPrice, promoPrice, schoolPrice, normSubjects, SUBJECTS, BANK, bankPrice } from '../../../lib/plans';
+import { planOf, planPrice, promoPrice, pctPrice, schoolPrice, normSubjects, SUBJECTS, BANK, bankPrice } from '../../../lib/plans';
 import { checkPromo } from '../../../lib/promo';
 
 const SITE = process.env.SITE_URL || 'https://eyeshcheck.com';
@@ -11,8 +11,9 @@ const view = p => ({ id: p.id, months: p.months, amount: p.amount, subjects: p.s
 // Сонгосон багцаар QPay нэхэмжлэх үүсгэнэ (эрх дууссан багш ч дуудна — тиймээс requirePaid биш).
 // Багш: {months, subject, promo?} — НЭГ хичээлийн эрх (lib/plans.js); 100%-ийн промо код бол QPay-гүйгээр шууд → { free, months, paidUntil }.
 // Шинэ бүртгэлийн 24 цагийн урамшуулалтай бол урамшууллын үнэ; промо код түүнээс хямд үед л промо хэрэглэгдэнэ (давхцахгүй).
-// Сургууль: {months, school:true, subjects:[…]} — сургуулийн эзэн; хичээл бүр нэг хичээлийн үнээр (промо, урамшуулалгүй).
-// ЭЕШ сан: {months, bank:true} — бүх хичээл + ЭЕШ сан (lib/plans.js BANK_MONTH_PRICE).
+// Сургууль: {months, school:true, subjects:[…], promo?} — сургуулийн эзэн; хичээл бүр нэг хичээлийн үнээр (урамшуулалгүй).
+// ЭЕШ сан: {months, bank:true, promo?} — бүх хичээл + ЭЕШ сан (lib/plans.js BANK_MONTH_PRICE).
+// Сургууль, ЭЕШ санд зөвхөн тэр эрхэд хамаарах (promo_codes.scopes) хөнгөлөлтийн (%) код; 100% бол QPay-гүйгээр шууд олгоно.
 export default requireAuth(async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end();
   const plan = planOf(req.body?.months);
@@ -24,18 +25,34 @@ export default requireAuth(async function handler(req, res) {
   if (t.status === 'disabled') return res.status(403).json({ error: 'Таны эрх хаагдсан байна. Admin-тай холбогдоно уу.' });
 
   let subjects, school = null, amount, promo = null, label, welcome = null;
-  if (req.body?.bank) {
-    // «ЭЕШ сан» багц {months, bank:true} (components/EeshBank.js): БҮХ хичээлийн эрх + ЭЕШ сан, сард 29,900₮ — промо, урамшуулалгүй
-    subjects = [...SUBJECTS, BANK];
-    amount = bankPrice(plan.months);
-    label = 'ЭЕШ сан + бүх хичээл';
-  } else if (req.body?.school) {
-    school = await getSchoolByOwner(t.id);
-    if (!school) return res.status(400).json({ error: 'Эхлээд сургуулийн нэрээ оруулж сургуулиа үүсгэнэ үү.' });
-    subjects = normSubjects(req.body?.subjects);
-    if (!subjects.length) return res.status(400).json({ error: 'Хичээлээ сонгоно уу.' });
-    amount = schoolPrice(plan.months, subjects.length);
-    label = `${school.name}: ${subjects.join(', ')}`;
+  if (req.body?.bank || req.body?.school) {
+    if (req.body?.bank) {
+      // «ЭЕШ сан» багц {months, bank:true} (components/EeshBank.js): БҮХ хичээлийн эрх + ЭЕШ сан, сард 29,900₮ — урамшуулалгүй
+      subjects = [...SUBJECTS, BANK];
+      amount = bankPrice(plan.months);
+      label = 'ЭЕШ сан + бүх хичээл';
+    } else {
+      school = await getSchoolByOwner(t.id);
+      if (!school) return res.status(400).json({ error: 'Эхлээд сургуулийн нэрээ оруулж сургуулиа үүсгэнэ үү.' });
+      subjects = normSubjects(req.body?.subjects);
+      if (!subjects.length) return res.status(400).json({ error: 'Хичээлээ сонгоно уу.' });
+      amount = schoolPrice(plan.months, subjects.length);
+      label = `${school.name}: ${subjects.join(', ')}`;
+    }
+    if (req.body?.promo) {
+      const scope = school ? 'school' : 'bank';
+      const c = await checkPromo(t.id, req.body.promo, scope);
+      if (!c.ok) return res.status(c.status || 400).json({ error: c.error });
+      if (c.promo.kind !== 'percent') return res.status(400).json({ error: 'Үнэгүй хоногийн код зөвхөн багшийн нэг хичээлийн эрхэд хэрэглэгдэнэ.' });
+      promo = c.promo;
+      amount = pctPrice(amount, promo.value);
+      if (amount === 0) {
+        const g = await grantPromoLicenses(t.id, promo.code, { owner: school ? 's:' + school.id : 't:' + t.id, subjects, months: plan.months,
+          scope, floors: school ? {} : teacherFloors(t) });
+        return g.error ? res.status(409).json({ error: g.error })
+          : res.json({ free: true, months: plan.months, subjects, school: !!school, paidUntil: g.paidUntil });
+      }
+    }
   } else {
     subjects = normSubjects([req.body?.subject]);
     if (subjects.length !== 1) return res.status(400).json({ error: 'Хичээлээ сонгоно уу (хуудсаа дахин ачаалж үзнэ үү).' });
@@ -43,7 +60,7 @@ export default requireAuth(async function handler(req, res) {
     amount = planPrice(plan.months, !!welcome);
     label = subjects[0];
     if (req.body?.promo) {
-      const c = await checkPromo(t.id, req.body.promo);
+      const c = await checkPromo(t.id, req.body.promo, 'teacher');
       if (!c.ok) return res.status(c.status || 400).json({ error: c.error });
       if (c.promo.kind !== 'percent') return res.status(400).json({ error: 'Энэ бол үнэгүй хоногийн код — «Идэвхжүүлэх» товчийг дарна уу.' });
       const pa = promoPrice(plan.months, c.promo.value);

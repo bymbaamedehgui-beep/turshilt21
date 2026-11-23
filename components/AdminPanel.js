@@ -3,7 +3,7 @@ import { apiFetch } from '../lib/eyesh';
 import { EeshBankAdmin } from './EeshBankAdmin';
 import { ArchiveAdmin } from './ArchiveAdmin';
 import { MaterialsPanel, EeshDateSetting } from './MaterialsPanel';
-import { SUBJECTS, TRIAL_DAYS } from '../lib/plans';
+import { SUBJECTS, TRIAL_DAYS, PROMO_SCOPES, PROMO_SCOPE_LABEL } from '../lib/plans';
 
 // ── Admin: багш нарын эрх, промо код, сурагчийн хэсэг ─────────────────────
 // eyeshcheck-ийн ☰ «Admin» (pages/index.js) ба Дасгалын төвийн админы «ЭЕШ шалгагч» цэс (pages/cm-admin.js, embed) хоёулаа.
@@ -376,7 +376,9 @@ function FunnelAdmin({d}) {
 
 // ── Промо код (lib/promo.js, pages/api/admin/promo.js) ──
 const promoLabel = p => p.kind === 'percent' ? `−${p.value}%` : `+${p.value} хоног`;
-const EMPTY = { kind:'percent', value:'20', maxUses:'', expiresAt:'', code:'', note:'' };
+// Хамрах эрх: багшийн нэг хичээл / сургуулийн эрх / ЭЕШ сан (хуучин код — багшийн эрх); үнэгүй хоног зөвхөн багшид
+const scopeText = s => (s && s.length ? s : ['teacher']).map(x => PROMO_SCOPE_LABEL[x] || x).join(' · ');
+const EMPTY = { kind:'percent', value:'20', maxUses:'', expiresAt:'', code:'', note:'', scopes:['teacher'] };
 
 function PromoAdmin({d}) {
   const [list, setList] = useState(null);
@@ -390,14 +392,16 @@ function PromoAdmin({d}) {
     try { setList(await apiFetch('/api/admin/promo')); } catch(e) { setList([]); setMsg({ err:true, text:e.message }); }
   }
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
+  const toggleScope = s => setForm(f => ({ ...f, scopes: f.scopes.includes(s) ? f.scopes.filter(x => x !== s) : PROMO_SCOPES.filter(x => x === s || f.scopes.includes(x)) }));
   async function create(e) {
     e.preventDefault();
+    if (!form.scopes.length) return setMsg({ err:true, text:'Код аль эрхэд хамаарахыг сонгоно уу' });
     setBusy(true); setMsg(null);
     try {
       const p = await apiFetch('/api/admin/promo', { method:'POST', body:{ ...form, value:Number(form.value), maxUses:form.maxUses===''?null:Number(form.maxUses), expiresAt:form.expiresAt||null } });
       setList(l => [p, ...(l||[])]);
       setForm(f => ({ ...f, code:'', note:'' }));
-      setMsg({ text:`«${p.code}» код үүслээ — ${promoLabel(p)}` });
+      setMsg({ text:`«${p.code}» код үүслээ — ${promoLabel(p)} · ${scopeText(p.scopes)}` });
     } catch(e2) { setMsg({ err:true, text:e2.message }); }
     setBusy(false);
   }
@@ -435,7 +439,7 @@ function PromoAdmin({d}) {
       </div>
       <form onSubmit={create} style={{padding:'14px 16px',display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(150px,1fr))',gap:10,borderBottom:'1px solid '+border}}>
         <label><span style={lab}>Төрөл</span>
-          <select value={form.kind} onChange={e=>setForm(f=>({ ...f, kind:e.target.value, value:e.target.value==='percent'?'20':'7' }))} style={field}>
+          <select value={form.kind} onChange={e=>setForm(f=>({ ...f, kind:e.target.value, value:e.target.value==='percent'?'20':'7', scopes:e.target.value==='days'?['teacher']:f.scopes }))} style={field}>
             <option value="percent">Хөнгөлөлт (%)</option>
             <option value="days">Үнэгүй хоног</option>
           </select></label>
@@ -449,12 +453,25 @@ function PromoAdmin({d}) {
           <input value={form.code} onChange={set('code')} placeholder="Автоматаар" maxLength={40} style={{...field,textTransform:'uppercase'}} /></label>
         <label><span style={lab}>Тайлбар</span>
           <input value={form.note} onChange={set('note')} placeholder="Жишээ: 9-р сарын сургалт" maxLength={200} style={field} /></label>
+        <fieldset className="adm-promo-scopes" style={{gridColumn:'1 / -1',border:'none',margin:0,padding:0,display:'flex',flexWrap:'wrap',alignItems:'center',gap:'6px 16px'}}>
+          <legend style={{...lab,float:'left',margin:'0 6px 0 0'}}>Хамрах эрх</legend>
+          {PROMO_SCOPES.map(s => {
+            const off = form.kind === 'days' && s !== 'teacher';
+            return (
+              <label key={s} style={{display:'inline-flex',alignItems:'center',gap:6,fontSize:13.5,fontWeight:800,color:off?muted:text,cursor:off?'not-allowed':'pointer'}}>
+                <input type="checkbox" checked={form.scopes.includes(s)} disabled={off} onChange={()=>toggleScope(s)} style={{width:16,height:16,accentColor:'#7B52EE'}} />
+                {PROMO_SCOPE_LABEL[s]}
+              </label>
+            );
+          })}
+          {form.kind === 'days' && <span style={{fontSize:12,color:muted}}>Үнэгүй хоног зөвхөн багшийн эрхэд</span>}
+        </fieldset>
         <div style={{display:'flex',alignItems:'flex-end'}}>
           <button type="submit" disabled={busy} style={{...small('#7B52EE','white'),width:'100%',padding:'11px 12px',fontSize:13.5}}>{busy ? 'Үүсгэж байна…' : '+ Код үүсгэх'}</button>
         </div>
       </form>
       <div style={{padding:'8px 16px',fontSize:12,color:muted,borderBottom:'1px solid '+border}}>
-        Хөнгөлөлтийн кодыг багш «Эрх сунгах» дэлгэц дээр оруулахад QPay-ийн үнэ буурна (100% бол шууд нээгдэнэ). Үнэгүй хоногийн код эрхийг шууд нэмнэ. Багш бүр нэг кодыг нэг удаа.
+        Хөнгөлөлтийн кодыг сонгосон эрхийн төлбөрийн дэлгэц дээр (багш — «Эрх сунгах», сургууль — «Сургуулийн эрх», «ЭЕШ сан») оруулахад QPay-ийн үнэ буурна (100% бол шууд нээгдэнэ). Үнэгүй хоногийн код багшийн эрхийг шууд нэмнэ. Багш (сургуулийн эзэн) бүр нэг кодыг нэг удаа.
       </div>
       {msg && <div role="status" style={{padding:'9px 16px',fontSize:13,fontWeight:800,color:msg.err?'#b3261e':'#15803d',background:msg.err?'#fdecec':'#e9f8ef'}}>{msg.text}</div>}
       {list && list.length===0 && <div style={{padding:24,textAlign:'center',color:muted,fontSize:13}}>Код алга — дээрээс үүсгэнэ үү</div>}
@@ -466,6 +483,7 @@ function PromoAdmin({d}) {
             <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:10,padding:'11px 16px'}}>
               <button onClick={()=>copy(p.code)} title="Хуулах" style={{border:'1px dashed '+border,background:'transparent',color:text,borderRadius:8,padding:'4px 9px',fontFamily:'ui-monospace,Consolas,monospace',fontWeight:900,fontSize:14,cursor:'pointer'}}>{p.code}</button>
               <span style={{fontWeight:900,fontSize:13,color:'#7B52EE'}}>{promoLabel(p)}</span>
+              <span style={{fontSize:12,fontWeight:800,color:text,background:d?'#2a2e38':'#f1edff',borderRadius:999,padding:'2px 9px'}}>{scopeText(p.scopes)}</span>
               <span style={{fontSize:12,color:muted}}>Ашигласан <b style={{color:text}}>{p.usedCount}</b>{p.maxUses != null ? ` / ${p.maxUses}` : ' / ∞'}</span>
               <span style={{fontSize:12,color:muted}}>{p.expiresAt ? 'Дуусах: ' + ymd(p.expiresAt) : 'Хугацаагүй'}</span>
               <span style={{fontSize:12,fontWeight:800,color:st[1]}}>{st[0]}</span>
@@ -483,6 +501,7 @@ function PromoAdmin({d}) {
                     <div key={i} style={{display:'flex',gap:10,fontSize:12.5,color:text,padding:'4px 0',borderTop:i?'1px dashed '+border:'none'}}>
                       <b style={{minWidth:0,overflow:'hidden',textOverflow:'ellipsis'}}>{u.name||'—'}</b>
                       <span style={{color:muted,minWidth:0,overflow:'hidden',textOverflow:'ellipsis'}}>{u.email||'(устгагдсан багш)'}</span>
+                      {u.scope && u.scope !== 'teacher' && <span style={{color:muted,minWidth:0,overflow:'hidden',textOverflow:'ellipsis'}}>{PROMO_SCOPE_LABEL[u.scope] || u.scope}{u.school ? ': ' + u.school : ''}</span>}
                       <span style={{marginLeft:'auto',color:muted,whiteSpace:'nowrap'}}>{ymd(u.redeemedAt)} · {u.paid ? 'төлсөн' : 'үнэгүй'}</span>
                     </div>
                   ))}

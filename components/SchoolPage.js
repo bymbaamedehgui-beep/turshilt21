@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { apiFetch, scaleScore } from '../lib/eyesh';
-import { PLANS, MONTH_PRICE, planPrice, perMonth, schoolPrice, fmtMNT } from '../lib/plans';
+import { PLANS, MONTH_PRICE, planPrice, perMonth, schoolPrice, pctPrice, fmtMNT } from '../lib/plans';
 import { SubjectChips, QPayInvoice, fmtDot } from './Paywall';
+import { PromoField } from './PromoField';
 
 // ── Сургуулийн эрх ─────────────────────────────────────────────────────────
 // Сургууль хичээлээ сонгоод төлнө (хичээл бүр нэг хичээлийн үнээр), багш нараа утас/имэйлээр урина. Урилгыг багш зөвшөөрсний
@@ -86,7 +87,8 @@ function BuyLicenses({ school, licenses, onCreate, onPaid }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [open, setOpen] = useState(() => !licenses.some(l => active(l.until)));   // эрхтэй сургуульд хураангуй
-  const total = schoolPrice(months, subs.length);
+  const [promo, setPromo] = useState(null);       // сургуулийн эрхэд хамаарах хөнгөлөлтийн код (components/PromoField.js)
+  const full = schoolPrice(months, subs.length), total = promo ? pctPrice(full, promo.value) : full;
   const untilOf = s => licenses.find(l => l.subject === s)?.until;
   async function pay() {
     if (!school && name.trim().length < 2) return setErr('Сургуулийн нэрээ оруулна уу');
@@ -94,21 +96,23 @@ function BuyLicenses({ school, licenses, onCreate, onPaid }) {
     setBusy(true); setErr('');
     try {
       if (!school && !(await onCreate(name.trim()))) { setBusy(false); return; }
-      setInv(await apiFetch('/api/pay/create', { method: 'POST', body: { months, school: true, subjects: subs } }));
+      const r = await apiFetch('/api/pay/create', { method: 'POST', body: { months, school: true, subjects: subs, ...(promo ? { promo: promo.code } : {}) } });
+      if (r.free) { setDone(r); setPromo(null); onPaid && onPaid(); }   // 100%-ийн промо код — QPay-гүйгээр шууд
+      else setInv(r);
     } catch (e) { setErr(e.message); }
     setBusy(false);
   }
   if (done) return (
     <div className="pw-card pw-done sc-done">
       <div className="pw-ok">✓</div>
-      <h2>Төлбөр амжилттай!</h2>
+      <h2>{done.free ? 'Промо кодоор нээгдлээ!' : 'Төлбөр амжилттай!'}</h2>
       <p>{(done.subjects || subs).join(', ')} — сургуулийн эрх <b>{fmtDot(done.paidUntil)}</b> хүртэл нээгдлээ.</p>
       <button className="cm-btn" onClick={() => { setDone(null); setSubs([]); }}>Болсон</button>
     </div>
   );
   if (inv) return (
-    <QPayInvoice inv={inv} title={`${(inv.subjects || subs).join(', ')} · ${inv.months} сар`} sub={`${school?.name || name} — сургуулийн эрх`}
-      onPaid={r => { setDone(r); setInv(null); onPaid && onPaid(); }} onBack={() => setInv(null)} />
+    <QPayInvoice inv={inv} title={`${(inv.subjects || subs).join(', ')} · ${inv.months} сар`} sub={`${school?.name || name} — сургуулийн эрх${promo ? ` · ${promo.code} −${promo.value}%` : ''}`}
+      onPaid={r => { setDone(r); setInv(null); setPromo(null); onPaid && onPaid(); }} onBack={() => setInv(null)} />
   );
   if (school && !open) return (
     <div className="sc-card">
@@ -139,12 +143,16 @@ function BuyLicenses({ school, licenses, onCreate, onPaid }) {
           </button>
         ))}
       </div>
+      <PromoField scope="school" promo={promo} onChange={p => { setPromo(p); setErr(''); }} disabled={busy} />
       <div className="sc-total">
-        {subs.length ? <>{subs.length} хичээл × {fmtMNT(planPrice(months))} = <b>{fmtMNT(total)}</b></> : 'Хичээлээ сонгоно уу'}
+        {!subs.length ? 'Хичээлээ сонгоно уу'
+          : promo ? <>{subs.length} хичээл × {fmtMNT(planPrice(months))} = <s>{fmtMNT(full)}</s> → −{promo.value}% = <b>{total === 0 ? 'Үнэгүй' : fmtMNT(total)}</b></>
+          : <>{subs.length} хичээл × {fmtMNT(planPrice(months))} = <b>{fmtMNT(total)}</b></>}
       </div>
       {err && <div className="cm-alert">{err}</div>}
       <button className="cm-btn big pw-cta" disabled={busy || !subs.length} onClick={pay}>
-        {busy ? 'Нэхэмжлэх үүсгэж байна…' : <>QPay-ээр төлөх{subs.length ? ` · ${fmtMNT(total)}` : ''}</>}
+        {busy ? 'Нэхэмжлэх үүсгэж байна…' : subs.length && total === 0 ? 'Промо кодоор үнэгүй идэвхжүүлэх'
+          : <>QPay-ээр төлөх{subs.length ? ` · ${fmtMNT(total)}` : ''}</>}
       </button>
     </div>
   );

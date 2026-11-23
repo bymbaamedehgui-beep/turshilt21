@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../lib/eyesh';
-import { fmtMNT, fmtDay, BANK_MONTH_PRICE } from '../lib/plans';
+import { fmtMNT, fmtDay, BANK_MONTH_PRICE, pctPrice } from '../lib/plans';
 import { QPayInvoice } from './Paywall';
+import { PromoField } from './PromoField';
 
 // «ЭЕШ сан» (☰ цэс, pages/index.js 'bank'): хичээл → он → хувилбар сонгоод нэг товчоор хариутай шалгалт + хэвлэх материал
 // (+ боломжтой бол онлайн шалгалт). Эрх — «ЭЕШ сан» багц (сард 29,900₮ — бүх хичээлийн шалгагчтай хамт, pages/api/pay/create.js).
@@ -34,6 +35,7 @@ export function EeshBank({ me, onCreated, onPaid, onHome }) {
   const [payBusy, setPayBusy] = useState(false);
   const [payErr, setPayErr] = useState('');
   const [paid, setPaid] = useState(null);
+  const [promo, setPromo] = useState(null);      // «ЭЕШ сан»-д хамаарах хөнгөлөлтийн код (components/PromoField.js)
 
   async function load() {
     try {
@@ -60,14 +62,19 @@ export function EeshBank({ me, onCreated, onPaid, onHome }) {
   }
   async function buy() {
     setPayBusy(true); setPayErr('');
-    try { setInv(await apiFetch('/api/pay/create', { method: 'POST', body: { months, bank: true } })); }
+    try {
+      const r = await apiFetch('/api/pay/create', { method: 'POST', body: { months, bank: true, ...(promo ? { promo: promo.code } : {}) } });
+      if (r.free) onInvPaid(r);   // 100%-ийн промо код — QPay-гүйгээр шууд
+      else setInv(r);
+    }
     catch (e) { setPayErr(e.message); }
     setPayBusy(false);
   }
-  function onInvPaid(r) { setInv(null); setPaid(r); load(); onPaid && onPaid(r); }
+  function onInvPaid(r) { setInv(null); setPaid(r); setPromo(null); load(); onPaid && onPaid(r); }
 
   if (!data) return <div className="eb"><h1 className="mp-title">ЭЕШ сан</h1>{err ? <div className="cm-alert">{err}</div> : <div className="eb-empty">Ачаалж байна…</div>}</div>;
   const access = data.access, price = data.price || BANK_MONTH_PRICE;
+  const cost = mo => promo ? pctPrice(price * mo, promo.value) : price * mo;   // сервер (pay/create) ижлээр тооцно
 
   return (
     <div className="eb">
@@ -80,7 +87,7 @@ export function EeshBank({ me, onCreated, onPaid, onHome }) {
         </div>
       </div>
 
-      {paid && <div className="eb-note ok"><Ico d={I.ok} />Төлбөр амжилттай — ЭЕШ сан болон бүх хичээлийн эрх нээгдлээ.</div>}
+      {paid && <div className="eb-note ok"><Ico d={I.ok} />{paid.free ? 'Промо кодоор' : 'Төлбөр амжилттай'} — ЭЕШ сан болон бүх хичээлийн эрх нээгдлээ.</div>}
       {err && <div className="cm-alert">{err}</div>}
 
       <div className="pw-sec">Хичээл</div>
@@ -134,20 +141,22 @@ export function EeshBank({ me, onCreated, onPaid, onHome }) {
 
       {!access && (
         <div className="eb-buy" id="eb-buy">
-          {inv ? <QPayInvoice inv={inv} title={`ЭЕШ сан · ${inv.months} сар`} sub="Бүх хичээлийн шалгагч + ЭЕШ сан" onPaid={onInvPaid} onBack={() => setInv(null)} /> : <>
+          {inv ? <QPayInvoice inv={inv} title={`ЭЕШ сан · ${inv.months} сар`} sub={`Бүх хичээлийн шалгагч + ЭЕШ сан${promo ? ` · ${promo.code} −${promo.value}%` : ''}`} onPaid={onInvPaid} onBack={() => setInv(null)} /> : <>
             <div className="eb-buy-h"><b>ЭЕШ сан + бүх хичээлийн шалгагч</b><span>Сард {fmtMNT(price)} — ЭЕШ-ийн бүх хичээлийн материал, шалгагчийн бүх хичээлийн эрх нэг багцад.</span></div>
             <div className="pw-plans" role="radiogroup" aria-label="Хугацаа">
               {data.months.map(mo => (
                 <button key={mo} role="radio" aria-checked={months === mo} className={'pw-plan' + (months === mo ? ' on' : '')} onClick={() => setMonths(mo)}>
                   <span className="pw-radio" />
-                  <span className="pw-plan-m"><b>{mo} сар</b></span>
-                  <span className="pw-plan-p"><b>{fmtMNT(price * mo)}</b></span>
+                  <span className="pw-plan-m"><b>{mo} сар</b>{promo && <em>−{promo.value}%</em>}</span>
+                  <span className="pw-plan-p"><b>{cost(mo) === 0 ? 'Үнэгүй' : fmtMNT(cost(mo))}</b>{promo && <s>{fmtMNT(price * mo)}</s>}</span>
                   <span className="pw-plan-n">сард {fmtMNT(price)}</span>
                 </button>
               ))}
             </div>
+            <PromoField scope="bank" promo={promo} onChange={p => { setPromo(p); setPayErr(''); }} disabled={payBusy} />
             {payErr && <div className="cm-alert">{payErr}</div>}
-            <button className="cm-btn big" disabled={payBusy} onClick={buy}>{payBusy ? 'Нэхэмжлэх үүсгэж байна…' : `QPay-ээр төлөх — ${fmtMNT(price * months)}`}</button>
+            <button className="cm-btn big" disabled={payBusy} onClick={buy}>{payBusy ? 'Нэхэмжлэх үүсгэж байна…'
+              : cost(months) === 0 ? 'Промо кодоор үнэгүй идэвхжүүлэх' : `QPay-ээр төлөх — ${fmtMNT(cost(months))}`}</button>
           </>}
         </div>
       )}

@@ -141,7 +141,7 @@ export function Paywall({ me, renew, subject: subject0, months: months0, onPaid,
   async function checkPromo(e) {
     e.preventDefault();
     setPromoBusy(true); setPromoErr('');
-    try { const r = await apiFetch('/api/promo', { method: 'POST', body: { action: 'check', code: promoInput } }); setPromo(r); }
+    try { const r = await apiFetch('/api/promo', { method: 'POST', body: { action: 'check', code: promoInput, scope: 'teacher' } }); setPromo(r); }
     catch (e2) { setPromoErr(e2.message); }
     setPromoBusy(false);
   }
