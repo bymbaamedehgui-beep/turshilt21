@@ -46,7 +46,9 @@ export default requireAuth(async function handler(req, res) {
     const raw = String(b.code || '').trim();
     const code = raw ? normCode(raw) : genCode();
     if (!code) return res.status(400).json({ error: 'Код 3–40 тэмдэгт: латин үсэг, тоо, зураас (-)' });
-    const p = await createPromo({ code, kind, value, maxUses, expiresAt, note: String(b.note || '').trim().slice(0, 200), scopes: scopes.join(',') });
+    // noWelcome — шинэ хэрэглэгчийн 50% урамшуулал авсан багшид хэрэглэгдэхгүй (өгөөгүй бол тийм)
+    const p = await createPromo({ code, kind, value, maxUses, expiresAt, note: String(b.note || '').trim().slice(0, 200), scopes: scopes.join(','),
+      noWelcome: b.noWelcome !== false });
     return p ? res.status(201).json(promoView(p)) : res.status(409).json({ error: `«${code}» код аль хэдийн байна` });
   }
   if (req.method === 'PATCH') {

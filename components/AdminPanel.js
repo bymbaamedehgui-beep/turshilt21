@@ -378,7 +378,7 @@ function FunnelAdmin({d}) {
 const promoLabel = p => p.kind === 'percent' ? `−${p.value}%` : `+${p.value} хоног`;
 // Хамрах эрх: багшийн нэг хичээл / сургуулийн эрх / ЭЕШ сан (хуучин код — багшийн эрх); үнэгүй хоног зөвхөн багшид
 const scopeText = s => (s && s.length ? s : ['teacher']).map(x => PROMO_SCOPE_LABEL[x] || x).join(' · ');
-const EMPTY = { kind:'percent', value:'20', maxUses:'', expiresAt:'', code:'', note:'', scopes:['teacher'] };
+const EMPTY = { kind:'percent', value:'20', maxUses:'', expiresAt:'', code:'', note:'', scopes:['teacher'], noWelcome:true };
 
 function PromoAdmin({d}) {
   const [list, setList] = useState(null);
@@ -466,12 +466,17 @@ function PromoAdmin({d}) {
           })}
           {form.kind === 'days' && <span style={{fontSize:12,color:muted}}>Үнэгүй хоног зөвхөн багшийн эрхэд</span>}
         </fieldset>
+        {/* Давхар хөнгөлөлтгүй: шинэ хэрэглэгчийн 50% урамшууллаар төлсөн багшид (lib/promo.js checkPromo, сургуулийн эрхэд биш) */}
+        <label className="adm-promo-nowelcome" style={{gridColumn:'1 / -1',display:'inline-flex',alignItems:'center',gap:6,fontSize:13.5,fontWeight:800,color:text,cursor:'pointer'}}>
+          <input type="checkbox" checked={form.noWelcome} onChange={e=>setForm(f=>({ ...f, noWelcome:e.target.checked }))} style={{width:16,height:16,accentColor:'#7B52EE'}} />
+          Шинэ хэрэглэгчийн 50% урамшуулал авсан багшид хэрэглэгдэхгүй
+        </label>
         <div style={{display:'flex',alignItems:'flex-end'}}>
           <button type="submit" disabled={busy} style={{...small('#7B52EE','white'),width:'100%',padding:'11px 12px',fontSize:13.5}}>{busy ? 'Үүсгэж байна…' : '+ Код үүсгэх'}</button>
         </div>
       </form>
       <div style={{padding:'8px 16px',fontSize:12,color:muted,borderBottom:'1px solid '+border}}>
-        Хөнгөлөлтийн кодыг сонгосон эрхийн төлбөрийн дэлгэц дээр (багш — «Эрх сунгах», сургууль — «Сургуулийн эрх», «ЭЕШ сан») оруулахад QPay-ийн үнэ буурна (100% бол шууд нээгдэнэ). Үнэгүй хоногийн код багшийн эрхийг шууд нэмнэ. Багш (сургуулийн эзэн) бүр нэг кодыг нэг удаа.
+        Хөнгөлөлтийн кодыг сонгосон эрхийн төлбөрийн дэлгэц дээр (багш — «Эрх сунгах», сургууль — «Сургуулийн эрх», «ЭЕШ сан») оруулахад QPay-ийн үнэ буурна (100% бол шууд нээгдэнэ). Үнэгүй хоногийн код багшийн эрхийг шууд нэмнэ. Багш (сургуулийн эзэн) бүр нэг кодыг нэг удаа. Шинэ хэрэглэгчийн 50% урамшууллаар төлсөн багш анхдагчаар промо ашиглахгүй (давхар хөнгөлөлтгүй; сургуулийн эрхэд хамаарахгүй).
       </div>
       {msg && <div role="status" style={{padding:'9px 16px',fontSize:13,fontWeight:800,color:msg.err?'#b3261e':'#15803d',background:msg.err?'#fdecec':'#e9f8ef'}}>{msg.text}</div>}
       {list && list.length===0 && <div style={{padding:24,textAlign:'center',color:muted,fontSize:13}}>Код алга — дээрээс үүсгэнэ үү</div>}
@@ -484,6 +489,7 @@ function PromoAdmin({d}) {
               <button onClick={()=>copy(p.code)} title="Хуулах" style={{border:'1px dashed '+border,background:'transparent',color:text,borderRadius:8,padding:'4px 9px',fontFamily:'ui-monospace,Consolas,monospace',fontWeight:900,fontSize:14,cursor:'pointer'}}>{p.code}</button>
               <span style={{fontWeight:900,fontSize:13,color:'#7B52EE'}}>{promoLabel(p)}</span>
               <span style={{fontSize:12,fontWeight:800,color:text,background:d?'#2a2e38':'#f1edff',borderRadius:999,padding:'2px 9px'}}>{scopeText(p.scopes)}</span>
+              {p.noWelcome !== false && <span title="Шинэ хэрэглэгчийн 50% урамшуулал авсан багшид хэрэглэгдэхгүй" style={{fontSize:12,fontWeight:800,color:muted}}>урамшуулал авсанд биш</span>}
               <span style={{fontSize:12,color:muted}}>Ашигласан <b style={{color:text}}>{p.usedCount}</b>{p.maxUses != null ? ` / ${p.maxUses}` : ' / ∞'}</span>
               <span style={{fontSize:12,color:muted}}>{p.expiresAt ? 'Дуусах: ' + ymd(p.expiresAt) : 'Хугацаагүй'}</span>
               <span style={{fontSize:12,fontWeight:800,color:st[1]}}>{st[0]}</span>
