@@ -11,6 +11,7 @@ const view = p => ({ id: p.id, months: p.months, amount: p.amount, subjects: p.s
 // Сонгосон багцаар QPay нэхэмжлэх үүсгэнэ (эрх дууссан багш ч дуудна — тиймээс requirePaid биш).
 // Багш: {months, subject, promo?} — НЭГ хичээлийн эрх (lib/plans.js); 100%-ийн промо код бол QPay-гүйгээр шууд → { free, months, paidUntil }.
 // Шинэ бүртгэлийн 24 цагийн урамшуулалтай бол урамшууллын үнэ; промо код түүнээс хямд үед л промо хэрэглэгдэнэ (давхцахгүй).
+// Урамшуулал зөвхөн эхний нэг төлбөрт: промо ашигласан бол дуусна (welcomeOffer), давхар нэхэмжлэхийг markPaidLicenses хоногоор олгоно.
 // Сургууль: {months, school:true, subjects:[…], promo?} — сургуулийн эзэн; хичээл бүр нэг хичээлийн үнээр (урамшуулалгүй).
 // ЭЕШ сан: {months, bank:true, promo?} — бүх хичээл + ЭЕШ сан (lib/plans.js BANK_MONTH_PRICE).
 // Сургууль, ЭЕШ санд зөвхөн тэр эрхэд хамаарах (promo_codes.scopes) хөнгөлөлтийн (%) код; 100% бол QPay-гүйгээр шууд олгоно.
@@ -90,7 +91,8 @@ export default requireAuth(async function handler(req, res) {
       qr_image: inv.qr_image || '', qr_text: inv.qr_text || '', short: inv.qPay_shortUrl || '',
       urls: (Array.isArray(inv.urls) ? inv.urls : []).map(u => ({ name: u.name, description: u.description, logo: u.logo, link: u.link })),
     };
-    const p = { id, teacherId: t.id, invoiceId: inv.invoice_id, months: plan.months, amount, qr, promoCode, subjects, schoolId };
+    // welcome — урамшууллын үнээр (промо хэрэглээгүй); төлөгдөхдөө эхний төлбөр эсэхийг дахин шалгана (lib/db.js markPaidLicenses)
+    const p = { id, teacherId: t.id, invoiceId: inv.invoice_id, months: plan.months, amount, qr, promoCode, subjects, schoolId, welcome: !!welcome && !promo };
     await createPayment(p);
     res.json(view({ ...p, qr }));
   } catch (e) {

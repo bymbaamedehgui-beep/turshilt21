@@ -407,6 +407,8 @@ body.dark .cm-schips .h{color:#c4b1ff}
 .pw-promo-f input::placeholder{text-transform:none;letter-spacing:0;font-weight:700}
 .pw-promo-ok{display:flex;align-items:center;flex-wrap:wrap;gap:10px;background:#e9f8ef;border:1px solid #b7e4c7;color:#15803d;border-radius:14px;padding:.65rem .9rem;font-size:14px;font-weight:800}
 body.dark .pw-promo-ok{background:#0f2a1c;border-color:#1f5137;color:#86efac}
+/* Урамшуулал ба промо давхцахгүй тайлбар — тунгалаг, зүүн ирмэгийн аксент */
+.pw-promo-n{margin:8px 0 0;padding:.35rem .7rem;border-left:3px solid #7B52EE;color:var(--muted,#6b7280);font-size:13px;font-weight:700;line-height:1.45}
 .pw-cta{max-width:none}
 .pw-card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:12px;align-items:stretch}
 .pw-inv-h{display:flex;align-items:center;justify-content:space-between;gap:10px}

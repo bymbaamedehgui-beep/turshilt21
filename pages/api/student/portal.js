@@ -1,6 +1,7 @@
 import { initDb, getStudentResults, getExams, getMaterials, getGoals, getSetting } from '../../../lib/db';
 import { requireStudent } from '../../../lib/auth';
 import { SEC2_SUBS, SEC2_ROWS, examVariants, examForVersion } from '../../../lib/eyesh';
+import { s2Options } from '../../../lib/sheetSpec';
 
 // Сурагчийн хэсгийн бүх мэдээлэл нэг дор: дүнгийн түүх, онлайнаар өгөх шалгалт (хариугүй),
 // сурах бичиг, багшийн материал, зорилго, ЭЕШ-ийн огноо
@@ -16,6 +17,8 @@ function sec2Rows(e) {
 }
 function examOutline(e) {
   const out = { id: e.id, title: e.title, subject: e.subject, sec1Count: e.sec1Count, sec2: sec2Rows(e), createdAt: e.createdAt };   // түлхүүр явуулахгүй
+  // 2-р хэсгийн сонголтууд хичээлээр (хариултын хуудастай ижил, lib/sheetSpec.js) — түлхүүрийг биш, зөвхөн сонголтын жагсаалтыг
+  if (e.useSec2) out.s2Opts = s2Options(e);
   // олон хувилбартай: сурагч өөрийн хувилбарыг сонгоно — хувилбар бүрийн 2-р хэсгийн мөрүүд (түлхүүргүй)
   const vers = examVariants(e);
   if (vers.length > 1) out.variants = Object.fromEntries(vers.map(L => [L, sec2Rows(examForVersion(e, L))]));

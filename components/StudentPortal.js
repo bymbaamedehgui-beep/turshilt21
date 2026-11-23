@@ -6,10 +6,10 @@ import { useState, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { SEC1_CHOICES, scaleScore, scaleNote } from '../lib/eyesh';
 import { parsePaper } from '../lib/paperClient';
+import { s2Options } from '../lib/sheetSpec';
 
 const TOKEN_KEY = 'student_token';
 const SUBJECTS = ['Математик', 'Физик', 'Хими', 'Биологи', 'Монгол хэл', 'Англи хэл', 'Орос хэл', 'Түүх', 'Газарзүй', 'Нийгмийн ухаан'];
-const S2_OPTS = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '.'];
 const ICON = {
   home: 'M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z',
   exams: ['M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2', 'M9 5a2 2 0 0 0 2 2h2a2 2 0 0 0 2-2 2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2z', 'M9 14l2 2 4-4'],
@@ -354,7 +354,7 @@ function TakeExam({ exam, onBack, onDone }) {
   const s2Rows = sub => rows2[sub].map(row => (
     <div key={row} className="sp-take-row s2">
       <i>{row}</i>
-      {S2_OPTS.map(o => <button key={o} className={sec2[sub]?.[row] === o ? 'on' : ''} onClick={() => pick2(sub, row, o)}>{o}</button>)}
+      {s2Options(exam).map(o => <button key={o} className={sec2[sub]?.[row] === o ? 'on' : ''} onClick={() => pick2(sub, row, o)}>{o}</button>)}
     </div>
   ));
   return (

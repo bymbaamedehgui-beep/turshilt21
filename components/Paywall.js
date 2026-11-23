@@ -161,6 +161,7 @@ export function Paywall({ me, renew, subject: subject0, months: months0, onPaid,
         <div className="pw-ok">✓</div>
         <h2>{done.days ? 'Промо код идэвхжлээ!' : 'Төлбөр амжилттай!'}</h2>
         <p>{done.days ? <>{done.days} хоног нэмэгдлээ. </> : null}«{done.subject}» хичээлийн эрх <b>{fmtDate(done.paidUntil)}</b> хүртэл нээгдлээ.</p>
+        {done.welcomeDays && <p className="pw-promo-n">Шинэ хэрэглэгчийн урамшуулал өмнөх төлбөрт ашиглагдсан тул энэ төлбөрийн дүнгээр ердийн үнээр {done.welcomeDays} хоног нэмэгдлээ.</p>}
         <button className="cm-btn big" onClick={onClose}>Үргэлжлүүлэх →</button>
       </div>
     </div>
@@ -183,7 +184,7 @@ export function Paywall({ me, renew, subject: subject0, months: months0, onPaid,
           <span className="pw-offer-ic" aria-hidden="true">🎁</span>
           <div className="pw-offer-t">
             <b>Шинэ хэрэглэгчийн урамшуулал — 50% хямд</b>
-            <span>1, 3, 6 сарын бүх багц хагас үнээр: 1 сар <s>{fmtMNT(MONTH_PRICE)}</s> {fmtMNT(WELCOME_MONTH_PRICE)}. Зөвхөн бүртгүүлснээс хойш 24 цагийн дотор.</span>
+            <span>1, 3, 6 сарын бүх багц хагас үнээр: 1 сар <s>{fmtMNT(MONTH_PRICE)}</s> {fmtMNT(WELCOME_MONTH_PRICE)}. Зөвхөн бүртгүүлснээс хойш 24 цагийн дотор, эхний нэг төлбөрт. Промо кодтой давхцахгүй.</span>
           </div>
           <div className="pw-offer-c"><span>Дуусахад</span><Clock until={me.welcome.until} onEnd={() => setWelcomeOn(false)} /></div>
         </div>
@@ -238,6 +239,16 @@ export function Paywall({ me, renew, subject: subject0, months: months0, onPaid,
                 <button className="cm-link" onClick={() => { setPromo(null); setPromoInput(''); setPromoErr(''); }}>Хасах</button>
               </div>
             )}
+            {/* Шинэ хэрэглэгчийн урамшуулал ба промо давхцахгүй (сервер мөн адил: pages/api/pay/create.js, lib/db.js welcomeOffer) */}
+            {promo && welcomeOn && (
+              <div className="pw-promo-n" role="note">
+                {promo.kind === 'days'
+                  ? 'Идэвхжүүлбэл шинэ хэрэглэгчийн 50% урамшуулал дуусна — хөнгөлөлтүүд давхцахгүй.'
+                  : priceInfo(months).by === 'promo'
+                    ? 'Промо код урамшууллаас хямд тул промо хэрэглэгдэнэ — 50% урамшуулалтай давхцахгүй.'
+                    : 'Шинэ хэрэглэгчийн 50% урамшуулал илүү хямд тул промо код хэрэглэгдэхгүй — хөнгөлөлтүүд давхцахгүй.'}
+              </div>
+            )}
             {promoErr && <div className="cm-alert soft">{promoErr}</div>}
           </div>
 
@@ -255,7 +266,7 @@ export function Paywall({ me, renew, subject: subject0, months: months0, onPaid,
       ) : (
         <QPayInvoice inv={inv} title={`${subject} · ${inv.months} сарын эрх`}
           sub={`QPay нэхэмжлэх${(b => (b === 'promo' ? ` · ${promo.code}` : b === 'welcome' ? ' · шинэ хэрэглэгчийн урамшуулал' : ''))(priceInfo(inv.months).by)}`}
-          onPaid={r => { setDone({ paidUntil: r.paidUntil, subject }); onPaid && onPaid(r); }} onBack={() => { setInv(null); setErr(''); }} />
+          onPaid={r => { setDone({ paidUntil: r.paidUntil, subject, welcomeDays: r.welcomeDays || null }); onPaid && onPaid(r); }} onBack={() => { setInv(null); setErr(''); }} />
       )}
 
       <div className="pw-foot">

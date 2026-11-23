@@ -8,6 +8,7 @@ import { Paywall } from '../components/Paywall';
 import { SchoolPage } from '../components/SchoolPage';
 import { PLANS, planPrice, fullPrice, perMonth, fmtMNT, fmtDay, TRIAL_DAYS, SUBJECTS, canUseSubjectOf, subjectUntilOf, MONTH_PRICE, WELCOME_MONTH_PRICE, WELCOME_HOURS, BANK } from '../lib/plans';
 import { Clock } from '../components/Clock';
+import { EESH_SPEC, specNote, s2Kind } from '../lib/sheetSpec';
 import { StudentPortal } from '../components/StudentPortal';
 import { MaterialsPanel } from '../components/MaterialsPanel';
 import { exportAnalysisXlsx } from '../lib/report-xlsx';
@@ -399,7 +400,7 @@ function LandingPage({onEnter}) {
             {q:'Ямар төхөөрөмжид ажилладаг вэ?', a:'Утас, таблет, компьютерийн хөтөч дээр ажиллана. Суулгах шаардлагагүй — утсан дээрээ «Нүүр дэлгэцэнд нэмэх»-ээр апп шиг ашиглаж болно.'},
             {q:'Камераар уншихад хэр найдвартай вэ?', a:'CyberMath-ийн хэвлэсэн хуудсыг AI-гүй, тэмдгээр нь байрлалыг тогтоож пикселээр уншдаг тул нэг хуудсыг хэдэн удаа уншуулсан ч ижил үр дүн гарна. Олон будсан, бүдэг, арилгасан мөрийг таньж танаас баталгаажуулалт авна.'},
             {q:'Үнэгүй туршиж болох уу?', a:'Тийм. Бүртгүүлэхдээ утасны дугаараа SMS-ээр баталгаажуулмагц ' + TRIAL_DAYS + ' хоног бүх боломжийг үнэгүй ашиглана.'},
-            {q:'Үнэ хэд вэ?', a:'Нэг хичээлийн ' + PLANS.map(p => p.months + ' сар ' + fmtMNT(planPrice(p.months))).join(', ') + '. Шинээр бүртгүүлсэн бол эхний ' + WELCOME_HOURS + ' цагт бүх багц 50% хямд (' + PLANS.map(p => p.months + ' сар ' + fmtMNT(planPrice(p.months, true))).join(', ') + '). Аль ч багцад шалгалт хязгааргүй.'},
+            {q:'Үнэ хэд вэ?', a:'Нэг хичээлийн ' + PLANS.map(p => p.months + ' сар ' + fmtMNT(planPrice(p.months))).join(', ') + '. Шинээр бүртгүүлсэн бол эхний ' + WELCOME_HOURS + ' цагт бүх багц 50% хямд (' + PLANS.map(p => p.months + ' сар ' + fmtMNT(planPrice(p.months, true))).join(', ') + ') — эхний нэг төлбөрт, промо кодтой давхцахгүй. Аль ч багцад шалгалт хязгааргүй.'},
             {q:'Өгөгдөл хаана хадгалагддаг вэ?', a:'Бүх өгөгдөл Neon cloud database-д хадгалагдана. Өгөгдлийг гуравдагч этгээдэд дамжуулахгүй.'},
             {q:'Олон багш нэг платформ ашиглаж болох уу?', a:'Тийм. Багш бүр өөрийн бүртгэлтэй бөгөөд зөвхөн өөрийн шалгалт, сурагчдаа харна.'},
             {q:'Төлбөрийг хэрхэн төлөх вэ?', a:'Нэвтэрсний дараа багцаа сонгоод QPay-ээр төлнө: банкны аппаараа QR уншуулах эсвэл утсан дээрээ банкны апп руу шууд орно. Төлсөн даруй эрх нээгдэнэ. Хугацаа дуусахаас өмнө сунгавал үлдсэн хоног дээр нэмэгдэнэ.'},
@@ -1010,9 +1011,9 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
 
 // ── Create Page ───────────────────────────────────────────
 function CreatePage({onCreated, prefill, isEdit, dark:d=false, canUse, onBuy}) {
-  const cnt0 = prefill?.sec1Count||36;
-  // Шинэ шалгалтын анхны хичээл — эрхтэй эхний хичээл (lib/plans.js canUseSubjectOf)
+  // Шинэ шалгалтын анхны хичээл — эрхтэй эхний хичээл (lib/plans.js canUseSubjectOf); дасгалын тоо — тэр хичээлийн ЭЕШ (lib/sheetSpec.js)
   const subj0 = prefill?.subject || SUBJECTS.find(s=>!canUse||canUse(s)) || SUBJECTS[0];
+  const cnt0 = prefill?.sec1Count||EESH_SPEC[subj0]?.s1||36;
   const [title,setTitle]=useState(prefill?.title||'');
   const [subject,setSubject]=useState(subj0);
   const [cnt,setCnt]=useState(cnt0);
@@ -1060,7 +1061,15 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false, canUse, onBuy}) {
     const ok=topicOptions(s,myTopics[s]);
     setTopics(t=>t.map(x=>ok.includes(x)?x:ok[0]));
     setVstore(st=>Object.fromEntries(Object.entries(st).map(([L,t])=>[L,{...t,topics:t.topics.map(x=>ok.includes(x)?x:ok[0])}])));
+    // шинэ шалгалт, дасгалын тоог өөрчлөөгүй (өмнөх хичээлийн ЭЕШ-ийн тоо) бол шинэ хичээлийн ЭЕШ-ийн тоо
+    if(!isEdit&&EESH_SPEC[s]&&cnt===EESH_SPEC[subject]?.s1) handleCntChange(EESH_SPEC[s].s1);
   }
+  // Хичээлийн ЭЕШ-ийн бүтэц (lib/sheetSpec.js EESH_SPEC): 1-р хэсгийн дасгалын тоо, 2-р хэсгийн дэд хэсгүүд
+  function applySpec(){
+    const sp=EESH_SPEC[subject]; if(!sp) return;
+    handleCntChange(sp.s1); setUseSec2(true); setSec2EnabledSubs(SEC2_SUBS.map((_,i)=>i<sp.s2));
+  }
+  const s2Match=s2Kind(subject)==='match';
 
   const snapVariant=()=>({keys,scores,topics,sec2Keys});
   function loadVariant(t){ setKeys(t.keys); setScores(t.scores); setTopics(t.topics); setSec2Keys(t.sec2Keys); }
@@ -1166,9 +1175,10 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false, canUse, onBuy}) {
             {canUse&&onBuy&&SUBJECTS.some(s=>!canUse(s))&&<button type="button" onClick={()=>onBuy(null)} style={{marginTop:6,border:0,background:'none',padding:0,color:'#7B52EE',fontWeight:800,fontSize:12.5,cursor:'pointer'}}>Өөр хичээлийн эрх авах →</button>}
           </div>
           <div>
-            <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>1-р хэсэг дасгал (1-36)</label>
+            <label style={{fontSize:13,fontWeight:600,color:'#374151',display:'block',marginBottom:4}}>1-р хэсэг дасгал{EESH_SPEC[subject]?` (ЭЕШ-д ${EESH_SPEC[subject].s1})`:''}</label>
             <input type="number" min={1} max={200} value={cnt} onChange={e=>handleCntChange(e.target.value)}
               style={{width:'100%',padding:'10px 14px',border:'2px solid #e5e7eb',borderRadius:10,fontSize:14,outline:'none',boxSizing:'border-box'}} />
+            {EESH_SPEC[subject]&&<button type="button" onClick={applySpec} title={specNote(subject)} style={{marginTop:6,border:0,background:'none',padding:0,color:'#7B52EE',fontWeight:800,fontSize:12.5,cursor:'pointer'}}>ЭЕШ-ийн бүтцээр тохируулах</button>}
           </div>
           <div style={{display:'flex',alignItems:'center',gap:10,paddingTop:24}}>
             <input type="checkbox" checked={useSec2} onChange={e=>setUseSec2(e.target.checked)} id="us2" style={{width:18,height:18}} />
@@ -1274,6 +1284,11 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false, canUse, onBuy}) {
               ))}
             </div>}
           </div>
+          <div style={{fontSize:12.5,fontWeight:600,color:'#6b7280',lineHeight:1.5,marginBottom:12}}>
+            {s2Match
+              ? `«${subject}» — харгалзуулах даалгавар: мөр бүрд тохирох хариултын дугаарыг (1, 2, 3 …) оруулна. Хариулттай мөр л хариултын хуудсанд гарна.`
+              : 'Нөхөх даалгавар: нүд бүрд нэг цифр. Хасах тэмдэг, цэг даалгаврын загварт хэвлэгдсэн бол будахгүй — зөвхөн цифр. Хариулттай нүд л хуудсанд гарна.'}
+          </div>
           {SEC2_SUBS.filter((_,i)=>sec2EnabledSubs[i]).map(sub=>(
             <div key={sub} style={{marginBottom:20}}>
               <div style={{fontWeight:700,fontSize:14,color:'#7B52EE',marginBottom:8}}>Дэд хэсэг {sub}</div>
@@ -1282,8 +1297,8 @@ function CreatePage({onCreated, prefill, isEdit, dark:d=false, canUse, onBuy}) {
                   <div key={row} className="cm-s2key" style={{display:'flex',alignItems:'center',gap:6,padding:'6px 8px',background:'#f9fafb',borderRadius:8,border:'1px solid #e5e7eb'}}>
                     <span style={{fontSize:12,fontWeight:700,color:'#9ca3af',minWidth:14}}>{row}</span>
                     <input type="text" maxLength={1} value={typeof sec2Keys[sub]?.[row]==='object'?(sec2Keys[sub][row].ans||''):(sec2Keys[sub]?.[row]||'')} 
-                      onChange={e=>{const v=e.target.value.replace(/[^0-9.-]/g,'');setSec2Keys(k=>({...k,[sub]:{...k[sub],[row]:{...(typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''}),ans:v}}}));}}
-                      placeholder="0-9" style={{width:44,padding:'5px 6px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,outline:'none',textAlign:'center'}} />
+                      onChange={e=>{const v=e.target.value.replace(s2Match?/[^0-9]/g:/[^0-9.-]/g,'');setSec2Keys(k=>({...k,[sub]:{...k[sub],[row]:{...(typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''}),ans:v}}}));}}
+                      placeholder={s2Match?'1-9':'0-9'} style={{width:44,padding:'5px 6px',border:'1px solid #e5e7eb',borderRadius:6,fontSize:13,outline:'none',textAlign:'center'}} />
                     <span style={{fontSize:11,color:'#9ca3af'}}>оноо:</span>
                     <div style={{display:'flex',alignItems:'center',gap:2}}>
                       <button onClick={()=>setSec2Keys(k=>{const cur=typeof k[sub]?.[row]==='object'?k[sub][row]:{ans:k[sub]?.[row]||''};const sc=Math.max(0.5,Math.round(((cur.score||1)-0.5)*10)/10);return{...k,[sub]:{...k[sub],[row]:{...cur,score:sc}}};} )}

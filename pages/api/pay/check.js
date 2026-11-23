@@ -12,7 +12,8 @@ export default requireAuth(async function handler(req, res) {
   try {
     const r = await settlePayment(p);
     const t = await getTeacherById(req.teacherId);
-    res.json({ paid: r.paid, paidUntil: r.until || accessUntil(t), hasAccess: hasAccess(t), subjects: p.subjects || null, school: !!p.school_id });
+    res.json({ paid: r.paid, paidUntil: r.until || accessUntil(t), hasAccess: hasAccess(t), subjects: p.subjects || null, school: !!p.school_id,
+      welcomeDays: r.welcomeDays || null });   // урамшууллын давхар нэхэмжлэх — төлсөн дүнгээр олгосон хоног (lib/db.js markPaidLicenses)
   } catch (e) {
     console.error('[pay/check]', e.message);
     res.status(502).json({ error: 'Төлбөр шалгаж чадсангүй. Дахин оролдоно уу.' });

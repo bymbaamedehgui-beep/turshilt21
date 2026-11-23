@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { apiFetch } from '../lib/eyesh';
 import { sheetLayout, MARKERS, MARK, ORIENT, TAG, PAGE_W, PAGE_H, S1_MAX, S1_ROWS, S1_POS, S2_POS, S2_OPTS,
   S2_ROWS, ID_POS, VER_POS, s1RowY } from '../lib/omr';
+import { s2Kind, s2Options } from '../lib/sheetSpec';
 import { CyberMathLogo } from './CyberMathLogo';
 
 // ── Хэвлэх хариултын хуудас (A4, мм нэгжтэй SVG) ───────────────────────────
@@ -65,6 +66,10 @@ export function AnswerSheetSVG({ exam, student, className, style }) {
         ? b.rows[0] + '–' + b.rows[b.rows.length - 1] : b.rows.join(', ')) + ')').join(' · ')
     : 'Энэ шалгалтад 2-р хэсэг байхгүй';
   const wrong = [['x', 3], ['dot', 2], ['ring', 1], ['tick', 2], ['scrib', 3], ['two', 0], ['half', 3]];
+  // 2-р хэсэг хичээлээр (lib/sheetSpec.js): нөхөх — нүд бүрд цифр, харгалзуулах — мөр бүрд тохирох дугаар
+  const match = s2Kind(exam?.subject) === 'match', opts2 = s2Options(exam);
+  const ex2 = match ? [['a', '3'], ['b', '1']] : [['a', '2'], ['b', '7']];
+  const ex2x = k => 30 + (opts2.length > 10 ? k * 5.0 : k * 6.2);
   return (
     <svg className={className} style={style} viewBox={`0 0 ${PAGE_W} ${PAGE_H}`} width={PAGE_W + 'mm'} height={PAGE_H + 'mm'}
       xmlns="http://www.w3.org/2000/svg" fontFamily={FONT}>
@@ -97,14 +102,17 @@ export function AnswerSheetSVG({ exam, student, className, style }) {
       <text x={23} y={62.4} fontSize={2.35} fontWeight={700} fill={RED}>1-р хэсгийн зөв хариулт:</text>
       <text x={62} y={63.2} textAnchor="end" fontSize={2.4} fontWeight={800} fill={RED}>1</text>
       {['A','B','C','D','E'].map((v, j) => <Mini key={v} x={65 + j*4.6} y={62.4} r={1.5} label={v} mark={v === 'B' ? 'fill' : null} />)}
-      <text x={23} y={68.2} fontSize={2.35} fontWeight={700} fill={RED}>2-р хэсэг: 2.1-ийн хариулт a=2, b=7 бол</text>
+      <text x={23} y={68.2} fontSize={2.35} fontWeight={700} fill={RED}>{match ? '2-р хэсэг: 2.1-ийн a-д 3, b-д 1 тохирох бол' : '2-р хэсэг: 2.1-ийн хариулт a=2, b=7 бол'}</text>
       <rect x={23} y={70.2} width={66} height={12.4} rx={1.6} fill={SHADE} stroke={RED} strokeWidth={0.25} />
-      {[['a', '2', 73.4], ['b', '7', 79.4]].map(([row, val, y]) => (
-        <g key={row}>
-          <text x={25.6} y={y + 0.9} textAnchor="middle" fontSize={2.4} fontWeight={800} fill={RED}>{row}</text>
-          {S2_OPTS.map((v, k) => <Mini key={v} x={30 + k*5.0} y={y} r={1.3} label={v} mark={v === val ? 'fill' : null} />)}
-        </g>
-      ))}
+      {ex2.map(([row, val], i) => {
+        const y = 73.4 + i * 6;
+        return (
+          <g key={row}>
+            <text x={25.6} y={y + 0.9} textAnchor="middle" fontSize={2.4} fontWeight={800} fill={RED}>{row}</text>
+            {opts2.map((v, k) => <Mini key={v} x={ex2x(k)} y={y} r={1.3} label={v} mark={v === val ? 'fill' : null} />)}
+          </g>
+        );
+      })}
 
       {/* Анхаарах зүйлс */}
       <text x={110} y={33} textAnchor="middle" fontSize={2.6} fontWeight={900} fill={RED}>Хариултын</text>
@@ -164,7 +172,7 @@ export function AnswerSheetSVG({ exam, student, className, style }) {
           <g key={b.sub}>
             <text x={S2_POS.x} y={b.y0 + 3.4} fontSize={3.2} fontWeight={900} fill={RED}>{b.sub}</text>
             <rect x={S2_POS.x} y={top} width={S2_POS.w} height={bottom - top} rx={2} fill="#fff" stroke={RED} strokeWidth={0.4} />
-            {S2_OPTS.map((_, k) => k % 2 === 0 &&
+            {opts2.map(v => S2_OPTS.indexOf(v)).filter(k => k % 2 === (match ? 1 : 0)).map(k =>
               <rect key={k} x={S2_POS.ox + k*S2_POS.dx - 2.6} y={top + 0.6} width={5.2} height={bottom - top - 1.2} fill={SHADE} />)}
           </g>
         );
@@ -208,7 +216,7 @@ export function SheetsPage({ exam, onNavigate, dark: d = false }) {
     <div className="cm-page">
       <div className="cm-card no-print">
         <div className="cm-h2">Хариултын хуудас хэвлэх</div>
-        <div className="cm-sub">«{exam.title}» — {exam.sec1Count} дасгал{exam.useSec2 ? ' · 2-р хэсэгтэй' : ''}. A4 цаасан дээр 100% хэмжээгээр хэвлэнэ.</div>
+        <div className="cm-sub">«{exam.title}» — {exam.sec1Count} дасгал{exam.useSec2 ? (s2Kind(exam.subject) === 'match' ? ' · 2-р хэсэг харгалзуулах (мөр бүрд дугаар будна)' : ' · 2-р хэсэгтэй') : ''}. A4 цаасан дээр 100% хэмжээгээр хэвлэнэ.</div>
         {tooMany && <div className="cm-alert">Энэ хуудас 1-р хэсгийн {S1_MAX} хүртэлх дасгалыг багтаана. Энэ шалгалт {exam.sec1Count} дасгалтай.</div>}
         <div className="cm-seg" style={{ marginTop: 14 }}>
           <button className={mode === 'blank' ? 'on' : ''} onClick={() => setMode('blank')}>Хоосон хуудас</button>

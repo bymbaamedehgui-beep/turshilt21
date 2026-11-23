@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { apiFetch, uid, calcScore, SEC2_SUBS, examVariants, examForVersion, scaleScore, SCALE_YEAR } from '../lib/eyesh';
-import { sheetLayout, readSheet, readKey, toDet, toGray, S1_CHOICES, S2_OPTS, S1_MAX } from '../lib/omr';
+import { sheetLayout, readSheet, readKey, toDet, toGray, S1_CHOICES, S1_MAX } from '../lib/omr';
 
 // ── ZipGrade маягийн хурдан шалгалт ────────────────────────────────────────
 // Камер → хуудсыг таних → 2 дараалсан кадр ижил уншигдвал автоматаар авна →
@@ -432,7 +432,7 @@ function Review({ exam, layout, result, roster, existing, chosen, onChangeStuden
             <span>Зөв: <b>{verOk ? String(keyOf(ed) ?? '') : '—'}</b></span>
           </div>
           <div className="qs-ch-o">
-            {(ed.kind === 's1' ? S1_CHOICES : S2_OPTS).map(v => (
+            {(ed.kind === 's1' ? S1_CHOICES : ed.options.map(o => o.v)).map(v => (
               <button key={v} className={ans[ed.id] === v ? 'on' : ''} onClick={() => choose(ed.id, v)}>{v}</button>
             ))}
             <button className={'blank' + (!ans[ed.id] ? ' on' : '')} onClick={() => choose(ed.id, '')}>Хоосон</button>
