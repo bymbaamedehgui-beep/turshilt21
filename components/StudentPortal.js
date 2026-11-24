@@ -462,7 +462,7 @@ function Files({ items, title, empty, grouped }) {
         <div key={g}>
           {g && <div className="sp-sec-h"><b>{g}</b><span>{list.length}</span></div>}
           {list.map(m => {
-            const isPdf = /\.pdf($|\?)/i.test(m.url) || /vercel-storage\.com|\/uploads\//.test(m.url);
+            const isPdf = /\.pdf($|\?)/i.test(m.url) || /vercel-storage\.com|\/uploads\/|drive\.google\.com\/file\//.test(m.url);
             return (
               <a key={m.id} className="sp-card sp-file" href={m.url} target="_blank" rel="noopener noreferrer">
                 <span className={'sp-file-ic' + (isPdf ? '' : ' link')}><Ico d={isPdf ? ICON.pdf : ICON.link} /></span>
