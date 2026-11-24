@@ -582,6 +582,7 @@ body.dark .sp-hs b{color:#c4b1ff}
 .mp-seg{display:flex;background:var(--chip);border-radius:14px;padding:4px;gap:4px}
 .mp-seg button{flex:1;min-height:40px;border:0;border-radius:11px;background:none;font-weight:800;font-size:14px;color:var(--soft)}
 .mp-seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 4px rgba(0,0,0,.1)}
+.mp-seg button:disabled{opacity:.45;cursor:not-allowed}
 .mp-bar{position:relative;height:26px;border-radius:999px;background:var(--chip);overflow:hidden}
 .mp-bar i{display:block;height:100%;background:var(--purple)}
 .mp-bar span{position:absolute;inset:0;display:grid;place-items:center;font-size:13px;font-weight:900;color:var(--ink)}

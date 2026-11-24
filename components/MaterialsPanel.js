@@ -3,7 +3,7 @@
 // kind 'textbook' — бүх сурагчид харна; 'material' — зөвхөн тухайн багшийн сурагчид (анги сонгож болно).
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../lib/eyesh';
-import { uploadPdf } from '../lib/uploadClient';
+import { uploadPdf, uploadReady, NOT_CONFIGURED } from '../lib/uploadClient';
 
 const SUBJECTS = ['Математик', 'Физик', 'Хими', 'Биологи', 'Монгол хэл', 'Уран зохиол', 'Англи хэл', 'Орос хэл', 'Түүх', 'Газарзүй', 'Нийгмийн ухаан', 'Мэдээллийн технологи'];
 const fmtSize = n => (!n ? '' : n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB');
@@ -22,6 +22,9 @@ export function MaterialsPanel({ kind, classes = [] }) {
   const [err, setErr] = useState('');
 
   useEffect(() => { apiFetch('/api/materials?kind=' + kind).then(setItems).catch(e => setErr(e.message)); }, [kind]);
+  // Файл хадгалах сан холбогдоогүй бол PDF байршуулахыг хааж холбоос руу шилжинэ (ойлгомжгүй алдаа гаргахгүй)
+  const [canUpload, setCanUpload] = useState(true);
+  useEffect(() => { uploadReady().then(ok => { setCanUpload(ok); if (!ok) setMode('link'); }); }, []);
 
   async function save() {
     setErr('');
@@ -62,9 +65,10 @@ export function MaterialsPanel({ kind, classes = [] }) {
           )}
         </div>
         <div className="mp-seg">
-          <button className={mode === 'file' ? 'on' : ''} onClick={() => setMode('file')}>PDF байршуулах</button>
+          <button className={mode === 'file' ? 'on' : ''} onClick={() => setMode('file')} disabled={!canUpload} title={canUpload ? '' : NOT_CONFIGURED}>PDF байршуулах</button>
           <button className={mode === 'link' ? 'on' : ''} onClick={() => setMode('link')}>Холбоос</button>
         </div>
+        {!canUpload && <p className="mp-note">{NOT_CONFIGURED}</p>}
         {mode === 'file'
           ? <input id={'mp-file-' + kind} className="mp-input" type="file" accept="application/pdf,.pdf" onChange={e => setFile(e.target.files?.[0] || null)} />
           : <input className="mp-input" value={link} onChange={e => setLink(e.target.value)} placeholder="https://drive.google.com/…" inputMode="url" />}
