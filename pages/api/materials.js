@@ -1,8 +1,7 @@
 import { initDb, getTeacherById, getMaterials, createMaterial, deleteMaterial } from '../../lib/db';
 import { requirePaid } from '../../lib/auth';
-import { deleteBlob } from '../../lib/blobstore';
 
-// Багшийн ЭЕШ материал ба admin-ий 12-р ангийн сурах бичиг: жагсаах, нэмэх (байршуулсан PDF эсвэл холбоос), устгах
+// Багшийн ЭЕШ материал ба admin-ий 12-р ангийн сурах бичиг: жагсаах, нэмэх (Google Drive зэрэг холбоос), устгах
 function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
 // https холбоос (хөгжүүлэлтэд localhost) л хүлээж авна
 function cleanUrl(u) {
@@ -36,7 +35,6 @@ export default requirePaid(async function handler(req, res) {
   if (req.method === 'DELETE') {
     const m = await deleteMaterial(String(req.query.id || ''), req.teacherId, !!t?.is_admin);
     if (!m) return res.status(404).json({ error: 'Олдсонгүй' });
-    if (!m.archived) await deleteBlob(m.url);   // багшийн материал админы архивт файлтайгаа үлдэнэ (lib/db.js deleteMaterial)
     return res.json({ ok: true });
   }
   res.status(405).end();
