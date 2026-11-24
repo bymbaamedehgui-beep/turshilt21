@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { apiFetch } from '../lib/eyesh';
-import { uploadPdf } from '../lib/uploadClient';
+import { isDriveUrl, normalizeDriveUrl, driveStatus } from '../lib/drive';
 import { BANK_SUBJECTS } from '../lib/plans';
 
-// Admin «ЭЕШ сан» (components/AdminPanel.js): хичээл × он × хувилбар бүрийн даалгавар (PDF — Vercel Blob, эсвэл Дасгалын төвийн
+// Admin «ЭЕШ сан» (components/AdminPanel.js): хичээл × он × хувилбар бүрийн даалгавар (PDF — Google Drive холбоос, эсвэл Дасгалын төвийн
 // HTML материал) + зөв хариу. JSON импорт — cyber-math-ийн scripts/eesh-bank-export.js-ийн гаралт [{ subject, year, variant, title,
 // exam, material }]. Сервер: pages/api/admin/eesh.js (хичээл+он+хувилбараар нэмэх/шинэчлэх).
 const EMPTY = { subject: BANK_SUBJECTS[0], year: '', variant: 'A', title: '', key: '', scores: '', sec2: '' };
@@ -40,7 +40,7 @@ function examFromForm(f) {
 export function EeshBankAdmin({ d = false }) {
   const [list, setList] = useState(null);
   const [form, setForm] = useState(EMPTY);
-  const [pdf, setPdf] = useState(null);
+  const [link, setLink] = useState('');
   const [busy, setBusy] = useState('');
   const [msg, setMsg] = useState(null);
   const [open, setOpen] = useState(false);
@@ -56,13 +56,18 @@ export function EeshBankAdmin({ d = false }) {
     e.preventDefault();
     const exam = examFromForm(form);
     if (exam.error) return setMsg({ text: exam.error, err: true });
-    if (!pdf) return setMsg({ text: 'PDF файлаа сонгоно уу', err: true });
-    setBusy('Байршуулж байна… 0%'); setMsg(null);
+    if (!/^https:\/\//i.test(link.trim())) return setMsg({ text: 'Даалгаврын PDF-ийн холбоосыг (Google Drive, https://…) оруулна уу', err: true });
+    const pdfUrl = isDriveUrl(link) ? normalizeDriveUrl(link) : link.trim();
+    setBusy('Шалгаж байна…'); setMsg(null);
+    // Drive файл «Холбоостой хэн ч» нээлттэй биш бол багш, сурагчид нээж чадахгүй — анхааруулна
+    const st = await driveStatus(pdfUrl);
+    if ((st === 'private' || st === 'missing') && !confirm(st === 'private'
+      ? 'Энэ Drive файл нийтэд нээгдээгүй байна — багш, сурагчид нээж чадахгүй. Drive дээр Хуваалцах → «Холбоостой хэн ч» болгоно уу.\n\nТэгсэн ч нэмэх үү?'
+      : 'Энэ холбоосоор Drive файл олдсонгүй.\n\nТэгсэн ч нэмэх үү?')) { setBusy(''); return; }
     try {
-      const up = await uploadPdf(pdf, 'eeshbank', p => setBusy(`Байршуулж байна… ${p}%`));
       setBusy('Хадгалж байна…');
-      await apiFetch('/api/admin/eesh', { method: 'POST', body: { subject: form.subject, year: form.year, variant: form.variant, title: form.title || undefined, exam, pdfUrl: up.url, pdfSize: up.size } });
-      setMsg({ text: 'Нэмэгдлээ' }); setForm(f => ({ ...EMPTY, subject: f.subject, year: f.year })); setPdf(null); load();
+      await apiFetch('/api/admin/eesh', { method: 'POST', body: { subject: form.subject, year: form.year, variant: form.variant, title: form.title || undefined, exam, pdfUrl } });
+      setMsg({ text: 'Нэмэгдлээ' }); setForm(f => ({ ...EMPTY, subject: f.subject, year: f.year })); setLink(''); load();
     } catch (e2) { setMsg({ text: e2.message, err: true }); }
     setBusy('');
   }
@@ -112,7 +117,7 @@ export function EeshBankAdmin({ d = false }) {
           <input value={form.scores} onChange={e => set('scores', e.target.value)} placeholder="Оноо (хоосон бол бүгд 1): 1 1 2 2 3 …" style={{ ...inp, fontFamily: 'monospace' }} />
           <textarea value={form.sec2} onChange={e => set('sec2', e.target.value)} rows={3} placeholder={'2-р хэсэг (сонголттой):\n2.1 a=3 b=- c=5 @1\n2.2 a=1 b=2'} style={{ ...inp, fontFamily: 'monospace', resize: 'vertical' }} />
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <label style={{ fontSize: 13, fontWeight: 700, color: text }}>PDF: <input type="file" accept="application/pdf" onChange={e => setPdf(e.target.files?.[0] || null)} /></label>
+            <input value={link} onChange={e => setLink(e.target.value)} placeholder="Даалгаврын PDF — Drive холбоос" inputMode="url" style={{ ...inp, flex: '1 1 260px' }} />
             <button type="submit" disabled={!!busy} style={{ ...btn('#7B52EE', 'white'), marginLeft: 'auto' }}>{busy || 'Санд нэмэх'}</button>
           </div>
         </form>
