@@ -6,6 +6,8 @@ import { blobConfigured } from '../../lib/blobstore';
 // Vercel Blob client upload: хөтөч файлаа шууд Blob руу илгээнэ, энд зөвхөн түр токен олгоно.
 // Багш эрхтэй байх ёстой; сурах бичиг (kind 'textbook') зөвхөн admin. Зөвхөн PDF, 300MB хүртэл.
 export default async function handler(req, res) {
+  // GET — файл хадгалах сан холбогдсон эсэх (lib/uploadClient.js uploadReady): үгүй бол хөтөч «Холбоос» сонголт руу шилжинэ
+  if (req.method === 'GET') return res.json({ configured: blobConfigured() });
   if (req.method !== 'POST') return res.status(405).end();
   if (!blobConfigured()) return res.status(503).json({ error: 'Файл хадгалах сан тохируулагдаагүй байна. Одоохондоо холбоосоор нэмнэ үү.' });
   try {
