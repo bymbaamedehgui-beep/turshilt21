@@ -585,6 +585,30 @@ body.dark .sp-hs b{color:#c4b1ff}
 .mp-item a span{display:block;font-size:13px;font-weight:700;color:var(--soft);margin-top:2px}
 .mp-item button{border:0;border-radius:999px;background:#fdecec;color:var(--red);font-weight:800;font-size:13px;padding:.5rem .85rem}
 .mp-empty{text-align:center;color:var(--soft);font-weight:700;padding:18px;border:1.5px dashed var(--line);border-radius:16px}
+/* Шалгалтын QR (components/ExamQr.js) */
+.eq-back{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:12px;background:rgba(17,12,40,.48)}
+.eq{width:min(560px,100%);max-height:94vh;overflow:auto;background:var(--card);color:var(--ink);border-radius:22px;padding:18px 18px 16px;box-shadow:0 24px 60px -24px rgba(20,10,60,.55)}
+.eq-h{display:flex;align-items:center;gap:10px}.eq-h b{flex:1;font-size:17px;font-weight:900}
+.eq-x{width:34px;height:34px;flex:0 0 auto;border:0;border-radius:50%;background:var(--chip);color:var(--ink);font-size:20px;line-height:1;cursor:pointer}
+.eq-t{margin:4px 0 8px;font-size:15px;font-weight:800;color:var(--purple-d)}
+.eq .mp-note{margin:0 0 12px}
+.eq-src{margin-bottom:10px;padding:10px 12px;border-radius:12px;background:#e7f8ef;color:#047857;font-size:14px;font-weight:800}
+.eq-pdf{display:block;margin-bottom:10px}.eq-pdf span{display:block;margin-bottom:5px;font-size:13.5px;font-weight:800}
+.eq-sug{display:block;margin:-4px 0 6px}
+.eq-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:4px 0}
+.eq-sw{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:800;cursor:pointer}.eq-sw input{width:20px;height:20px;accent-color:var(--purple)}
+.eq-show{display:flex;align-items:center;gap:16px;flex-wrap:wrap;margin-top:14px;padding-top:14px;border-top:1px solid var(--line)}
+.eq-qr{display:block;border-radius:10px;background:#fff}
+.eq-side{flex:1;min-width:180px;display:flex;flex-direction:column;align-items:flex-start;gap:8px}
+.eq-link{font-size:12.5px;font-weight:700;color:var(--soft);word-break:break-all}
+.eq-closed{font-size:13px;font-weight:800;color:#b45309}
+.eq-load{padding:24px 0;text-align:center;color:var(--soft);font-weight:800}
+.eq .eq-foot{margin:12px 0 0}
+.eq-full{position:fixed;inset:0;z-index:1100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2vh;padding:3vh 3vw;background:#fff;color:#111;text-align:center;cursor:pointer}
+.eq-full b{font-size:clamp(20px,3.2vw,40px);font-weight:900}
+.eq-full .eq-qr{width:min(76vw,68vh);height:auto}
+.eq-full p{margin:0;font-size:clamp(16px,2.4vw,30px);font-weight:800}
+.eq-full span{font-size:13px;color:#777}
 .mp-ok{background:#e1f4e9;color:var(--green);border-radius:12px;padding:9px 12px;font-size:14px;font-weight:800}
 @media (max-width:640px){.mp-row{flex-direction:column}}
 

@@ -11,6 +11,7 @@ import { Clock } from '../components/Clock';
 import { EESH_SPEC, specNote, s2Kind } from '../lib/sheetSpec';
 import { StudentPortal } from '../components/StudentPortal';
 import { MaterialsPanel } from '../components/MaterialsPanel';
+import { ExamQr } from '../components/ExamQr';
 import { exportAnalysisXlsx } from '../lib/report-xlsx';
 import { downloadResultsPdf } from '../lib/report-pdf';
 import { AdminPanel } from '../components/AdminPanel';
@@ -841,6 +842,8 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
   const [filterSubject, setFilterSubject] = useState('all');
   // Онлайн шалгалтад бодлогуудыг (шалгалтын материал, хариугүй) сурагчдад нээх/хаах
   const [paperBusy, setPaperBusy] = useState('');
+  // Шалгалтын QR (components/ExamQr.js): сурагчид уншуулж бодлогоо утсаараа харна — бодлого хэвлэх шаардлагагүй
+  const [qrExam, setQrExam] = useState(null);
   async function togglePaper(exam) {
     const open = !exam.paperOpen;
     if (!window.confirm(open
@@ -999,12 +1002,16 @@ function HomePage({exams, students, onSelectExam, currentExam, onDeleteExam, onN
                 <div style={{display:'flex',gap:8,marginTop:12}}>
                   <button className="cm-btn" data-tour="card-scan" style={{flex:1,padding:'.6rem .8rem',fontSize:13.5}} onClick={e=>{e.stopPropagation();onSelectExam(exam);onNavigate('scan');}}>Шалгах</button>
                   <button className="cm-btn ghost" data-tour="card-sheets" style={{flex:1,padding:'.6rem .8rem',fontSize:13.5}} onClick={e=>{e.stopPropagation();onSelectExam(exam);onNavigate('sheets');}}>Хуудас хэвлэх</button>
+                  <button className="cm-btn ghost" title="Сурагчид QR уншуулж бодлогоо утсаараа харна" style={{flex:'0 0 auto',padding:'.6rem .8rem',fontSize:13.5}} onClick={e=>{e.stopPropagation();setQrExam(exam);}}>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M14 14h3v3h-3zM21 14v.01M14 21h.01M17.5 21H21v-3.5"/></svg>QR
+                  </button>
                 </div>
               </div>
             );
           })}
         </div>
       </>)}
+      {qrExam&&<ExamQr exam={qrExam} onClose={()=>setQrExam(null)} />}
     </div>
   );
 }
