@@ -6,5 +6,9 @@ const nextConfig = {
   async headers() {
     return [{ source: '/cm-admin', headers: [{ key: 'Content-Security-Policy', value: `frame-ancestors 'self' ${CM_ORIGINS.join(' ')}` }] }];
   },
+  // Шалгалтын QR-ын богино холбоос (pages/api/q.js): сурагч уншуулаад бодлогоо харна
+  async rewrites() {
+    return [{ source: '/q/:t', destination: '/api/q?t=:t' }];
+  },
 }
 module.exports = nextConfig

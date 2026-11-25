@@ -11,7 +11,7 @@ export const config = { api: { responseLimit: false } };
 const KATEX_CSS = 'https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css';
 const PRINT_JS = "document.getElementById('mvp').addEventListener('click',function(){window.print()});";
 const PRINT_HASH = "'sha256-" + crypto.createHash('sha256').update(PRINT_JS).digest('base64') + "'";
-const CSP = "default-src 'none'; style-src 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
+export const CSP = "default-src 'none'; style-src 'unsafe-inline' https://cdnjs.cloudflare.com https://fonts.googleapis.com; "
   + "font-src https://cdnjs.cloudflare.com https://fonts.gstatic.com data:; img-src data:; script-src " + PRINT_HASH + "; "
   + "base-uri 'none'; form-action 'none'; frame-ancestors 'none'; sandbox allow-scripts allow-modals";
 const VIEW_CSS = 'html,body{background:#ece8f8}body{margin:0;padding:0}'
@@ -24,17 +24,19 @@ const VIEW_CSS = 'html,body{background:#ece8f8}body{margin:0;padding:0}'
   + '.mv-s{margin:0!important;box-shadow:none!important;break-after:page;page-break-after:always}.mv-s:last-child{break-after:auto;page-break-after:auto}}';
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
-// Материалын HTML хуудас (тестэд ч)
-export function renderMaterial(doc) {
-  const cls = 'sheet mv-s' + (doc.cls ? ' ' + String(doc.cls).replace(/[^\w -]/g, '') : '');
-  const sheets = (doc.sheets || []).map(s => '<div class="' + cls + '">' + cleanHtml(s.html) + '</div>').join('')
-    + (doc.key ? '<div class="' + cls + '">' + cleanHtml(doc.key) + '</div>' : '');
+// Материалын HTML хуудас (тестэд ч). opts — сурагчид QR-аар харуулахад (pages/api/q.js): хэвлэх товчгүй, утсанд A4 хуудсыг
+// өргөнөөр нь багтаах viewport, гарчгийн мөрийн өөр тайлбар. Хуудас бүр өөрийн cls-тэй байж болно (s.cls).
+export function renderMaterial(doc, { print = true, viewport = 'width=device-width,initial-scale=1', note = 'шалгалтын материал' } = {}) {
+  const clsOf = c => 'sheet mv-s' + (c ? ' ' + String(c).replace(/[^\w -]/g, '') : '');
+  const sheets = (doc.sheets || []).map(s => '<div class="' + clsOf(s.cls ?? doc.cls) + '">' + cleanHtml(s.html) + '</div>').join('')
+    + (doc.key ? '<div class="' + clsOf(doc.cls) + '">' + cleanHtml(doc.key) + '</div>' : '');
   const css = String(doc.css || '').replace(/<\/style/gi, '<\\/style');
-  return '<!doctype html><html lang="mn"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">'
+  return '<!doctype html><html lang="mn"><head><meta charset="utf-8"><meta name="viewport" content="' + esc(viewport) + '">'
     + '<meta name="robots" content="noindex"><title>' + esc(doc.title) + '</title>'
     + '<link rel="stylesheet" href="' + KATEX_CSS + '"><style>' + css + '</style><style>' + VIEW_CSS + '</style></head><body>'
-    + '<div class="mv-bar"><b>' + esc(doc.title) + '</b><small>eyeshcheck · шалгалтын материал</small><button id="mvp" type="button">Хэвлэх</button></div>'
-    + '<div class="mv-wrap">' + sheets + '</div><script>' + PRINT_JS + '</script></body></html>';
+    + '<div class="mv-bar"><b>' + esc(doc.title) + '</b><small>eyeshcheck · ' + esc(note) + '</small>'
+    + (print ? '<button id="mvp" type="button">Хэвлэх</button>' : '') + '</div>'
+    + '<div class="mv-wrap">' + sheets + '</div>' + (print ? '<script>' + PRINT_JS + '</script>' : '') + '</body></html>';
 }
 
 export default async function handler(req, res) {

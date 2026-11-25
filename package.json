@@ -18,7 +18,8 @@
     "exceljs": "^4.4.0",
     "bcryptjs": "^2.4.3",
     "@anthropic-ai/sdk": "^1.11.0",
-    "katex": "0.16.9"
+    "katex": "0.16.9",
+    "qrcode-generator": "2.0.4"
   },
   "devDependencies": {
     "@types/jsonwebtoken": "^9.0.6"
